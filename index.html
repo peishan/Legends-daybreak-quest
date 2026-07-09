@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Legends: Daybreak Quest</title>
+<style>
+  :root {
+    --cream:#FBF4E9; --creamDeep:#F3E7D3; --ink:#4A3B32; --inkSoft:#8A7566;
+    --mage:#8E6FB0; --mageDeep:#6F4F92; --mageSoft:#EDE3F7; --pink:#E9A8B4;
+    --gold:#D9A441; --sage:#8FA982; --sageSoft:#E6EFDF; --card:#FFFDF8; --border:#E4D4BC;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; padding:0; background:var(--cream); color:var(--ink);
+    font-family:'Nunito','Segoe UI',sans-serif; overscroll-behavior:none; }
+  .disp { font-family:'Poppins','Segoe UI',sans-serif; }
+  button { font-family:inherit; border:none; cursor:pointer; background:none; }
+  textarea { font-family:'Nunito',sans-serif; }
+  ::-webkit-scrollbar{ display:none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .pulse { animation: pulse 1.4s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ================= palette ================= */
+const C = {
+  cream:"#FBF4E9", creamDeep:"#F3E7D3", ink:"#4A3B32", inkSoft:"#8A7566",
+  mage:"#8E6FB0", mageDeep:"#6F4F92", mageSoft:"#EDE3F7", pink:"#E9A8B4",
+  gold:"#D9A441", sage:"#8FA982", sageSoft:"#E6EFDF", card:"#FFFDF8", border:"#E4D4BC",
+};
+
+/* ================= world data ================= */
+const PARTY = [
+  { id:"joel", name:"Joel", title:"The Steadfast", icon:"🛡️", color:C.mage, bio:"Your partner and shield. Never lets you fight alone.", passive:"+10% Max HP", unlockLv:1 },
+  { id:"aisyah", name:"Aisyah", title:"Sisterblade", icon:"⚔️", color:C.sage, bio:"Your sister, sharp-eyed and sharper-tongued.", passive:"+20% Gold found", unlockLv:1 },
+  { id:"mezstorm", name:"Mezstorm", title:"Stormsinger", icon:"✨", color:C.pink, bio:"Your other sister. Turns chaos into a song.", passive:"+15% XP earned", unlockLv:3 },
+  { id:"eliz", name:"Eliz", title:"Little Healer", icon:"❤️", color:C.pink, bio:"Your niece. Small hands, big heart.", passive:"Slow HP regen each call", unlockLv:4 },
+  { id:"senedra", name:"Senedra", title:"Swift Scout", icon:"⭐", color:C.gold, bio:"Your niece. Always finds the extra loot.", passive:"+chance of bonus material", unlockLv:6 },
+  { id:"zaki", name:"Zaki", title:"Young Blade", icon:"🔨", color:C.mageDeep, bio:"Your nephew, training hard to keep up.", passive:"+Attack power", unlockLv:8 },
+  { id:"soel", name:"Soel", title:"The Familiar", icon:"🐱", color:C.inkSoft, bio:"Grey and white, and completely in charge.", passive:"+Luck (crit chance)", unlockLv:10 },
+];
+
+const MATERIALS = ["Moonherb", "Silver Dust", "Ember Shard", "Starlight Thread", "Slime Gel"];
+
+const CHARGE_CAP = 6;
+const CHARGE_REGEN_MS = 90 * 60 * 1000;
+const LOCATION_COOLDOWN_MS = 8 * 60 * 1000;
+
+const LOCATIONS = [
+  { id:"forest", name:"Whispering Forest", icon:"🌲", flavor:[
+    "A patch of Moonherb glows faintly between the roots.",
+    "The wraiths avoid this place. You take a slow breath.",
+    "Something rustles overhead — just Soel, following at a distance.",
+  ]},
+  { id:"market", name:"Market Row", icon:"🏪", flavor:[
+    "A trader waves you over, then just as quickly gets distracted.",
+    "Aisyah's voice carries from a stall two rows down, haggling loudly.",
+    "You pocket a few coins someone dropped near the fountain.",
+  ]},
+  { id:"fountain", name:"Guildhall Fountain", icon:"🏛️", flavor:[
+    "Legends banners hang overhead, snapping gently in the wind.",
+    "You toss a coin in. It doesn't come back, but you feel lighter.",
+    "Mezstorm is humming something new here. You linger to listen.",
+  ]},
+  { id:"lake", name:"Moonlit Lake", icon:"🌊", flavor:[
+    "The water is still enough to see the whole sky in it.",
+    "Joel's usual spot on the dock is empty, but still warm.",
+    "A Starlight Thread catches the light just beneath the surface.",
+  ]},
+  { id:"watchtower", name:"Old Watchtower", icon:"⛰️", flavor:[
+    "From up here, the whole map feels smaller and kinder.",
+    "Zaki left a practice sword leaning against the wall again.",
+    "No wraiths reach this high. Just wind, and a little quiet.",
+  ]},
+];
+
+const ENCOUNTER_CYCLE = ["Gathering Day", "Crafting Day", "Boss Day", "Guild Day", "Rest Day"];
+
+const ENEMIES = [
+  { id:"wraith", name:"Scroll Wraith", intro:"A Scroll Wraith flickers into being, feeding on wasted minutes.", hpMod:1 },
+  { id:"imp", name:"Notification Imp", intro:"A Notification Imp buzzes at the edge of your vision — all noise, no substance.", hpMod:0.85 },
+  { id:"serpent", name:"Feed Serpent", intro:"A Feed Serpent uncoils from an endless scroll, hungry for your attention.", hpMod:1.15 },
+  { id:"specter", name:"Doubt Specter", intro:"A Doubt Specter murmurs that you should just check one more thing.", hpMod:1 },
+];
+
+const BOSSES = [
+  { id:"endless_scroll", name:"The Endless Scroll",
+    intro:"The Endless Scroll unfurls before you — everything you were trying to avoid, given a shape.",
+    hpMult:4.2, phaseLines:["It thins at the edges, but keeps trying to regenerate.", "Down to its last threads. It's losing its grip."] },
+  { id:"notif_king", name:"The Notification King",
+    intro:"The Notification King rises, crowned in a hundred unread badges.",
+    hpMult:4.5, phaseLines:["His crown flickers — a few badges finally clear.", "Nearly silent now. Just one left, blinking."] },
+];
+
+const RECIPES = [
+  { id:"health_draught", type:"potion", name:"Health Draught", needs:{"Moonherb":2,"Silver Dust":1}, effect:"Restore 30 HP instantly", icon:"🧪" },
+  { id:"focus_elixir", type:"potion", name:"Focus Elixir", needs:{"Starlight Thread":1,"Ember Shard":1}, effect:"+2 bonus damage next Call", icon:"🧪" },
+  { id:"apprentice_staff", type:"equipment", slot:"weapon", name:"Apprentice Staff", needs:{"Ember Shard":2,"Silver Dust":2}, gold:30, effect:"+3 Attack", bonus:{atk:3}, icon:"🪄" },
+  { id:"woven_robe", type:"equipment", slot:"armor", name:"Woven Robe", needs:{"Slime Gel":3,"Starlight Thread":1}, gold:25, effect:"+15 Max HP", bonus:{hp:15}, icon:"🛡️" },
+  { id:"lucky_charm", type:"equipment", slot:"trinket", name:"Lucky Charm", needs:{"Moonherb":1,"Starlight Thread":2}, gold:40, effect:"+Crit chance", bonus:{luck:1}, icon:"💎" },
+];
+
+const QUESTS = [
+  { id:"q1", name:"First Light", desc:"Answer 3 Calls", goal:3, track:"totalCheckIns", reward:{gold:20,xp:15} },
+  { id:"q2", name:"Herbalist's Favor", desc:"Gather 5 Moonherb", goal:5, track:"mat:Moonherb", reward:{gold:25,xp:20} },
+  { id:"q3", name:"Seven Suns", desc:"Reach a 7-day streak", goal:7, track:"streak", reward:{gold:60,xp:50} },
+  { id:"q4", name:"Apprentice No More", desc:"Reach Level 5", goal:5, track:"level", reward:{gold:40,xp:0} },
+  { id:"q5", name:"Guild Hall Regular", desc:"Complete 3 Guild Days", goal:3, track:"guildDays", reward:{gold:35,xp:30} },
+  { id:"q6", name:"The Full Moon", desc:"Answer 25 Calls total", goal:25, track:"totalCheckIns", reward:{gold:100,xp:80} },
+];
+
+const SNIPPETS = {
+  joel: [
+    { at:3, line:'"Didn\'t even have to ask — knew you\'d show up."' },
+    { at:8, line:'"Take the win. I\'ll take the next one with you."' },
+    { at:15, line:'"You keep choosing this. That\'s the whole thing, San."' },
+  ],
+  aisyah: [
+    { at:3, line:'"See, this is more useful than doomscrolling."' },
+    { at:8, line:'"Don\'t tell Mezstorm, but I\'m proud of you."' },
+    { at:15, line:'"Little sister energy: unstoppable today."' },
+  ],
+  mezstorm: [
+    { at:3, line:'"New song idea, working title: \'San Logs Off.\'"' },
+    { at:8, line:'"You\'ve got rhythm now. I can hear it."' },
+    { at:15, line:'"Okay, officially impressed. Don\'t let it go to your head."' },
+  ],
+  eliz: [
+    { at:3, line:'"I made you a flower crown. It\'s invisible but it\'s there."' },
+    { at:8, line:'"You\'re doing so good, Auntie San!"' },
+  ],
+  senedra: [
+    { at:3, line:'"Found something shiny. Wanna see? Wanna see?"' },
+    { at:8, line:'"I\'m keeping a list of your best days. This is on it."' },
+  ],
+  zaki: [
+    { at:3, line:'"Training\'s paying off. Yours and mine."' },
+    { at:8, line:'"Race you to the next level."' },
+  ],
+  soel: [
+    { at:3, line:"*settles onto your lap like this was always the plan*" },
+    { at:8, line:"*one slow blink — the highest compliment he gives*" },
+  ],
+};
+
+/* ================= pure helpers ================= */
+const dayKey = (d) => d.toISOString().slice(0, 10);
+const hashDay = (s) => { let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
+const encounterForDate = (dateStr) => ENCOUNTER_CYCLE[hashDay(dateStr) % ENCOUNTER_CYCLE.length];
+const today = () => dayKey(new Date());
+const xpToNext = (level) => 50 + level * 25;
+const fmtMs = (ms) => { const m = Math.max(1, Math.ceil(ms/60000)); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${m%60}m`; };
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function getCharges(s, now) {
+  if (s.charges >= CHARGE_CAP) return { charges: CHARGE_CAP, msToNext: null };
+  const elapsed = now - s.chargeAnchor;
+  const gained = Math.floor(elapsed / CHARGE_REGEN_MS);
+  const charges = Math.min(CHARGE_CAP, s.charges + gained);
+  const msToNext = charges >= CHARGE_CAP ? null : CHARGE_REGEN_MS - (elapsed % CHARGE_REGEN_MS);
+  return { charges, msToNext };
+}
+function settleCharges(s, now) {
+  const { charges } = getCharges(s, now);
+  const stillRegenning = charges < CHARGE_CAP;
+  return { charges, chargeAnchor: stillRegenning ? now - ((now - s.chargeAnchor) % CHARGE_REGEN_MS) : s.chargeAnchor };
+}
+function spendCharge(s, now, amount) {
+  const settled = settleCharges(s, now);
+  if (settled.charges < amount) return null;
+  const wasFull = settled.charges >= CHARGE_CAP;
+  return { charges: settled.charges - amount, chargeAnchor: wasFull ? now : settled.chargeAnchor };
+}
+
+function defaultState() {
+  return {
+    player: { name:"San", level:1, xp:0, gold:15, hp:60, maxHp:60, mp:30, maxMp:30 },
+    equipment: { weapon:null, armor:null, trinket:null },
+    materials: {}, potions: {}, totalCheckIns:0, streak:0, lastCheckInDate:null,
+    daysLog: {}, guildDays:0, crafted:[], questsClaimed:[], focusBuff:0,
+    charges: CHARGE_CAP, chargeAnchor: Date.now(), locations:{}, affinity:{},
+  };
+}
+
+/* ================= state ================= */
+let state = null;
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"" };
+
+function load() {
+  try {
+    const raw = localStorage.getItem("legends-save");
+    state = raw ? { ...defaultState(), ...JSON.parse(raw) } : defaultState();
+  } catch (e) { state = defaultState(); }
+}
+function save() {
+  try { localStorage.setItem("legends-save", JSON.stringify(state)); } catch (e) {}
+}
+
+/* ================= derived helpers ================= */
+function todayLog() { return state.daysLog[today()] || { count:0, encounter: encounterForDate(today()), bossDone:false }; }
+function equippedBonus() {
+  return Object.values(state.equipment).reduce((acc, id) => {
+    if (!id) return acc;
+    const r = RECIPES.find(x => x.id === id);
+    if (!r) return acc;
+    return { atk: acc.atk + (r.bonus.atk||0), hp: acc.hp + (r.bonus.hp||0), luck: acc.luck + (r.bonus.luck||0) };
+  }, { atk:0, hp:0, luck:0 });
+}
+function maxHp() { return state.player.maxHp + equippedBonus().hp; }
+function passiveActive(id) { const m = PARTY.find(x=>x.id===id); return m && state.player.level >= m.unlockLv; }
+function questValue(track) {
+  if (track === "level") return state.player.level;
+  if (track === "streak") return state.streak;
+  if (track === "totalCheckIns") return state.totalCheckIns;
+  if (track === "guildDays") return state.guildDays;
+  if (track.startsWith("mat:")) return state.materials[track.slice(4)] || 0;
+  return 0;
+}
+function canAfford(recipe) {
+  const goldOk = (recipe.gold||0) <= state.player.gold;
+  const matsOk = Object.entries(recipe.needs).every(([m,q]) => (state.materials[m]||0) >= q);
+  return goldOk && matsOk;
+}
+
+/* ================= actions ================= */
+function showToast(text) {
+  ui.toast = text;
+  clearTimeout(ui.toastTimer);
+  ui.toastTimer = setTimeout(() => { ui.toast = null; render(); }, 2600);
+  render();
+}
+
+function beginCall() {
+  const { charges } = getCharges(state, ui.now);
+  const tLog = todayLog();
+  const isBossDay = tLog.encounter === "Boss Day" && !tLog.bossDone;
+  const cost = isBossDay ? 2 : 1;
+  if (charges < cost) return;
+  if (isBossDay) {
+    const boss = BOSSES[hashDay(today() + "-boss") % BOSSES.length];
+    const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult);
+    ui.encounter = { isBoss:true, bossId:boss.id, enemyName:boss.name, cost, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
+  } else {
+    const enemy = ENEMIES[Math.floor(Math.random()*ENEMIES.length)];
+    const enemyMaxHp = Math.round((18 + state.player.level*6) * enemy.hpMod);
+    ui.encounter = { isBoss:false, enemyName:enemy.name, cost, enemyHp:enemyMaxHp, enemyMaxHp, log:[enemy.intro], resolved:false };
+  }
+  render();
+}
+
+function castSpell() {
+  const enc = ui.encounter;
+  if (!enc || enc.resolved) return;
+  const eb = equippedBonus();
+  const luckBonus = eb.luck + (passiveActive("soel") ? 1 : 0);
+  const crit = Math.random() < 0.15 + luckBonus*0.08;
+  const focusBonus = state.focusBuff > 0 ? 2 : 0;
+  let dmg = Math.round(6 + state.player.level*1.6 + eb.atk + focusBonus + (passiveActive("zaki")?2:0));
+  if (crit) dmg = Math.round(dmg*1.8);
+  const newHp = Math.max(0, enc.enemyHp - dmg);
+  enc.log.push(crit ? `Critical! Arcane Bolt hits for ${dmg}.` : `Arcane Bolt hits for ${dmg}.`);
+
+  if (newHp <= 0) { enc.enemyHp = 0; resolveVictory(); render(); return; }
+
+  let pushedPhase = false;
+  if (enc.isBoss) {
+    const boss = BOSSES.find(b => b.id === enc.bossId);
+    const ratio = newHp / enc.enemyMaxHp;
+    if (enc.phaseSeen === 0 && ratio <= 0.66) { enc.log.push(boss.phaseLines[0]); enc.phaseSeen = 1; pushedPhase = true; }
+    else if (enc.phaseSeen === 1 && ratio <= 0.33) { enc.log.push(boss.phaseLines[1]); enc.phaseSeen = 2; pushedPhase = true; }
+  }
+  if (!pushedPhase) enc.log.push("It strikes back, but you hold your ground.");
+  enc.enemyHp = newHp;
+  render();
+}
+
+function resolveVictory() {
+  const enc = ui.encounter;
+  const isBoss = enc.isBoss;
+  const mult = isBoss ? 3 : 1;
+  const goldBonus = passiveActive("aisyah") ? 1.2 : 1;
+  const xpBonus = passiveActive("mezstorm") ? 1.15 : 1;
+  const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult);
+  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult);
+  const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0);
+  const drops = {};
+  for (let i=0;i<dropCount;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
+  enc.resolved = true;
+  enc.log.push(isBoss ? `${enc.enemyName} shatters into scattered light.` : `${enc.enemyName} dissolves into motes of light.`, `+${baseGold} gold, +${baseXp} XP`);
+  enc.reward = { gold: baseGold, xp: baseXp, drops };
+}
+
+function claimCall() {
+  const enc = ui.encounter;
+  if (!enc || !enc.resolved) return;
+  const { gold, xp, drops } = enc.reward;
+  const cost = enc.cost || 1;
+  const wasBoss = enc.isBoss;
+  const t = today();
+  const tLog = todayLog();
+
+  const isNewDay = state.lastCheckInDate !== t;
+  const prevDate = state.lastCheckInDate ? new Date(state.lastCheckInDate) : null;
+  const wasYesterday = prevDate && (new Date(t) - prevDate)/86400000 === 1;
+  const newStreak = isNewDay ? (wasYesterday || !prevDate ? (prevDate ? state.streak+1 : 1) : 1) : state.streak;
+
+  let newXp = state.player.xp + xp, newLevel = state.player.level;
+  let newMaxHp = state.player.maxHp, newMaxMp = state.player.maxMp, leveledUp = false;
+  while (newXp >= xpToNext(newLevel)) { newXp -= xpToNext(newLevel); newLevel++; newMaxHp += 8; newMaxMp += 4; leveledUp = true; }
+
+  Object.entries(drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; });
+
+  const dayEntry = { count: tLog.count + 1, encounter: tLog.encounter, bossDone: tLog.bossDone || wasBoss };
+  const newGuildDays = tLog.encounter === "Guild Day" && tLog.count === 0 ? state.guildDays + 1 : state.guildDays;
+
+  const spent = spendCharge(state, ui.now, cost);
+  if (!spent) { ui.encounter = null; render(); return; }
+
+  const unlockedIds = PARTY.filter(m => newLevel >= m.unlockLv).map(m => m.id);
+  const chosen = unlockedIds[Math.floor(Math.random()*unlockedIds.length)];
+  const newAff = (state.affinity[chosen]||0) + 1;
+  const hitSnippet = (SNIPPETS[chosen]||[]).find(sn => sn.at === newAff);
+
+  state.player.xp = newXp; state.player.level = newLevel;
+  state.player.maxHp = newMaxHp; state.player.maxMp = newMaxMp;
+  state.player.hp = Math.min(newMaxHp, state.player.hp + (passiveActive("eliz")?6:0) + 20);
+  state.player.gold += gold;
+  state.totalCheckIns += 1; state.streak = newStreak; state.lastCheckInDate = t;
+  state.daysLog[t] = dayEntry; state.guildDays = newGuildDays;
+  state.focusBuff = Math.max(0, state.focusBuff - 1);
+  state.charges = spent.charges; state.chargeAnchor = spent.chargeAnchor;
+  state.affinity[chosen] = newAff;
+
+  ui.encounter = null;
+  save(); render();
+
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${newLevel}.`), 300);
+  else if (hitSnippet) { const name = PARTY.find(m=>m.id===chosen).name; setTimeout(() => showToast(`${name}: ${hitSnippet.line}`), 300); }
+  else showToast(wasBoss ? "Boss defeated. That's a good break." : "Call answered. The scroll can wait.");
+}
+
+function visitLocation(id) {
+  const loc = LOCATIONS.find(l => l.id === id);
+  const last = state.locations[id] || 0;
+  if (ui.now - last < LOCATION_COOLDOWN_MS) return;
+  const line = loc.flavor[Math.floor(Math.random()*loc.flavor.length)];
+  const gold = 1 + Math.floor(Math.random()*4);
+  const foundMaterial = Math.random() < 0.25;
+  const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
+  state.locations[id] = ui.now;
+  state.player.gold += gold;
+  if (foundMaterial) state.materials[mat] = (state.materials[mat]||0) + 1;
+  save(); render();
+  showToast(`${line} (+${gold}g${foundMaterial ? `, +1 ${mat}` : ""})`);
+}
+
+function craft(id) {
+  const r = RECIPES.find(x => x.id === id);
+  if (!canAfford(r)) return;
+  Object.entries(r.needs).forEach(([m,q]) => { state.materials[m] -= q; });
+  state.player.gold -= (r.gold||0);
+  if (r.type === "potion") state.potions[r.id] = (state.potions[r.id]||0) + 1;
+  else if (!state.crafted.includes(r.id)) state.crafted.push(r.id);
+  save(); render();
+  showToast(`Crafted ${r.name}.`);
+}
+function equip(id) {
+  const r = RECIPES.find(x => x.id === id);
+  state.equipment[r.slot] = r.id;
+  save(); render();
+  showToast(`${r.name} equipped.`);
+}
+function usePotion(id) {
+  const r = RECIPES.find(x => x.id === id);
+  if (!state.potions[id]) return;
+  state.potions[id] -= 1;
+  if (id === "health_draught") state.player.hp = Math.min(maxHp(), state.player.hp + 30);
+  if (id === "focus_elixir") state.focusBuff += 1;
+  save(); render();
+  showToast(`Used ${r.name}.`);
+}
+function claimQuest(id) {
+  const q = QUESTS.find(x => x.id === id);
+  state.questsClaimed.push(id);
+  state.player.gold += (q.reward.gold||0);
+  state.player.xp += (q.reward.xp||0);
+  save(); render();
+  showToast(`Quest claimed: ${q.name}`);
+}
+
+function setTab(id) { ui.tab = id; render(); }
+function monthShift(delta) { ui.monthCursor = new Date(ui.monthCursor.getFullYear(), ui.monthCursor.getMonth()+delta, 1); render(); }
+function openBackup() { ui.showBackup = true; ui.importMsg = ""; render(); }
+function closeBackup() { ui.showBackup = false; render(); }
+function closeEncounter() { if (ui.encounter && !ui.encounter.resolved) { ui.encounter = null; render(); } }
+
+async function copyBackup() {
+  try { await navigator.clipboard.writeText(JSON.stringify(state)); ui.importMsg = "Copied! Paste it somewhere safe."; }
+  catch (e) { ui.importMsg = "Couldn't auto-copy — select the text above and copy manually."; }
+  renderBackupMsg();
+  setTimeout(() => { ui.importMsg = ""; renderBackupMsg(); }, 3000);
+}
+function restoreBackup() {
+  const ta = document.getElementById("importTextarea");
+  try {
+    const parsed = JSON.parse(ta.value.trim());
+    if (!parsed || typeof parsed !== "object" || !parsed.player) throw new Error("bad shape");
+    state = { ...defaultState(), ...parsed };
+    save();
+    ui.importMsg = "Restored!";
+    renderBackupMsg();
+    setTimeout(() => { ui.showBackup = false; render(); }, 1000);
+  } catch (e) {
+    ui.importMsg = "That didn't look like a valid backup — check for missing characters.";
+    renderBackupMsg();
+  }
+}
+function renderBackupMsg() {
+  const el = document.getElementById("backupMsg");
+  if (el) el.textContent = ui.importMsg;
+}
+
+/* ================= action dispatch ================= */
+const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, usePotion, claimQuest,
+  setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
+  openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
+
+document.getElementById("app").addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.getAttribute("data-act");
+  const arg = el.getAttribute("data-arg");
+  if (ACTIONS[act]) ACTIONS[act](arg);
+});
+
+/* ================= render ================= */
+function card(inner, extraStyle) {
+  return `<div style="background:${C.card};border:1px solid ${C.border};border-radius:20px;${extraStyle||""}">${inner}</div>`;
+}
+
+function renderHeader() {
+  const tLog = todayLog();
+  const { charges } = getCharges(state, ui.now);
+  return `
+  <div style="background:linear-gradient(135deg, ${C.mageSoft}, ${C.cream});border-bottom:1px solid ${C.border};padding:24px 20px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <p style="color:${C.inkSoft};font-size:12px;margin:0">${tLog.encounter} · ${charges}/${CHARGE_CAP} Focus</p>
+        <h1 class="disp" style="font-weight:700;font-size:22px;color:${C.mageDeep};margin:2px 0 0">Legends: Daybreak Quest</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;align-items:center;gap:4px;color:${C.gold}">
+          <span style="font-size:18px;${state.streak>0?"":"filter:grayscale(1) opacity(.35)"}">🔥</span>
+          <span class="disp" style="font-weight:700">${state.streak}</span>
+        </div>
+        <button data-act="openBackup" aria-label="Backup and restore"><span style="font-size:18px;color:${C.inkSoft}">⚙️</span></button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:16px">
+      <div style="position:relative;width:68px;height:68px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="68" height="68" viewBox="0 0 68 68">
+          <circle cx="34" cy="34" r="30" fill="${C.mageSoft}" stroke="${C.border}" stroke-width="2"/>
+          <circle cx="34" cy="34" r="30" fill="none" stroke="${C.mage}" stroke-width="4"
+            stroke-dasharray="${(state.player.xp / xpToNext(state.player.level)) * 188.5} 188.5"
+            stroke-linecap="round" transform="rotate(-90 34 34)"/>
+        </svg>
+        <span style="position:absolute;font-size:26px">🪄</span>
+      </div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:16px;margin:0">${escapeHtml(state.player.name)} the Mage · Lv.${state.player.level}</p>
+        <div style="display:flex;gap:12px;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">❤️</span><span style="font-size:13px">${state.player.hp}/${maxHp()}</span></div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">✨</span><span style="font-size:13px">${state.player.mp}/${state.player.maxMp}</span></div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">💎</span><span style="font-size:13px">${state.player.gold}g</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderToast() {
+  if (!ui.toast) return "";
+  return `<div style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:60;padding:8px 16px;border-radius:9999px;box-shadow:0 10px 25px rgba(74,59,50,.15);background:${C.mageDeep};color:white;font-size:13px;font-weight:600">${escapeHtml(ui.toast)}</div>`;
+}
+
+function renderHome() {
+  const tLog = todayLog();
+  const { charges, msToNext } = getCharges(state, ui.now);
+  const isBossDay = tLog.encounter === "Boss Day" && !tLog.bossDone;
+  const callCost = isBossDay ? 2 : 1;
+  const ready = charges >= callCost;
+
+  const zaps = Array.from({length: CHARGE_CAP}).map((_,i) =>
+    `<span style="font-size:16px;${i < charges ? "" : "filter:grayscale(1) opacity(.3)"}">⚡</span>`).join("");
+
+  const callCard = card(`
+    <div style="padding:20px;text-align:center">
+      <p style="color:${C.inkSoft};font-size:13px;margin:0 0 4px">${isBossDay ? "A boss looms today — takes a bit longer, pays out a lot better." : (charges > 0 ? "A Scroll Wraith stirs nearby. Answer the call instead of the feed." : "Out of Focus for now — but the world's still open to wander.")}</p>
+      <h2 class="disp" style="font-weight:700;font-size:18px;margin:0 0 14px">${isBossDay ? "Boss Day" : "Answer the Call"}</h2>
+      <button data-act="beginCall" ${ready ? "" : "disabled"} style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15px;
+        background:${ready ? (isBossDay ? `linear-gradient(135deg, ${C.gold}, ${C.pink})` : `linear-gradient(135deg, ${C.mage}, ${C.mageDeep})`) : C.creamDeep};
+        color:${ready ? "white" : C.inkSoft}" class="disp">
+        <span>${isBossDay ? "🏆" : "🪄"}</span>
+        <span>${ready ? (isBossDay ? "Face the Boss (2 Focus)" : "Cast & Answer") : "No Focus Left"}</span>
+      </button>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px">${zaps}</div>
+      <p style="color:${C.inkSoft};font-size:11px;margin-top:8px">${charges >= CHARGE_CAP ? "Focus full" : `Next Focus in ${fmtMs(msToNext)}`} · ${tLog.count} calls answered today</p>
+    </div>
+  `);
+
+  const roamCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer" data-act="setTab" data-arg="explore">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.sageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🧭</span></div>
+      <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">Free Roam</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">No Focus needed — wander the map any time.</p></div>
+      <span style="color:${C.inkSoft}">▶</span>
+    </div>
+  `);
+
+  const materialChips = MATERIALS.map(m => `
+    <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.creamDeep}">
+      <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]||0}</span>
+    </div>`).join("");
+
+  const potionChips = Object.entries(state.potions).filter(([,q]) => q > 0).map(([id,q]) => {
+    const r = RECIPES.find(x => x.id === id);
+    return `<button data-act="usePotion" data-arg="${id}" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.sageSoft}">
+      <span style="font-size:12px">🧪</span><span style="font-size:12px">${r.name} ×${q}</span></button>`;
+  }).join("");
+
+  const satchelCard = card(`
+    <div style="padding:16px">
+      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 10px;color:${C.mageDeep}">Satchel</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${materialChips}</div>
+      ${potionChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">${potionChips}</div>` : ""}
+    </div>
+  `);
+
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${roamCard}${satchelCard}</div>`;
+}
+
+function renderExplore() {
+  const items = LOCATIONS.map(loc => {
+    const last = state.locations[loc.id] || 0;
+    const remaining = LOCATION_COOLDOWN_MS - (ui.now - last);
+    const ready = remaining <= 0;
+    return card(`
+      <div style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.sageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${loc.icon}</span></div>
+        <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">${loc.name}</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${ready ? "Ready to visit" : `Resting · ${fmtMs(remaining)}`}</p></div>
+        <button data-act="visitLocation" data-arg="${loc.id}" ${ready ? "" : "disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${ready ? C.sage : C.creamDeep};color:${ready ? "white" : C.inkSoft}">Visit</button>
+      </div>
+    `, "");
+  }).join("");
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+    <p style="color:${C.inkSoft};font-size:12px;margin:0 0 -6px">No Focus cost — wander whenever, each spot just needs a short rest between visits.</p>
+    ${items}
+  </div>`;
+}
+
+function renderParty() {
+  const items = PARTY.map(m => {
+    const unlocked = state.player.level >= m.unlockLv;
+    const aff = state.affinity[m.id] || 0;
+    const tiers = SNIPPETS[m.id] || [];
+    const unlockedLines = tiers.filter(t => aff >= t.at);
+    const nextTier = tiers.find(t => aff < t.at);
+    const bondBlock = unlocked && tiers.length > 0 ? `
+      <div style="margin-top:12px">
+        <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep}">
+          <div style="height:5px;background:${m.color};width:${nextTier ? Math.min(100,(aff/nextTier.at)*100) : 100}%"></div>
+        </div>
+        <p style="font-size:10px;color:${C.inkSoft};margin:3px 0 0">Bond ${aff}${nextTier ? ` · next at ${nextTier.at}` : " · fully bonded"}</p>
+        ${unlockedLines.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">${unlockedLines.map(t=>`<p style="font-size:11.5px;color:${C.inkSoft};font-style:italic;margin:0">${escapeHtml(t.line)}</p>`).join("")}</div>` : ""}
+      </div>` : "";
+    return card(`
+      <div style="padding:14px;opacity:${unlocked ? 1 : 0.55}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:46px;height:46px;border-radius:9999px;background:${m.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="font-size:${unlocked ? 22 : 18}px">${unlocked ? m.icon : "🔒"}</span>
+          </div>
+          <div style="flex:1">
+            <p class="disp" style="font-weight:700;font-size:14px;margin:0">${m.name} <span style="font-weight:500;color:${C.inkSoft};font-size:12px">· ${m.title}</span></p>
+            <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${unlocked ? m.bio : `Unlocks at Level ${m.unlockLv}`}</p>
+            ${unlocked ? `<p style="font-size:11px;color:${m.color};margin:3px 0 0;font-weight:700">${m.passive}</p>` : ""}
+          </div>
+        </div>
+        ${bondBlock}
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+  return `<div>${items}</div>`;
+}
+
+function renderQuests() {
+  const items = QUESTS.map(q => {
+    const val = questValue(q.track);
+    const complete = val >= q.goal;
+    const claimed = state.questsClaimed.includes(q.id);
+    return card(`
+      <div style="padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <p class="disp" style="font-weight:700;font-size:14px;margin:0">${q.name}</p>
+          <span>${claimed ? "✔️" : complete ? "⭐" : "📜"}</span>
+        </div>
+        <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${q.desc}</p>
+        <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+          <div style="height:6px;width:${Math.min(100,(val/q.goal)*100)}%;background:${complete ? C.sage : C.mage}"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+          <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,q.goal)}/${q.goal} · ${q.reward.gold}g${q.reward.xp ? ` +${q.reward.xp}xp` : ""}</span>
+          ${complete && !claimed ? `<button data-act="claimQuest" data-arg="${q.id}" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+        </div>
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+  return `<div>${items}</div>`;
+}
+
+function renderCraft() {
+  const items = RECIPES.map(r => {
+    const afford = canAfford(r);
+    const isEquip = r.type === "equipment";
+    const already = isEquip && state.crafted.includes(r.id);
+    const equipped = isEquip && state.equipment[r.slot] === r.id;
+    const needsStr = Object.entries(r.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (r.gold ? ` + ${r.gold}g` : "");
+    const actionBtn = isEquip && already
+      ? `<button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>`
+      : `<button data-act="craft" data-arg="${r.id}" ${afford?"":"disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${afford?C.mageDeep:C.creamDeep};color:${afford?"white":C.inkSoft}">Craft</button>`;
+    return card(`
+      <div style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${r.icon}</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">${r.name}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${r.effect}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${needsStr}</p>
+        </div>
+        ${actionBtn}
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+  return `<div><p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 12px">Alchemy & Forge</p>${items}</div>`;
+}
+
+function renderCalendar() {
+  const y = ui.monthCursor.getFullYear(), m = ui.monthCursor.getMonth();
+  const first = new Date(y, m, 1);
+  const startPad = first.getDay();
+  const days = new Date(y, m+1, 0).getDate();
+  const colors = { "Gathering Day":C.sage, "Crafting Day":C.gold, "Boss Day":C.pink, "Guild Day":C.mage, "Rest Day":C.inkSoft };
+  let cells = "";
+  for (let i=0;i<startPad;i++) cells += `<div></div>`;
+  for (let d=1; d<=days; d++) {
+    const dt = new Date(y, m, d);
+    const key = dayKey(dt);
+    const log = state.daysLog[key];
+    const enc = log ? log.encounter : encounterForDate(key);
+    const isToday = key === today();
+    const col = colors[enc] || C.inkSoft;
+    cells += `<div style="aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${log ? col+"33" : C.creamDeep};border:${isToday ? `2px solid ${C.mageDeep}` : "1px solid transparent"}">
+      <span style="font-size:11px;font-weight:${log?700:400}">${d}</span>
+      ${log ? `<div style="width:4px;height:4px;border-radius:4px;background:${col};margin-top:1px"></div>` : ""}
+    </div>`;
+  }
+  const legend = ENCOUNTER_CYCLE.map(e => `<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:8px;background:${colors[e]}"></div><span style="font-size:11px;color:${C.inkSoft}">${e}</span></div>`).join("");
+  return `<div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button data-act="monthPrev">◀</button>
+      <p class="disp" style="font-weight:700;margin:0">${ui.monthCursor.toLocaleString("default",{month:"long",year:"numeric"})}</p>
+      <button data-act="monthNext">▶</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+      ${["S","M","T","W","T","F","S"].map(d=>`<p style="text-align:center;font-size:10px;color:${C.inkSoft};margin:0">${d}</p>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${cells}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">${legend}</div>
+  </div>`;
+}
+
+function renderEncounterModal() {
+  const enc = ui.encounter;
+  if (!enc) return "";
+  const pct = (enc.enemyHp / enc.enemyMaxHp) * 100;
+  const logLines = enc.log.map(l => `<p style="font-size:12.5px;color:${C.inkSoft};margin:0">${escapeHtml(l)}</p>`).join("");
+  const actionBtn = !enc.resolved
+    ? `<button data-act="castSpell" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white"><span>🪄</span><span>Cast Arcane Bolt</span></button>`
+    : `<button data-act="claimCall" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:${C.gold};color:white"><span>🏆</span><span>Claim Reward</span></button>`;
+  return `<div style="position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.45)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${enc.enemyName}${enc.isBoss ? " · Boss" : ""}</p>
+        ${!enc.resolved ? `<button data-act="closeEncounter"><span style="color:${C.inkSoft}">✖</span></button>` : ""}
+      </div>
+      <div style="height:10px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
+        <div style="height:10px;width:${pct}%;background:${C.pink};transition:width .3s"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;max-height:120px;overflow-y:auto">${logLines}</div>
+      ${actionBtn}
+    </div>
+  </div>`;
+}
+
+function renderBackupModal() {
+  if (!ui.showBackup) return "";
+  const backupText = escapeHtml(JSON.stringify(state));
+  return `<div style="position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.45)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">Backup & Restore</p>
+        <button data-act="closeBackup"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Copy this whenever you update the game, and keep it somewhere safe (like Notes). If progress ever resets, paste it back in below.</p>
+      <textarea readonly onfocus="this.select()" style="width:100%;height:70px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.inkSoft}">${backupText}</textarea>
+      <button data-act="copyBackup" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.mageSoft};color:${C.mageDeep};font-weight:600;font-size:13px"><span>📋</span><span>Copy Backup</span></button>
+      <div style="border-top:1px solid ${C.border};margin-top:16px;padding-top:16px">
+        <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Restore from a backup:</p>
+        <textarea id="importTextarea" placeholder="Paste your saved backup text here…" style="width:100%;height:70px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.ink}"></textarea>
+        <button data-act="restoreBackup" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.gold};color:white;font-weight:600;font-size:13px"><span>📥</span><span>Restore</span></button>
+      </div>
+      <p id="backupMsg" style="font-size:12px;color:${C.mageDeep};margin-top:10px;text-align:center">${escapeHtml(ui.importMsg)}</p>
+    </div>
+  </div>`;
+}
+
+function renderNav() {
+  const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
+  const items = tabs.map(([id,icon,label]) => `
+    <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;flex:1;color:${ui.tab===id ? C.mageDeep : C.inkSoft}">
+      <span style="font-size:18px">${icon}</span>
+      <span style="font-size:11px;font-weight:${ui.tab===id?700:500}">${label}</span>
+    </button>`).join("");
+  return `<div style="position:fixed;bottom:0;left:0;right:0;display:flex;background:${C.card};border-top:1px solid ${C.border}">${items}</div>`;
+}
+
+function renderContent() {
+  if (ui.tab === "home") return renderHome();
+  if (ui.tab === "explore") return renderExplore();
+  if (ui.tab === "party") return renderParty();
+  if (ui.tab === "quests") return renderQuests();
+  if (ui.tab === "craft") return renderCraft();
+  if (ui.tab === "calendar") return renderCalendar();
+  return "";
+}
+
+function render() {
+  const html = `
+    ${renderHeader()}
+    ${renderToast()}
+    <div style="padding:20px 20px 96px">${renderContent()}</div>
+    ${renderEncounterModal()}
+    ${renderBackupModal()}
+    ${renderNav()}
+  `;
+  document.getElementById("app").innerHTML = html;
+}
+
+/* ================= init ================= */
+load();
+render();
+setInterval(() => { ui.now = Date.now(); if (!ui.showBackup) render(); }, 20000);
+</script>
+</body>
+</html>
