@@ -43,6 +43,7 @@ const PARTY = [
 ];
 
 const MATERIALS = ["Moonherb", "Silver Dust", "Ember Shard", "Starlight Thread", "Slime Gel"];
+const MATERIALS_REFINED = ["Herbal Extract", "Silver Ingot", "Ember Core", "Starlight Weave", "Gel Solvent"];
 
 const CHARGE_CAP = 6;
 const CHARGE_REGEN_MS = 90 * 60 * 1000;
@@ -97,19 +98,52 @@ const BOSSES = [
 const RECIPES = [
   { id:"health_draught", type:"potion", name:"Health Draught", needs:{"Moonherb":2,"Silver Dust":1}, effect:"Restore 30 HP instantly", icon:"🧪" },
   { id:"focus_elixir", type:"potion", name:"Focus Elixir", needs:{"Starlight Thread":1,"Ember Shard":1}, effect:"+2 bonus damage next Call", icon:"🧪" },
+  { id:"greater_health_draught", type:"potion", name:"Greater Health Draught", needs:{"Herbal Extract":1,"Silver Ingot":1}, effect:"Restore 60 HP instantly", icon:"🧪" },
+  { id:"refine_herb", type:"refine", name:"Refine Herbal Extract", needs:{"Moonherb":3}, produces:{material:"Herbal Extract", qty:1}, effect:"3 Moonherb → 1 Herbal Extract", icon:"🔥" },
+  { id:"refine_silver", type:"refine", name:"Refine Silver Ingot", needs:{"Silver Dust":3}, produces:{material:"Silver Ingot", qty:1}, effect:"3 Silver Dust → 1 Silver Ingot", icon:"🔥" },
+  { id:"refine_ember", type:"refine", name:"Refine Ember Core", needs:{"Ember Shard":3}, produces:{material:"Ember Core", qty:1}, effect:"3 Ember Shard → 1 Ember Core", icon:"🔥" },
+  { id:"refine_starlight", type:"refine", name:"Refine Starlight Weave", needs:{"Starlight Thread":3}, produces:{material:"Starlight Weave", qty:1}, effect:"3 Starlight Thread → 1 Starlight Weave", icon:"🔥" },
+  { id:"refine_gel", type:"refine", name:"Refine Gel Solvent", needs:{"Slime Gel":3}, produces:{material:"Gel Solvent", qty:1}, effect:"3 Slime Gel → 1 Gel Solvent", icon:"🔥" },
   { id:"apprentice_staff", type:"equipment", slot:"weapon", name:"Apprentice Staff", needs:{"Ember Shard":2,"Silver Dust":2}, gold:30, effect:"+3 Attack", bonus:{atk:3}, icon:"🪄" },
   { id:"woven_robe", type:"equipment", slot:"armor", name:"Woven Robe", needs:{"Slime Gel":3,"Starlight Thread":1}, gold:25, effect:"+15 Max HP", bonus:{hp:15}, icon:"🛡️" },
   { id:"lucky_charm", type:"equipment", slot:"trinket", name:"Lucky Charm", needs:{"Moonherb":1,"Starlight Thread":2}, gold:40, effect:"+Crit chance", bonus:{luck:1}, icon:"💎" },
+  { id:"journeyman_staff", type:"equipment", slot:"weapon", name:"Journeyman Staff", needs:{"Ember Core":2,"Silver Ingot":1}, gold:60, requiresCrafted:"apprentice_staff", effect:"+7 Attack", bonus:{atk:7}, icon:"🪄" },
+  { id:"enchanted_robe", type:"equipment", slot:"armor", name:"Enchanted Robe", needs:{"Gel Solvent":2,"Starlight Weave":1}, gold:55, requiresCrafted:"woven_robe", effect:"+32 Max HP", bonus:{hp:32}, icon:"🛡️" },
+  { id:"radiant_charm", type:"equipment", slot:"trinket", name:"Radiant Charm", needs:{"Silver Ingot":1,"Starlight Weave":2}, gold:70, requiresCrafted:"lucky_charm", effect:"+2 Luck (bigger crit chance)", bonus:{luck:2}, icon:"💎" },
 ];
 
-const QUESTS = [
-  { id:"q1", name:"First Light", desc:"Answer 3 Calls", goal:3, track:"totalCheckIns", reward:{gold:20,xp:15} },
-  { id:"q2", name:"Herbalist's Favor", desc:"Gather 5 Moonherb", goal:5, track:"mat:Moonherb", reward:{gold:25,xp:20} },
-  { id:"q3", name:"Seven Suns", desc:"Reach a 7-day streak", goal:7, track:"streak", reward:{gold:60,xp:50} },
-  { id:"q4", name:"Apprentice No More", desc:"Reach Level 5", goal:5, track:"level", reward:{gold:40,xp:0} },
-  { id:"q5", name:"Guild Hall Regular", desc:"Complete 3 Guild Days", goal:3, track:"guildDays", reward:{gold:35,xp:30} },
-  { id:"q6", name:"The Full Moon", desc:"Answer 25 Calls total", goal:25, track:"totalCheckIns", reward:{gold:100,xp:80} },
+const QUEST_CHAINS = [
+  { id:"chain_light", title:"First Light", icon:"🌅", steps:[
+      { desc:"Answer 3 Calls", goal:3, track:"totalCheckIns", reward:{gold:20,xp:15} },
+      { desc:"Reach a 5-day streak", goal:5, track:"streak", reward:{gold:30,xp:25} },
+      { desc:"Craft your first item", goal:1, track:"craftCount", reward:{gold:35,xp:30} },
+  ]},
+  { id:"chain_market", title:"Market Row Regular", icon:"🏪", steps:[
+      { desc:"Visit 2 different locations in one day", goal:2, track:"locationsToday", reward:{gold:20,xp:0} },
+      { desc:"Gather 5 Moonherb", goal:5, track:"mat:Moonherb", reward:{gold:25,xp:20} },
+      { desc:"Refine your first material", goal:1, track:"refineCount", reward:{gold:35,xp:30} },
+  ]},
+  { id:"chain_guild", title:"Guild Hall Regular", icon:"🏛️", steps:[
+      { desc:"Complete 3 Guild Days", goal:3, track:"guildDays", reward:{gold:35,xp:30} },
+      { desc:"Reach Level 5", goal:5, track:"level", reward:{gold:40,xp:0} },
+      { desc:"Defeat a Boss", goal:1, track:"bossesDefeated", reward:{gold:60,xp:50} },
+  ]},
 ];
+
+const MILESTONE_QUESTS = [
+  { id:"q_fullmoon", name:"The Full Moon", desc:"Answer 25 Calls total", goal:25, track:"totalCheckIns", reward:{gold:100,xp:80} },
+  { id:"q_bonded", name:"Bonded", desc:"Fully bond with any companion", goal:1, track:"maxBond", reward:{gold:50,xp:40} },
+];
+
+const TASK_POOL = [
+  { id:"t_calls2", desc:"Answer 2 Calls today", goal:2, calc: () => todayLog().count, reward:{gold:8,xp:6} },
+  { id:"t_roam2", desc:"Visit 2 different locations today", goal:2, calc: () => questValue("locationsToday"), reward:{gold:8,xp:0} },
+  { id:"t_make1", desc:"Craft or refine 1 item today", goal:1, calc: () => (state.dailyLog.crafted||0) + (state.dailyLog.refined||0), reward:{gold:10,xp:8} },
+  { id:"t_potion1", desc:"Use a potion today", goal:1, calc: () => state.dailyLog.potionsUsed||0, reward:{gold:6,xp:6} },
+  { id:"t_material3", desc:"Gather 3 materials today", goal:3, calc: () => state.dailyLog.materialsGathered||0, reward:{gold:9,xp:5} },
+];
+
+const WEEKLY_TASK = { desc:"Answer 10 Calls this week", goal:10, reward:{gold:80,xp:60} };
 
 const SNIPPETS = {
   joel: [
@@ -146,13 +180,21 @@ const SNIPPETS = {
 };
 
 /* ================= pure helpers ================= */
-const dayKey = (d) => d.toISOString().slice(0, 10);
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const hashDay = (s) => { let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
 const encounterForDate = (dateStr) => ENCOUNTER_CYCLE[hashDay(dateStr) % ENCOUNTER_CYCLE.length];
 const today = () => dayKey(new Date());
 const xpToNext = (level) => 50 + level * 25;
 const fmtMs = (ms) => { const m = Math.max(1, Math.ceil(ms/60000)); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${m%60}m`; };
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function isoWeekKey(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${weekNo}`;
+}
 
 function getCharges(s, now) {
   if (s.charges >= CHARGE_CAP) return { charges: CHARGE_CAP, msToNext: null };
@@ -181,6 +223,11 @@ function defaultState() {
     materials: {}, potions: {}, totalCheckIns:0, streak:0, lastCheckInDate:null,
     daysLog: {}, guildDays:0, crafted:[], questsClaimed:[], focusBuff:0,
     charges: CHARGE_CAP, chargeAnchor: Date.now(), locations:{}, affinity:{},
+    craftCount:0, refineCount:0, bossesDefeated:0,
+    dailyLog: { date:null, crafted:0, refined:0, potionsUsed:0, materialsGathered:0 },
+    dailyTasksClaimed: { date:null, ids:[] },
+    weeklyTaskClaimed: { week:null, done:false },
+    questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
   };
 }
 
@@ -215,13 +262,53 @@ function questValue(track) {
   if (track === "streak") return state.streak;
   if (track === "totalCheckIns") return state.totalCheckIns;
   if (track === "guildDays") return state.guildDays;
+  if (track === "craftCount") return state.craftCount || 0;
+  if (track === "refineCount") return state.refineCount || 0;
+  if (track === "bossesDefeated") return state.bossesDefeated || 0;
+  if (track === "locationsToday") return LOCATIONS.filter(l => dayKey(new Date(state.locations[l.id]||0)) === today()).length;
+  if (track === "maxBond") return PARTY.some(m => {
+    const tiers = SNIPPETS[m.id] || [];
+    return tiers.length && (state.affinity[m.id]||0) >= tiers[tiers.length-1].at;
+  }) ? 1 : 0;
   if (track.startsWith("mat:")) return state.materials[track.slice(4)] || 0;
   return 0;
 }
 function canAfford(recipe) {
   const goldOk = (recipe.gold||0) <= state.player.gold;
   const matsOk = Object.entries(recipe.needs).every(([m,q]) => (state.materials[m]||0) >= q);
-  return goldOk && matsOk;
+  const prereqOk = !recipe.requiresCrafted || state.crafted.includes(recipe.requiresCrafted);
+  return goldOk && matsOk && prereqOk;
+}
+function ensureDaily() {
+  const t = today();
+  if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0 };
+  if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
+}
+function grantReward(gold, xp) {
+  state.player.gold += gold;
+  let newXp = state.player.xp + xp, leveledUp = false;
+  while (newXp >= xpToNext(state.player.level)) {
+    newXp -= xpToNext(state.player.level);
+    state.player.level += 1; state.player.maxHp += 8; state.player.maxMp += 4;
+    leveledUp = true;
+  }
+  state.player.xp = newXp;
+  return leveledUp;
+}
+function todaysTasks() {
+  const idxs = TASK_POOL.map((_,i) => i);
+  let s = hashDay(today() + "-tasks");
+  const picked = [];
+  while (picked.length < 3 && idxs.length) {
+    s = (s * 1103515245 + 12345) >>> 0;
+    picked.push(idxs.splice(s % idxs.length, 1)[0]);
+  }
+  return picked.map(i => TASK_POOL[i]);
+}
+function weeklyCallsCount() {
+  const wk = isoWeekKey(new Date());
+  return Object.entries(state.daysLog).reduce((sum, [dateStr, entry]) =>
+    isoWeekKey(new Date(dateStr)) === wk ? sum + (entry.count||0) : sum, 0);
 }
 
 /* ================= actions ================= */
@@ -300,6 +387,7 @@ function claimCall() {
   const wasBoss = enc.isBoss;
   const t = today();
   const tLog = todayLog();
+  ensureDaily();
 
   const isNewDay = state.lastCheckInDate !== t;
   const prevDate = state.lastCheckInDate ? new Date(state.lastCheckInDate) : null;
@@ -310,10 +398,11 @@ function claimCall() {
   let newMaxHp = state.player.maxHp, newMaxMp = state.player.maxMp, leveledUp = false;
   while (newXp >= xpToNext(newLevel)) { newXp -= xpToNext(newLevel); newLevel++; newMaxHp += 8; newMaxMp += 4; leveledUp = true; }
 
-  Object.entries(drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; });
+  Object.entries(drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; state.dailyLog.materialsGathered += q; });
 
   const dayEntry = { count: tLog.count + 1, encounter: tLog.encounter, bossDone: tLog.bossDone || wasBoss };
   const newGuildDays = tLog.encounter === "Guild Day" && tLog.count === 0 ? state.guildDays + 1 : state.guildDays;
+  if (wasBoss) state.bossesDefeated = (state.bossesDefeated||0) + 1;
 
   const spent = spendCharge(state, ui.now, cost);
   if (!spent) { ui.encounter = null; render(); return; }
@@ -345,13 +434,14 @@ function visitLocation(id) {
   const loc = LOCATIONS.find(l => l.id === id);
   const last = state.locations[id] || 0;
   if (ui.now - last < LOCATION_COOLDOWN_MS) return;
+  ensureDaily();
   const line = loc.flavor[Math.floor(Math.random()*loc.flavor.length)];
   const gold = 1 + Math.floor(Math.random()*4);
   const foundMaterial = Math.random() < 0.25;
   const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
   state.locations[id] = ui.now;
   state.player.gold += gold;
-  if (foundMaterial) state.materials[mat] = (state.materials[mat]||0) + 1;
+  if (foundMaterial) { state.materials[mat] = (state.materials[mat]||0) + 1; state.dailyLog.materialsGathered += 1; }
   save(); render();
   showToast(`${line} (+${gold}g${foundMaterial ? `, +1 ${mat}` : ""})`);
 }
@@ -359,10 +449,31 @@ function visitLocation(id) {
 function craft(id) {
   const r = RECIPES.find(x => x.id === id);
   if (!canAfford(r)) return;
+  ensureDaily();
   Object.entries(r.needs).forEach(([m,q]) => { state.materials[m] -= q; });
+
+  if (r.type === "refine") {
+    state.materials[r.produces.material] = (state.materials[r.produces.material]||0) + r.produces.qty;
+    state.refineCount = (state.refineCount||0) + 1;
+    state.dailyLog.refined += 1;
+    save(); render();
+    showToast(`Refined ${r.produces.material}.`);
+    return;
+  }
+
   state.player.gold -= (r.gold||0);
-  if (r.type === "potion") state.potions[r.id] = (state.potions[r.id]||0) + 1;
-  else if (!state.crafted.includes(r.id)) state.crafted.push(r.id);
+  if (r.type === "potion") {
+    state.potions[r.id] = (state.potions[r.id]||0) + 1;
+  } else {
+    if (r.requiresCrafted) {
+      const idx = state.crafted.indexOf(r.requiresCrafted);
+      if (idx >= 0) state.crafted.splice(idx, 1);
+      if (state.equipment[r.slot] === r.requiresCrafted) state.equipment[r.slot] = r.id;
+    }
+    if (!state.crafted.includes(r.id)) state.crafted.push(r.id);
+  }
+  state.craftCount = (state.craftCount||0) + 1;
+  state.dailyLog.crafted += 1;
   save(); render();
   showToast(`Crafted ${r.name}.`);
 }
@@ -375,19 +486,56 @@ function equip(id) {
 function usePotion(id) {
   const r = RECIPES.find(x => x.id === id);
   if (!state.potions[id]) return;
+  ensureDaily();
   state.potions[id] -= 1;
   if (id === "health_draught") state.player.hp = Math.min(maxHp(), state.player.hp + 30);
+  if (id === "greater_health_draught") state.player.hp = Math.min(maxHp(), state.player.hp + 60);
   if (id === "focus_elixir") state.focusBuff += 1;
+  state.dailyLog.potionsUsed += 1;
   save(); render();
   showToast(`Used ${r.name}.`);
 }
 function claimQuest(id) {
-  const q = QUESTS.find(x => x.id === id);
+  const q = MILESTONE_QUESTS.find(x => x.id === id);
+  if (!q || state.questsClaimed.includes(id) || questValue(q.track) < q.goal) return;
   state.questsClaimed.push(id);
-  state.player.gold += (q.reward.gold||0);
-  state.player.xp += (q.reward.xp||0);
+  const leveledUp = grantReward(q.reward.gold||0, q.reward.xp||0);
   save(); render();
-  showToast(`Quest claimed: ${q.name}`);
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Quest claimed: ${q.name}`);
+}
+function claimChainStep(chainId) {
+  const chain = QUEST_CHAINS.find(c => c.id === chainId);
+  const idx = state.questChainProgress[chainId] || 0;
+  if (idx >= chain.steps.length) return;
+  const step = chain.steps[idx];
+  if (questValue(step.track) < step.goal) return;
+  const leveledUp = grantReward(step.reward.gold||0, step.reward.xp||0);
+  state.questChainProgress[chainId] = idx + 1;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${chain.title} — step complete!`);
+}
+function claimTask(id) {
+  ensureDaily();
+  if (state.dailyTasksClaimed.ids.includes(id)) return;
+  const task = TASK_POOL.find(t => t.id === id);
+  if (!task || task.calc() < task.goal) return;
+  state.dailyTasksClaimed.ids.push(id);
+  const leveledUp = grantReward(task.reward.gold||0, task.reward.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Task complete: ${task.desc}`);
+}
+function claimWeeklyTask() {
+  const wk = isoWeekKey(new Date());
+  if (state.weeklyTaskClaimed && state.weeklyTaskClaimed.week === wk && state.weeklyTaskClaimed.done) return;
+  if (weeklyCallsCount() < WEEKLY_TASK.goal) return;
+  state.weeklyTaskClaimed = { week: wk, done: true };
+  const leveledUp = grantReward(WEEKLY_TASK.reward.gold, WEEKLY_TASK.reward.xp);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Weekly task complete: ${WEEKLY_TASK.desc}`);
 }
 
 function setTab(id) { ui.tab = id; render(); }
@@ -424,6 +572,7 @@ function renderBackupMsg() {
 
 /* ================= action dispatch ================= */
 const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, usePotion, claimQuest,
+  claimChainStep, claimTask, claimWeeklyTask,
   setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
 
@@ -523,6 +672,11 @@ function renderHome() {
       <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]||0}</span>
     </div>`).join("");
 
+  const refinedChips = MATERIALS_REFINED.filter(m => (state.materials[m]||0) > 0).map(m => `
+    <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.mageSoft}">
+      <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]}</span>
+    </div>`).join("");
+
   const potionChips = Object.entries(state.potions).filter(([,q]) => q > 0).map(([id,q]) => {
     const r = RECIPES.find(x => x.id === id);
     return `<button data-act="usePotion" data-arg="${id}" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.sageSoft}">
@@ -533,6 +687,7 @@ function renderHome() {
     <div style="padding:16px">
       <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 10px;color:${C.mageDeep}">Satchel</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px">${materialChips}</div>
+      ${refinedChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${refinedChips}</div>` : ""}
       ${potionChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">${potionChips}</div>` : ""}
     </div>
   `);
@@ -594,7 +749,69 @@ function renderParty() {
 }
 
 function renderQuests() {
-  const items = QUESTS.map(q => {
+  ensureDaily();
+  const tasks = todaysTasks();
+  const taskRows = tasks.map((t,i) => {
+    const val = t.calc();
+    const complete = val >= t.goal;
+    const claimed = state.dailyTasksClaimed.ids.includes(t.id);
+    return `
+      <div style="padding:12px 14px;${i>0?`border-top:1px solid ${C.border};`:""}display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <p style="font-size:12.5px;margin:0">${t.desc}</p>
+          <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:6px">
+            <div style="height:5px;width:${Math.min(100,(val/t.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
+          </div>
+        </div>
+        ${claimed ? `<span style="font-size:14px;flex-shrink:0">✔️</span>` : complete ? `<button data-act="claimTask" data-arg="${t.id}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600;flex-shrink:0">Claim</button>` : `<span style="font-size:11px;color:${C.inkSoft};flex-shrink:0">${Math.min(val,t.goal)}/${t.goal}</span>`}
+      </div>`;
+  }).join("");
+
+  const wk = isoWeekKey(new Date());
+  const weeklyDone = state.weeklyTaskClaimed && state.weeklyTaskClaimed.week === wk && state.weeklyTaskClaimed.done;
+  const weeklyVal = weeklyCallsCount();
+  const weeklyComplete = weeklyVal >= WEEKLY_TASK.goal;
+  const weeklyCard = card(`
+    <div style="padding:14px">
+      <p class="disp" style="font-weight:700;font-size:13px;margin:0 0 4px;color:${C.gold}">This Week</p>
+      <p style="font-size:12.5px;margin:0">${WEEKLY_TASK.desc}</p>
+      <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+        <div style="height:6px;width:${Math.min(100,(weeklyVal/WEEKLY_TASK.goal)*100)}%;background:${weeklyComplete?C.sage:C.gold}"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <span style="font-size:11px;color:${C.inkSoft}">${Math.min(weeklyVal,WEEKLY_TASK.goal)}/${WEEKLY_TASK.goal} · ${WEEKLY_TASK.reward.gold}g +${WEEKLY_TASK.reward.xp}xp</span>
+        ${weeklyDone ? `<span style="font-size:14px">✔️</span>` : weeklyComplete ? `<button data-act="claimWeeklyTask" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.gold};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+      </div>
+    </div>
+  `);
+
+  const chainItems = QUEST_CHAINS.map(chain => {
+    const idx = state.questChainProgress[chain.id] || 0;
+    const done = idx >= chain.steps.length;
+    const step = done ? null : chain.steps[idx];
+    const val = done ? 0 : questValue(step.track);
+    const complete = !done && val >= step.goal;
+    return card(`
+      <div style="padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <p class="disp" style="font-weight:700;font-size:14px;margin:0">${chain.icon} ${chain.title}</p>
+          <span style="font-size:11px;color:${C.inkSoft}">${done ? "Complete" : `Step ${idx+1}/${chain.steps.length}`}</span>
+        </div>
+        ${done ? `<p style="font-size:12px;color:${C.sage};margin:6px 0 0">All steps complete. 🎉</p>` : `
+          <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${step.desc}</p>
+          <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+            <div style="height:6px;width:${Math.min(100,(val/step.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+            <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,step.goal)}/${step.goal} · ${step.reward.gold}g${step.reward.xp?` +${step.reward.xp}xp`:""}</span>
+            ${complete ? `<button data-act="claimChainStep" data-arg="${chain.id}" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+          </div>
+        `}
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+
+  const milestoneItems = MILESTONE_QUESTS.map(q => {
     const val = questValue(q.track);
     const complete = val >= q.goal;
     const claimed = state.questsClaimed.includes(q.id);
@@ -606,41 +823,72 @@ function renderQuests() {
         </div>
         <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${q.desc}</p>
         <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
-          <div style="height:6px;width:${Math.min(100,(val/q.goal)*100)}%;background:${complete ? C.sage : C.mage}"></div>
+          <div style="height:6px;width:${Math.min(100,(val/q.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
-          <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,q.goal)}/${q.goal} · ${q.reward.gold}g${q.reward.xp ? ` +${q.reward.xp}xp` : ""}</span>
+          <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,q.goal)}/${q.goal} · ${q.reward.gold}g${q.reward.xp?` +${q.reward.xp}xp`:""}</span>
           ${complete && !claimed ? `<button data-act="claimQuest" data-arg="${q.id}" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
         </div>
       </div>
     `);
   }).join("<div style='height:12px'></div>");
-  return `<div>${items}</div>`;
+
+  return `<div style="display:flex;flex-direction:column;gap:18px">
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Today's Tasks</p>
+      ${card(taskRows)}
+    </div>
+    <div>${weeklyCard}</div>
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Quest Chains</p>
+      ${chainItems}
+    </div>
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Milestones</p>
+      ${milestoneItems}
+    </div>
+  </div>`;
+}
+
+function renderRecipeRow(r) {
+  const afford = canAfford(r);
+  const isEquip = r.type === "equipment";
+  const already = isEquip && state.crafted.includes(r.id);
+  const equipped = isEquip && state.equipment[r.slot] === r.id;
+  const needsStr = Object.entries(r.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (r.gold ? ` + ${r.gold}g` : "");
+  const prereqNote = r.requiresCrafted && !state.crafted.includes(r.requiresCrafted)
+    ? `<p style="font-size:10.5px;color:${C.pink};margin:2px 0 0">Requires ${RECIPES.find(x=>x.id===r.requiresCrafted).name}</p>` : "";
+  const actionBtn = isEquip && already
+    ? `<button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>`
+    : `<button data-act="craft" data-arg="${r.id}" ${afford?"":"disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${afford?C.mageDeep:C.creamDeep};color:${afford?"white":C.inkSoft}">${r.type==="refine"?"Refine":"Craft"}</button>`;
+  return card(`
+    <div style="padding:14px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${r.icon}</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">${r.name}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${r.effect}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${needsStr}</p>
+        ${prereqNote}
+      </div>
+      ${actionBtn}
+    </div>
+  `);
 }
 
 function renderCraft() {
-  const items = RECIPES.map(r => {
-    const afford = canAfford(r);
-    const isEquip = r.type === "equipment";
-    const already = isEquip && state.crafted.includes(r.id);
-    const equipped = isEquip && state.equipment[r.slot] === r.id;
-    const needsStr = Object.entries(r.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (r.gold ? ` + ${r.gold}g` : "");
-    const actionBtn = isEquip && already
-      ? `<button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>`
-      : `<button data-act="craft" data-arg="${r.id}" ${afford?"":"disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${afford?C.mageDeep:C.creamDeep};color:${afford?"white":C.inkSoft}">Craft</button>`;
-    return card(`
-      <div style="padding:14px;display:flex;align-items:center;gap:12px">
-        <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${r.icon}</span></div>
-        <div style="flex:1">
-          <p class="disp" style="font-weight:700;font-size:13px;margin:0">${r.name}</p>
-          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${r.effect}</p>
-          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${needsStr}</p>
-        </div>
-        ${actionBtn}
-      </div>
-    `);
-  }).join("<div style='height:12px'></div>");
-  return `<div><p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 12px">Alchemy & Forge</p>${items}</div>`;
+  const potions = RECIPES.filter(r => r.type === "potion");
+  const refines = RECIPES.filter(r => r.type === "refine");
+  const equips = RECIPES.filter(r => r.type === "equipment");
+  const section = (title, list) => list.length ? `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">${title}</p>
+    ${list.map(renderRecipeRow).join("<div style='height:10px'></div>")}
+  ` : "";
+  return `<div>
+    <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 4px">Alchemy & Forge</p>
+    ${section("Potions", potions)}
+    ${section("Refining", refines)}
+    ${section("Equipment", equips)}
+  </div>`;
 }
 
 function renderCalendar() {
@@ -744,6 +992,7 @@ function renderContent() {
 }
 
 function render() {
+  ensureDaily();
   const html = `
     ${renderHeader()}
     ${renderToast()}
