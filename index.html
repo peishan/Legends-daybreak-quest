@@ -1,809 +1,1261 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https: fonts.googleapis.com; font-src https: fonts.gstatic.com;">
-<title>Legends of Daybreak - RPG</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Legends: Daybreak Quest</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
-:root {
-  --bg: #0f0e17; --bg-card: #1a1825; --bg-hover: #242236; --border: #2e2c42;
-  --text: #e8e6f0; --text-dim: #9ca3af; --accent: #7c3aed; --accent-light: #a78bfa;
-  --hp: #ef4444; --mp: #3b82f6; --xp: #eab308; --gold: #f59e0b; --success: #22c55e; --danger: #ef4444;
-}
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-#app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
-.hdr { background: linear-gradient(135deg, #1a1825, #242236); padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
-.hdr-l { display: flex; align-items: center; gap: 10px; }
-.pname { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; }
-.cls { font-size: 10px; background: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
-.lvl { background: var(--xp); color: #000; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
-.hdr-r { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
-.sb { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-.si { width: 24px; text-align: center; font-size: 10px; font-weight: 700; color: var(--text-dim); }
-.bar { flex: 1; height: 8px; background: #2e2c42; border-radius: 4px; overflow: hidden; }
-.bf { height: 100%; border-radius: 4px; transition: width 0.3s; }
-.bf-hp { background: var(--hp); } .bf-mp { background: var(--mp); } .bf-xp { background: var(--xp); }
-.bt { min-width: 55px; text-align: right; font-size: 10px; color: var(--text-dim); }
-.gold { font-size: 13px; font-weight: 700; color: var(--gold); text-align: right; }
-.buffs { display: flex; gap: 6px; padding: 6px 16px; background: #1a1825; border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
-.bp { background: var(--accent); color: white; font-size: 10px; padding: 3px 10px; border-radius: 10px; }
-.content { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 80px; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; user-select: none; }
-.card:hover, .card:active { border-color: var(--accent); background: var(--bg-hover); transform: translateY(-2px); }
-.cicon { font-size: 28px; margin-bottom: 6px; }
-.clabel { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
-.cdesc { font-size: 11px; color: var(--text-dim); line-height: 1.3; }
-.st { font-family: 'Cinzel', serif; font-weight: 700; margin-bottom: 12px; font-size: 18px; }
-.zlist { display: flex; flex-direction: column; gap: 10px; }
-.zcard { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; cursor: pointer; transition: all 0.2s; user-select: none; }
-.zcard:hover:not(.locked) { border-color: var(--accent); }
-.zcard.locked { opacity: 0.5; cursor: not-allowed; }
-.zh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.zn { font-weight: 600; font-size: 15px; }
-.zl { font-size: 12px; color: var(--text-dim); }
-.zd { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
-.zm { display: flex; gap: 8px; }
-.db, .xb { font-size: 10px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
-.xb { background: #eab30820; color: var(--xp); }
-.erow { display: flex; gap: 10px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
-.ecard { background: var(--bg-card); border: 2px solid var(--border); border-radius: 14px; padding: 12px; min-width: 90px; text-align: center; cursor: pointer; transition: all 0.2s; user-select: none; }
-.ecard.sel { border-color: var(--danger); box-shadow: 0 0 0 3px #ef444430; }
-.ecard.dead { opacity: 0.4; border-color: #333; cursor: default; }
-.eicon { font-size: 32px; margin-bottom: 4px; }
-.ename { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-.hps { height: 6px; background: #2e2c42; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
-.hpt { font-size: 10px; color: var(--text-dim); }
-.dt { font-size: 10px; color: #666; font-style: italic; }
-.pstat { display: flex; gap: 10px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
-.mst { font-size: 11px; display: flex; align-items: center; gap: 4px; background: #242236; padding: 4px 10px; border-radius: 10px; }
-.md { width: 8px; height: 8px; border-radius: 50%; }
-.skills h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent-light); }
-.slist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.sbtn { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; cursor: pointer; transition: all 0.2s; user-select: none; }
-.sbtn:hover:not(.dis) { border-color: var(--accent); }
-.sbtn.sel { border-color: var(--accent); background: #7c3aed15; }
-.sbtn.dis { opacity: 0.4; cursor: not-allowed; }
-.sn { font-weight: 600; font-size: 13px; }
-.sc { font-size: 11px; color: var(--mp); }
-.sd { font-size: 11px; color: var(--text-dim); }
-.abtn, .fbtn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px; user-select: none; }
-.abtn { background: linear-gradient(135deg, var(--accent), #6d28d9); color: white; }
-.abtn.dis { opacity: 0.4; cursor: not-allowed; }
-.fbtn { background: #374151; color: var(--text); }
-.plist { display: flex; flex-direction: column; gap: 10px; }
-.pcard { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; gap: 14px; align-items: flex-start; }
-.pcard.locked { opacity: 0.5; }
-.pava { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid; flex-shrink: 0; font-size: 20px; }
-.pinfo { flex: 1; }
-.pn { font-weight: 700; font-size: 15px; }
-.pt { font-size: 12px; color: var(--text-dim); font-weight: 400; }
-.pr { font-size: 12px; font-weight: 600; margin: 2px 0; }
-.pd { font-size: 11px; color: var(--text-dim); line-height: 1.4; margin-bottom: 4px; }
-.pb { font-size: 11px; color: var(--success); font-weight: 500; }
-.ps { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
-.sklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-.skcard { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
-.skcard.locked { opacity: 0.5; }
-.skh { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.ski { font-size: 20px; }
-.skt { font-weight: 700; font-size: 14px; flex: 1; }
-.sks { font-size: 10px; padding: 3px 10px; border-radius: 10px; background: var(--success); color: white; }
-.skcard.locked .sks { background: #6b7280; }
-.skd { display: flex; gap: 8px; margin-bottom: 6px; }
-.dp { font-size: 11px; background: #242236; padding: 3px 10px; border-radius: 8px; color: var(--text-dim); }
-.skdsc { font-size: 12px; color: var(--text-dim); }
-.stb { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
-.stb h3 { font-size: 14px; margin-bottom: 10px; }
-.str { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-.str:last-child { border-bottom: none; }
-.stn { color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
-.stv { font-weight: 700; color: var(--accent-light); }
-.eqs, .its { margin-bottom: 16px; }
-.eqs h3, .its h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent-light); }
-.eqg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.esl { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-.esn { font-size: 10px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 4px; }
-.eit { font-size: 12px; font-weight: 600; }
-.est { font-size: 11px; color: var(--success); }
-.ese { font-size: 11px; color: #555; font-style: italic; }
-.ig { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.ic { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-.ii { font-size: 24px; margin-bottom: 4px; }
-.in { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
-.iq { font-size: 11px; color: var(--text-dim); }
-.ia { margin-top: 6px; }
-.ib { padding: 4px 12px; border-radius: 8px; border: none; font-size: 11px; font-weight: 600; cursor: pointer; margin: 2px; user-select: none; }
-.ib-u { background: var(--success); color: white; }
-.ib-e { background: var(--mp); color: white; }
-.ei { color: #555; font-style: italic; padding: 20px; text-align: center; grid-column: span 2; }
-.rlist { display: flex; flex-direction: column; gap: 10px; }
-.rc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
-.rr { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-.ri { font-size: 24px; }
-.rn { font-weight: 700; font-size: 14px; }
-.rd { font-size: 11px; color: var(--text-dim); }
-.rms { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-.mp { font-size: 10px; padding: 3px 10px; border-radius: 8px; background: #242236; color: var(--text-dim); }
-.mp.ok { background: #22c55e20; color: var(--success); }
-.mp.miss { background: #ef444420; color: var(--danger); }
-.cb { width: 100%; padding: 10px; border-radius: 10px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--accent); color: white; user-select: none; }
-.cb.dis { opacity: 0.4; cursor: not-allowed; }
-.qlist { display: flex; flex-direction: column; gap: 10px; }
-.qc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
-.qc.done { border-color: var(--success); }
-.qh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.qn { font-weight: 600; font-size: 14px; }
-.qr { font-size: 11px; color: var(--gold); }
-.qd { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
-.qp { display: flex; align-items: center; gap: 10px; }
-.pbar { flex: 1; height: 8px; background: #2e2c42; border-radius: 4px; overflow: hidden; }
-.pfill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s; }
-.ptxt { font-size: 11px; color: var(--text-dim); min-width: 40px; text-align: right; }
-.sum { display: flex; gap: 10px; margin-top: 16px; }
-.si2 { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-.sv { font-size: 20px; font-weight: 700; color: var(--accent-light); display: block; }
-.sl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
-.fv { text-align: center; padding: 20px; }
-.fc { width: 180px; height: 180px; border-radius: 50%; border: 4px solid var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 24px; }
-.ft { font-size: 36px; font-weight: 700; color: var(--accent-light); font-family: 'Cinzel', serif; }
-.fl { font-size: 14px; color: var(--text-dim); margin-top: 4px; }
-.ftips { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; text-align: left; }
-.ftips h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent-light); }
-.ftips ul { list-style: none; padding: 0; }
-.ftips li { font-size: 13px; color: var(--text-dim); padding: 6px 0; border-bottom: 1px solid var(--border); }
-.ftips li:last-child { border-bottom: none; }
-.ftips li::before { content: "→ "; color: var(--accent); font-weight: 700; }
-.cfb { padding: 12px 24px; border-radius: 12px; border: 1px solid var(--danger); background: transparent; color: var(--danger); font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; }
-.log { background: #0a0912; border-top: 1px solid var(--border); padding: 10px 16px; max-height: 120px; overflow-y: auto; font-size: 12px; line-height: 1.5; flex-shrink: 0; }
-.le { padding: 2px 0; color: var(--text-dim); border-bottom: 1px solid #1a1825; }
-.le:last-child { border-bottom: none; }
-.nav { display: flex; justify-content: space-around; background: #1a1825; border-top: 1px solid var(--border); padding: 6px 0; position: sticky; bottom: 0; z-index: 10; flex-shrink: 0; }
-.nb { background: none; border: none; color: var(--text-dim); font-size: 11px; font-weight: 500; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; user-select: none; flex: 1; }
-.nb::before { font-size: 18px; display: block; }
-.nb[data-t="home"]::before { content: "🏠"; }
-.nb[data-t="exp"]::before { content: "🗺️"; }
-.nb[data-t="party"]::before { content: "👥"; }
-.nb[data-t="quest"]::before { content: "📜"; }
-.nb[data-t="craft"]::before { content: "⚒️"; }
-.nb[data-t="inv"]::before { content: "🎒"; }
-.nb:hover, .nb.on { color: var(--accent-light); }
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  :root {
+    --cream:#FBF4E9; --creamDeep:#F3E7D3; --ink:#4A3B32; --inkSoft:#8A7566;
+    --mage:#8E6FB0; --mageDeep:#6F4F92; --mageSoft:#EDE3F7; --pink:#E9A8B4;
+    --gold:#D9A441; --sage:#8FA982; --sageSoft:#E6EFDF; --card:#FFFDF8; --border:#E4D4BC;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; padding:0; background:var(--cream); color:var(--ink);
+    font-family:'Nunito','Segoe UI',sans-serif; overscroll-behavior:none; }
+  .disp { font-family:'Poppins','Segoe UI',sans-serif; }
+  button { font-family:inherit; border:none; cursor:pointer; background:none; }
+  textarea { font-family:'Nunito',sans-serif; }
+  ::-webkit-scrollbar{ display:none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .pulse { animation: pulse 1.4s ease-in-out infinite; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
-
-const G = {
-  state: 'menu',
-  p: {
-    name: 'San', cls: 'Sorcerer', lvl: 1, xp: 0, xpN: 100,
-    hp: 80, mhp: 80, mp: 120, mmp: 120, gold: 50,
-    stats: { str: 4, dex: 6, con: 5, int: 12, wis: 10, cha: 8 },
-    skills: [
-      { n: 'Arcane Bolt', c: 10, dmg: '1d8', on: true, d: 'Basic magic missile' },
-      { n: 'Fireball', c: 25, dmg: '2d6', on: false, ul: 3, d: 'Area fire damage' },
-      { n: 'Frost Shield', c: 15, on: false, ul: 2, d: '+5 AC for 3 turns', buff: true },
-      { n: 'Lightning Strike', c: 35, dmg: '3d8', on: false, ul: 5, d: 'Devastating single target' },
-      { n: 'Mana Surge', c: 5, on: false, ul: 4, d: 'Restore 20 MP', buff: true },
-      { n: 'Meteor Swarm', c: 60, dmg: '4d10', on: false, ul: 8, d: 'Ultimate destruction' }
-    ],
-    eq: { w: { n: 'Apprentice Staff', atk: 2, r: 'common' }, a: { n: 'Novice Robes', def: 2, r: 'common' }, acc: null },
-    inv: [
-      { n: 'Health Potion', t: 'pot', eff: 'heal', v: 30, q: 3, r: 'common' },
-      { n: 'Mana Potion', t: 'pot', eff: 'mana', v: 25, q: 2, r: 'common' },
-      { n: 'Goblin Tooth', t: 'mat', q: 2, r: 'common' },
-      { n: 'Iron Ore', t: 'mat', q: 3, r: 'common' },
-      { n: 'Herb Bundle', t: 'mat', q: 4, r: 'common' }
-    ],
-    buffs: [], kills: 0, quests: 0, fstreak: 0
-  },
-  party: [
-    { n: 'Joel', t: 'The Steadfast', r: 'Tank', hp: 120, mhp: 120, atk: 6, def: 8, spd: 4, on: true, d: 'Your partner and shield. Never lets you fight alone.', b: '+10% Max HP', col: '#7c3aed' },
-    { n: 'Aisyah', t: 'Sisterblade', r: 'Rogue', hp: 70, mhp: 70, atk: 10, def: 4, spd: 9, on: true, d: 'Your sister, sharp-eyed and sharper-tongued.', b: '+20% Gold found', col: '#059669' },
-    { n: 'Mezstorm', t: 'Stormsinger', r: 'Mage', hp: 60, mhp: 60, atk: 12, def: 3, spd: 6, on: false, ul: 3, d: 'A wandering storm mage seeking purpose.', b: '+15% Spell damage', col: '#0891b2' },
-    { n: 'Eliz', t: 'Little Healer', r: 'Healer', hp: 65, mhp: 65, atk: 4, def: 5, spd: 5, on: false, ul: 4, d: 'A gentle soul with hands that mend wounds.', b: '+25% Healing potency', col: '#db2777' },
-    { n: 'Senedra', t: 'Swift Scout', r: 'Ranger', hp: 75, mhp: 75, atk: 8, def: 5, spd: 10, on: false, ul: 6, d: 'An eagle-eyed tracker from the northern woods.', b: '+20% Crit chance', col: '#ca8a04' },
-    { n: 'Zaki', t: 'Young Blade', r: 'Warrior', hp: 100, mhp: 100, atk: 9, def: 6, spd: 6, on: false, ul: 8, d: 'A hot-headed swordsman with a heart of gold.', b: '+15% Attack speed', col: '#dc2626' },
-    { n: 'Soel', t: 'The Familiar', r: 'Support', hp: 55, mhp: 55, atk: 5, def: 4, spd: 8, on: false, ul: 10, d: 'Your loyal companion. Brings fortune to the party.', b: '+10% All stats', col: '#7c2d12' }
-  ],
-  cbt: { on: false, turn: 0, en: [], sk: 0, tg: 0 },
-  zones: [
-    { n: 'Whispering Woods', lv: 1, d: 'Mossy paths where goblins lurk.', en: ['Goblin','Wolf','Slime'], loot: ['Herb Bundle','Goblin Tooth','Health Potion'], xp: 15, dg: 'low' },
-    { n: 'Cursed Catacombs', lv: 2, d: 'Ancient tombs filled with restless dead.', en: ['Skeleton','Zombie','Ghost'], loot: ['Iron Ore','Bone Shard','Mana Potion'], xp: 30, dg: 'medium' },
-    { n: 'Ember Peak', lv: 4, d: 'Volcanic caves with fire elementals.', en: ['Fire Imp','Lava Slug','Ash Wraith'], loot: ['Fire Essence','Obsidian','Phoenix Feather'], xp: 60, dg: 'high' },
-    { n: 'Frostspire Ruins', lv: 6, d: 'Frozen castle of a fallen ice lord.', en: ['Ice Elemental','Frost Wolf','Frozen Knight'], loot: ['Ice Crystal','Frost Gem','Glacial Staff'], xp: 100, dg: 'very high' },
-    { n: 'Abyssal Depths', lv: 8, d: 'The void between worlds. Only the brave enter.', en: ['Void Beast','Shadow Demon','Abyssal Horror'], loot: ['Void Essence','Dark Crystal','Abyssal Robe'], xp: 200, dg: 'extreme' }
-  ],
-  recipes: [
-    { n: 'Health Potion', m: { 'Herb Bundle': 2, 'Goblin Tooth': 1 }, res: { n: 'Health Potion', t: 'pot', eff: 'heal', v: 30, q: 1, r: 'common' }, d: 'Restores 30 HP' },
-    { n: 'Mana Potion', m: { 'Herb Bundle': 1, 'Iron Ore': 1 }, res: { n: 'Mana Potion', t: 'pot', eff: 'mana', v: 25, q: 1, r: 'common' }, d: 'Restores 25 MP' },
-    { n: 'Greater Health Potion', m: { 'Herb Bundle': 3, 'Bone Shard': 2, 'Iron Ore': 1 }, res: { n: 'Greater Health Potion', t: 'pot', eff: 'heal', v: 75, q: 1, r: 'uncommon' }, d: 'Restores 75 HP' },
-    { n: 'Iron Sword', m: { 'Iron Ore': 4, 'Bone Shard': 1 }, res: { n: 'Iron Sword', t: 'wep', atk: 6, r: 'uncommon' }, d: 'ATK +6' },
-    { n: 'Reinforced Robes', m: { 'Iron Ore': 2, 'Herb Bundle': 3, 'Goblin Tooth': 2 }, res: { n: 'Reinforced Robes', t: 'arm', def: 5, r: 'uncommon' }, d: 'DEF +5' },
-    { n: 'Fire Staff', m: { 'Fire Essence': 2, 'Obsidian': 3, 'Iron Ore': 2 }, res: { n: 'Fire Staff', t: 'wep', atk: 10, r: 'rare' }, d: 'ATK +10, Fire damage' },
-    { n: 'Frost Ring', m: { 'Ice Crystal': 2, 'Frost Gem': 1, 'Iron Ore': 1 }, res: { n: 'Frost Ring', t: 'acc', int: 3, r: 'rare' }, d: 'INT +3, Frost spells cost -5 MP' }
-  ],
-  quests: [
-    { id: 1, n: 'First Steps', d: 'Defeat 3 monsters in Whispering Woods', t: 'kill', c: 0, need: 3, rw: { xp: 50, g: 20 }, done: false },
-    { id: 2, n: 'Potion Brewer', d: 'Craft 2 potions', t: 'craft', c: 0, need: 2, rw: { xp: 30, g: 15 }, done: false },
-    { id: 3, n: 'Focus Warrior', d: 'Complete a 25-minute focus session', t: 'focus', c: 0, need: 1, rw: { xp: 100, g: 50 }, done: false }
-  ],
-  log: ['Welcome to Legends of Daybreak, San.']
+/* ================= palette ================= */
+const C = {
+  cream:"#FBF4E9", creamDeep:"#F3E7D3", ink:"#4A3B32", inkSoft:"#8A7566",
+  mage:"#8E6FB0", mageDeep:"#6F4F92", mageSoft:"#EDE3F7", pink:"#E9A8B4",
+  gold:"#D9A441", sage:"#8FA982", sageSoft:"#E6EFDF", card:"#FFFDF8", border:"#E4D4BC",
 };
 
-function rd(s) { return Math.floor(Math.random()*s)+1; }
-function rdc(n,s) { let sum=0; for(let i=0;i<n;i++)sum+=rd(s); return sum; }
-function r20() { return rd(20); }
-function pd(ds,b) {
-  if(!ds) return b||0;
-  const m=ds.match(/(\d+)d(\d+)/);
-  if(!m) return b||0;
-  return rdc(parseInt(m[1]),parseInt(m[2]))+(b||0);
+/* ================= world data ================= */
+const PARTY = [
+  { id:"joel", name:"Joel", title:"The Steadfast", icon:"🛡️", color:C.mage, bio:"Your partner and shield. Never lets you fight alone.", passive:"+10% Max HP", unlockLv:1 },
+  { id:"aisyah", name:"Aisyah", title:"Sisterblade", icon:"⚔️", color:C.sage, bio:"Your sister, sharp-eyed and sharper-tongued.", passive:"+20% Gold found", unlockLv:1 },
+  { id:"mezstorm", name:"Mezstorm", title:"Stormsinger", icon:"✨", color:C.pink, bio:"Your other sister. Turns chaos into a song.", passive:"+15% XP earned", unlockLv:3 },
+  { id:"eliz", name:"Eliz", title:"Little Healer", icon:"❤️", color:C.pink, bio:"Your niece. Small hands, big heart.", passive:"Slow HP regen each call", unlockLv:4 },
+  { id:"senedra", name:"Senedra", title:"Swift Scout", icon:"⭐", color:C.gold, bio:"Your niece. Always finds the extra loot.", passive:"+chance of bonus material", unlockLv:6 },
+  { id:"zaki", name:"Zaki", title:"Young Blade", icon:"🔨", color:C.mageDeep, bio:"Your nephew, training hard to keep up.", passive:"+Attack power", unlockLv:8 },
+  { id:"soel", name:"Soel", title:"The Familiar", icon:"🐱", color:C.inkSoft, bio:"Grey and white, and completely in charge.", passive:"+Luck (crit chance)", unlockLv:10 },
+];
+
+const MATERIALS = ["Moonherb", "Silver Dust", "Ember Shard", "Starlight Thread", "Slime Gel"];
+const MATERIALS_REFINED = ["Herbal Extract", "Silver Ingot", "Ember Core", "Starlight Weave", "Gel Solvent"];
+
+const CHARGE_CAP = 6;
+const CHARGE_REGEN_MS = 90 * 60 * 1000;
+const LOCATION_COOLDOWN_MS = 8 * 60 * 1000;
+const REST_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+
+const WANDERING_MONSTERS = [
+  { name:"Wraithling", icon:"👻" },
+  { name:"Feed Sprite", icon:"🦋" },
+  { name:"Notification Gnat", icon:"🪰" },
+  { name:"Doubt Wisp", icon:"💭" },
+  { name:"Idle Slime", icon:"🫧" },
+];
+
+const LOCATIONS = [
+  { id:"forest", name:"Whispering Forest", icon:"🌲", flavor:[
+    "A patch of Moonherb glows faintly between the roots.",
+    "The wraiths avoid this place. You take a slow breath.",
+    "Something rustles overhead — just Soel, following at a distance.",
+  ]},
+  { id:"market", name:"Market Row", icon:"🏪", flavor:[
+    "A trader waves you over, then just as quickly gets distracted.",
+    "Aisyah's voice carries from a stall two rows down, haggling loudly.",
+    "You pocket a few coins someone dropped near the fountain.",
+  ]},
+  { id:"fountain", name:"Guildhall Fountain", icon:"🏛️", flavor:[
+    "Legends banners hang overhead, snapping gently in the wind.",
+    "You toss a coin in. It doesn't come back, but you feel lighter.",
+    "Mezstorm is humming something new here. You linger to listen.",
+  ]},
+  { id:"lake", name:"Moonlit Lake", icon:"🌊", flavor:[
+    "The water is still enough to see the whole sky in it.",
+    "Joel's usual spot on the dock is empty, but still warm.",
+    "A Starlight Thread catches the light just beneath the surface.",
+  ]},
+  { id:"watchtower", name:"Old Watchtower", icon:"⛰️", flavor:[
+    "From up here, the whole map feels smaller and kinder.",
+    "Zaki left a practice sword leaning against the wall again.",
+    "No wraiths reach this high. Just wind, and a little quiet.",
+  ]},
+];
+
+const ENCOUNTER_CYCLE = ["Gathering Day", "Crafting Day", "Boss Day", "Guild Day", "Rest Day"];
+
+const ENEMIES = [
+  { id:"wraith", name:"Scroll Wraith", intro:"A Scroll Wraith flickers into being, feeding on wasted minutes.", hpMod:1 },
+  { id:"imp", name:"Notification Imp", intro:"A Notification Imp buzzes at the edge of your vision — all noise, no substance.", hpMod:0.85 },
+  { id:"serpent", name:"Feed Serpent", intro:"A Feed Serpent uncoils from an endless scroll, hungry for your attention.", hpMod:1.15 },
+  { id:"specter", name:"Doubt Specter", intro:"A Doubt Specter murmurs that you should just check one more thing.", hpMod:1 },
+];
+
+const BOSSES = [
+  { id:"endless_scroll", name:"The Endless Scroll",
+    intro:"The Endless Scroll unfurls before you — everything you were trying to avoid, given a shape.",
+    hpMult:4.2, phaseLines:["It thins at the edges, but keeps trying to regenerate.", "Down to its last threads. It's losing its grip."] },
+  { id:"notif_king", name:"The Notification King",
+    intro:"The Notification King rises, crowned in a hundred unread badges.",
+    hpMult:4.5, phaseLines:["His crown flickers — a few badges finally clear.", "Nearly silent now. Just one left, blinking."] },
+];
+
+const RECIPES = [
+  { id:"health_draught", type:"potion", name:"Health Draught", needs:{"Moonherb":2,"Silver Dust":1}, effect:"Restore 30 HP instantly", icon:"🧪" },
+  { id:"focus_elixir", type:"potion", name:"Focus Elixir", needs:{"Starlight Thread":1,"Ember Shard":1}, effect:"+2 bonus damage next Call", icon:"🧪" },
+  { id:"greater_health_draught", type:"potion", name:"Greater Health Draught", needs:{"Herbal Extract":1,"Silver Ingot":1}, effect:"Restore 60 HP instantly", icon:"🧪" },
+  { id:"refine_herb", type:"refine", name:"Refine Herbal Extract", needs:{"Moonherb":3}, produces:{material:"Herbal Extract", qty:1}, effect:"3 Moonherb → 1 Herbal Extract", icon:"🔥" },
+  { id:"refine_silver", type:"refine", name:"Refine Silver Ingot", needs:{"Silver Dust":3}, produces:{material:"Silver Ingot", qty:1}, effect:"3 Silver Dust → 1 Silver Ingot", icon:"🔥" },
+  { id:"refine_ember", type:"refine", name:"Refine Ember Core", needs:{"Ember Shard":3}, produces:{material:"Ember Core", qty:1}, effect:"3 Ember Shard → 1 Ember Core", icon:"🔥" },
+  { id:"refine_starlight", type:"refine", name:"Refine Starlight Weave", needs:{"Starlight Thread":3}, produces:{material:"Starlight Weave", qty:1}, effect:"3 Starlight Thread → 1 Starlight Weave", icon:"🔥" },
+  { id:"refine_gel", type:"refine", name:"Refine Gel Solvent", needs:{"Slime Gel":3}, produces:{material:"Gel Solvent", qty:1}, effect:"3 Slime Gel → 1 Gel Solvent", icon:"🔥" },
+  { id:"apprentice_staff", type:"equipment", slot:"weapon", name:"Apprentice Staff", needs:{"Ember Shard":2,"Silver Dust":2}, gold:30, effect:"+3 Attack", bonus:{atk:3}, icon:"🪄" },
+  { id:"woven_robe", type:"equipment", slot:"armor", name:"Woven Robe", needs:{"Slime Gel":3,"Starlight Thread":1}, gold:25, effect:"+15 Max HP", bonus:{hp:15}, icon:"🛡️" },
+  { id:"lucky_charm", type:"equipment", slot:"trinket", name:"Lucky Charm", needs:{"Moonherb":1,"Starlight Thread":2}, gold:40, effect:"+Crit chance", bonus:{luck:1}, icon:"💎" },
+  { id:"journeyman_staff", type:"equipment", slot:"weapon", name:"Journeyman Staff", needs:{"Ember Core":2,"Silver Ingot":1}, gold:60, requiresCrafted:"apprentice_staff", effect:"+7 Attack", bonus:{atk:7}, icon:"🪄" },
+  { id:"enchanted_robe", type:"equipment", slot:"armor", name:"Enchanted Robe", needs:{"Gel Solvent":2,"Starlight Weave":1}, gold:55, requiresCrafted:"woven_robe", effect:"+32 Max HP", bonus:{hp:32}, icon:"🛡️" },
+  { id:"radiant_charm", type:"equipment", slot:"trinket", name:"Radiant Charm", needs:{"Silver Ingot":1,"Starlight Weave":2}, gold:70, requiresCrafted:"lucky_charm", effect:"+2 Luck (bigger crit chance)", bonus:{luck:2}, icon:"💎" },
+];
+
+const QUEST_CHAINS = [
+  { id:"chain_light", title:"First Light", icon:"🌅", steps:[
+      { desc:"Answer 3 Calls", goal:3, track:"totalCheckIns", reward:{gold:20,xp:15} },
+      { desc:"Reach a 5-day streak", goal:5, track:"streak", reward:{gold:30,xp:25} },
+      { desc:"Craft your first item", goal:1, track:"craftCount", reward:{gold:35,xp:30} },
+  ]},
+  { id:"chain_market", title:"Market Row Regular", icon:"🏪", steps:[
+      { desc:"Visit 2 different locations in one day", goal:2, track:"locationsToday", reward:{gold:20,xp:0} },
+      { desc:"Gather 5 Moonherb", goal:5, track:"mat:Moonherb", reward:{gold:25,xp:20} },
+      { desc:"Refine your first material", goal:1, track:"refineCount", reward:{gold:35,xp:30} },
+  ]},
+  { id:"chain_guild", title:"Guild Hall Regular", icon:"🏛️", steps:[
+      { desc:"Complete 3 Guild Days", goal:3, track:"guildDays", reward:{gold:35,xp:30} },
+      { desc:"Reach Level 5", goal:5, track:"level", reward:{gold:40,xp:0} },
+      { desc:"Defeat a Boss", goal:1, track:"bossesDefeated", reward:{gold:60,xp:50} },
+  ]},
+];
+
+const MILESTONE_QUESTS = [
+  { id:"q_fullmoon", name:"The Full Moon", desc:"Answer 25 Calls total", goal:25, track:"totalCheckIns", reward:{gold:100,xp:80} },
+  { id:"q_bonded", name:"Bonded", desc:"Fully bond with any companion", goal:1, track:"maxBond", reward:{gold:50,xp:40} },
+];
+
+const TASK_POOL = [
+  { id:"t_calls2", desc:"Answer 2 Calls today", goal:2, calc: () => todayLog().count, reward:{gold:8,xp:6} },
+  { id:"t_roam2", desc:"Visit 2 different locations today", goal:2, calc: () => questValue("locationsToday"), reward:{gold:8,xp:0} },
+  { id:"t_make1", desc:"Craft or refine 1 item today", goal:1, calc: () => (state.dailyLog.crafted||0) + (state.dailyLog.refined||0), reward:{gold:10,xp:8} },
+  { id:"t_potion1", desc:"Use a potion today", goal:1, calc: () => state.dailyLog.potionsUsed||0, reward:{gold:6,xp:6} },
+  { id:"t_material3", desc:"Gather 3 materials today", goal:3, calc: () => state.dailyLog.materialsGathered||0, reward:{gold:9,xp:5} },
+];
+
+const WEEKLY_TASK = { desc:"Answer 10 Calls this week", goal:10, reward:{gold:80,xp:60} };
+
+const BOUNTY_POOL = [
+  { id:"b_skirmish2", icon:"⚔️", desc:"Defeat 2 wandering monsters today", goal:2, calc: () => state.dailyLog.skirmishToday||0, reward:{gold:14,xp:10} },
+  { id:"b_rest1", icon:"🌙", desc:"Rest at least once today", goal:1, calc: () => state.dailyLog.restToday||0, reward:{gold:10,xp:8} },
+  { id:"b_calls3", icon:"🪄", desc:"Answer 3 Calls today", goal:3, calc: () => todayLog().count, reward:{gold:12,xp:10} },
+  { id:"b_explore3", icon:"🧭", desc:"Visit 3 different locations today", goal:3, calc: () => questValue("locationsToday"), reward:{gold:12,xp:0} },
+];
+
+const SNIPPETS = {
+  joel: [
+    { at:3, line:'"Didn\'t even have to ask — knew you\'d show up."' },
+    { at:8, line:'"Take the win. I\'ll take the next one with you."' },
+    { at:15, line:'"You keep choosing this. That\'s the whole thing, San."' },
+  ],
+  aisyah: [
+    { at:3, line:'"See, this is more useful than doomscrolling."' },
+    { at:8, line:'"Don\'t tell Mezstorm, but I\'m proud of you."' },
+    { at:15, line:'"Little sister energy: unstoppable today."' },
+  ],
+  mezstorm: [
+    { at:3, line:'"New song idea, working title: \'San Logs Off.\'"' },
+    { at:8, line:'"You\'ve got rhythm now. I can hear it."' },
+    { at:15, line:'"Okay, officially impressed. Don\'t let it go to your head."' },
+  ],
+  eliz: [
+    { at:3, line:'"I made you a flower crown. It\'s invisible but it\'s there."' },
+    { at:8, line:'"You\'re doing so good, Auntie San!"' },
+  ],
+  senedra: [
+    { at:3, line:'"Found something shiny. Wanna see? Wanna see?"' },
+    { at:8, line:'"I\'m keeping a list of your best days. This is on it."' },
+  ],
+  zaki: [
+    { at:3, line:'"Training\'s paying off. Yours and mine."' },
+    { at:8, line:'"Race you to the next level."' },
+  ],
+  soel: [
+    { at:3, line:"*settles onto your lap like this was always the plan*" },
+    { at:8, line:"*one slow blink — the highest compliment he gives*" },
+  ],
+};
+
+/* ================= pure helpers ================= */
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const hashDay = (s) => { let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
+const encounterForDate = (dateStr) => ENCOUNTER_CYCLE[hashDay(dateStr) % ENCOUNTER_CYCLE.length];
+const today = () => dayKey(new Date());
+const xpToNext = (level) => 50 + level * 25;
+const fmtMs = (ms) => { const m = Math.max(1, Math.ceil(ms/60000)); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${m%60}m`; };
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function isoWeekKey(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${weekNo}`;
 }
 
-function sc(zi) {
-  const z=G.zones[zi];
-  G.cbt.on=true; G.cbt.turn=0; G.cbt.en=[]; G.state='combat';
-  const ec=Math.floor(Math.random()*2)+1+Math.floor(z.lv/3);
-  for(let i=0;i<ec;i++){
-    const t=z.en[Math.floor(Math.random()*z.en.length)];
-    let e={n:t,hp:0,mhp:0,atk:0,def:0,xp:0,g:0};
-    if(t=='Goblin')e={...e,hp:25,mhp:25,atk:5,def:2,xp:12,g:5};
-    else if(t=='Wolf')e={...e,hp:20,mhp:20,atk:7,def:1,xp:10,g:3};
-    else if(t=='Slime')e={...e,hp:15,mhp:15,atk:3,def:3,xp:8,g:2};
-    else if(t=='Skeleton')e={...e,hp:30,mhp:30,atk:6,def:3,xp:18,g:6};
-    else if(t=='Zombie')e={...e,hp:40,mhp:40,atk:5,def:1,xp:20,g:5};
-    else if(t=='Ghost')e={...e,hp:20,mhp:20,atk:8,def:0,xp:25,g:10};
-    else if(t=='Fire Imp')e={...e,hp:35,mhp:35,atk:9,def:2,xp:35,g:12};
-    else if(t=='Lava Slug')e={...e,hp:50,mhp:50,atk:6,def:5,xp:30,g:8};
-    else if(t=='Ash Wraith')e={...e,hp:30,mhp:30,atk:11,def:1,xp:45,g:18};
-    else if(t=='Ice Elemental')e={...e,hp:60,mhp:60,atk:10,def:6,xp:70,g:25};
-    else if(t=='Frost Wolf')e={...e,hp:45,mhp:45,atk:12,def:3,xp:55,g:18};
-    else if(t=='Frozen Knight')e={...e,hp:80,mhp:80,atk:14,def:8,xp:100,g:40};
-    else if(t=='Void Beast')e={...e,hp:100,mhp:100,atk:16,def:5,xp:150,g:60};
-    else if(t=='Shadow Demon')e={...e,hp:80,mhp:80,atk:18,def:3,xp:130,g:50};
-    else if(t=='Abyssal Horror')e={...e,hp:150,mhp:150,atk:20,def:8,xp:300,g:100};
-    e.id=i; G.cbt.en.push(e);
-  }
-  lg('Entered '+z.n+'! '+ec+' enemies appear!');
-  G.cbt.sk=0; G.cbt.tg=0; render();
+function getCharges(s, now) {
+  if (s.charges >= CHARGE_CAP) return { charges: CHARGE_CAP, msToNext: null };
+  const elapsed = now - s.chargeAnchor;
+  const gained = Math.floor(elapsed / CHARGE_REGEN_MS);
+  const charges = Math.min(CHARGE_CAP, s.charges + gained);
+  const msToNext = charges >= CHARGE_CAP ? null : CHARGE_REGEN_MS - (elapsed % CHARGE_REGEN_MS);
+  return { charges, msToNext };
+}
+function settleCharges(s, now) {
+  const { charges } = getCharges(s, now);
+  const stillRegenning = charges < CHARGE_CAP;
+  return { charges, chargeAnchor: stillRegenning ? now - ((now - s.chargeAnchor) % CHARGE_REGEN_MS) : s.chargeAnchor };
+}
+function spendCharge(s, now, amount) {
+  const settled = settleCharges(s, now);
+  if (settled.charges < amount) return null;
+  const wasFull = settled.charges >= CHARGE_CAP;
+  return { charges: settled.charges - amount, chargeAnchor: wasFull ? now : settled.chargeAnchor };
 }
 
-function pa(si,ti){
-  const sk=G.p.skills[si], tg=G.cbt.en[ti];
-  if(!tg||tg.hp<=0) return;
-  if(G.p.mp<sk.c){lg('Not enough MP!');return;}
-  G.p.mp-=sk.c;
-  if(sk.buff){
-    if(sk.n=='Frost Shield'){G.p.buffs.push({n:'Frost Shield',t:3,def:5});lg('Frost Shield! DEF +5 for 3 turns.');}
-    else if(sk.n=='Mana Surge'){G.p.mp=Math.min(G.p.mmp,G.p.mp+20);lg('Mana Surge! Restored 20 MP.');}
-  }else{
-    const hit=r20()+Math.floor(G.p.stats.int/3);
-    if(hit>=10+tg.def){
-      let dmg=pd(sk.dmg,Math.floor(G.p.stats.int/2));
-      dmg+=G.p.eq.w?G.p.eq.w.atk:0;
-      if(G.party[2].on)dmg=Math.floor(dmg*1.15);
-      dmg=Math.max(1,dmg-Math.floor(tg.def/2));
-      tg.hp-=dmg; lg(sk.n+' hits '+tg.n+' for '+dmg+'!');
-      if(tg.hp<=0){lg(tg.n+' defeated!');tg.hp=0;}
-    }else lg('Missed '+tg.n+'!');
-  }
-  for(let p of G.party){
-    if(!p.on||p.hp<=0)continue;
-    const ae=G.cbt.en.filter(e=>e.hp>0);
-    if(ae.length==0)break;
-    const et=ae[Math.floor(Math.random()*ae.length)];
-    const h=r20()+Math.floor(p.atk/3);
-    if(h>=10+et.def){
-      let d=rdc(1,6)+Math.floor(p.atk/2);
-      d=Math.max(1,d-Math.floor(et.def/3));
-      et.hp-=d; lg(p.n+' hits '+et.n+' for '+d+'!');
-      if(et.hp<=0){lg(et.n+' falls!');et.hp=0;}
-    }else lg(p.n+' misses!');
-  }
-  eturn();
-  if(G.cbt.en.every(e=>e.hp<=0)){
-    const txp=G.cbt.en.reduce((s,e)=>s+e.xp,0);
-    let tg2=G.cbt.en.reduce((s,e)=>s+e.g,0);
-    if(G.party[1].on)tg2=Math.floor(tg2*1.2);
-    G.p.xp+=txp; G.p.gold+=tg2; G.p.kills+=G.cbt.en.length;
-    lg('Victory! +'+txp+' XP, +'+tg2+' Gold!');
-    const z=G.zones.find(z=>z.en.includes(G.cbt.en[0].n));
-    if(z){const l=z.loot[Math.floor(Math.random()*z.loot.length)];addI({n:l,t:'mat',q:1,r:'common'});lg('Found: '+l);}
-    lvlup(); checkQ();
-    G.cbt.on=false; G.state='explore';
-  }else if(G.p.hp<=0){
-    G.p.hp=1; lg('Defeated! Retreating...');
-    G.cbt.on=false; G.state='menu';
-  }
-  G.cbt.turn++; render();
+function defaultState() {
+  return {
+    player: { name:"San", level:1, xp:0, gold:15, hp:60, maxHp:60, mp:30, maxMp:30 },
+    equipment: { weapon:null, armor:null, trinket:null },
+    materials: {}, potions: {}, totalCheckIns:0, streak:0, lastCheckInDate:null,
+    daysLog: {}, guildDays:0, crafted:[], questsClaimed:[], focusBuff:0,
+    charges: CHARGE_CAP, chargeAnchor: Date.now(), locations:{}, affinity:{},
+    craftCount:0, refineCount:0, bossesDefeated:0,
+    dailyLog: { date:null, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0 },
+    dailyTasksClaimed: { date:null, ids:[] },
+    weeklyTaskClaimed: { week:null, done:false },
+    questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
+    water: { date:null, count:0, goal:8 },
+    diet: { date:null, checked:false, streak:0, lastDate:null },
+    vigilTier: 0,
+    questFlags: { chestFound:false, chestChoice:null, aisyahBonus:false },
+    lastRest: 0, skirmishCount: 0,
+  };
 }
 
-function eturn(){
-  for(let e of G.cbt.en){
-    if(e.hp<=0)continue;
-    let t=G.p;
-    if(Math.random()>0.5){
-      const ap=G.party.filter(p=>p.on&&p.hp>0);
-      if(ap.length>0)t=ap[Math.floor(Math.random()*ap.length)];
-    }
-    const hit=r20()+Math.floor(e.atk/3);
-    let td=t==G.p?(G.p.eq.a?G.p.eq.a.def:0):t.def;
-    if(t==G.p)td+=G.p.buffs.reduce((s,b)=>s+(b.def||0),0);
-    if(hit>=10+td){
-      let d=rdc(1,6)+Math.floor(e.atk/2);
-      d=Math.max(1,d-Math.floor(td/2));
-      t.hp-=d; lg(e.n+' hits '+(t.n||'you')+' for '+d+'!');
-      if(t.hp<=0){t.hp=0;lg((t.n||'You')+' unconscious!');}
-    }else lg(e.n+' misses!');
+/* ================= state ================= */
+let state = null;
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null };
+
+function load() {
+  try {
+    const raw = localStorage.getItem("legends-save");
+    state = raw ? { ...defaultState(), ...JSON.parse(raw) } : defaultState();
+  } catch (e) { state = defaultState(); }
+}
+function save() {
+  try { localStorage.setItem("legends-save", JSON.stringify(state)); } catch (e) {}
+}
+
+/* ================= derived helpers ================= */
+function todayLog() { return state.daysLog[today()] || { count:0, encounter: encounterForDate(today()), bossDone:false }; }
+function equippedBonus() {
+  return Object.values(state.equipment).reduce((acc, id) => {
+    if (!id) return acc;
+    const r = RECIPES.find(x => x.id === id);
+    if (!r) return acc;
+    return { atk: acc.atk + (r.bonus.atk||0), hp: acc.hp + (r.bonus.hp||0), luck: acc.luck + (r.bonus.luck||0) };
+  }, { atk:0, hp:0, luck:0 });
+}
+function maxHp() { return state.player.maxHp + equippedBonus().hp; }
+function passiveActive(id) { const m = PARTY.find(x=>x.id===id); return m && state.player.level >= m.unlockLv; }
+function questValue(track) {
+  if (track === "level") return state.player.level;
+  if (track === "streak") return state.streak;
+  if (track === "totalCheckIns") return state.totalCheckIns;
+  if (track === "guildDays") return state.guildDays;
+  if (track === "craftCount") return state.craftCount || 0;
+  if (track === "refineCount") return state.refineCount || 0;
+  if (track === "bossesDefeated") return state.bossesDefeated || 0;
+  if (track === "locationsToday") return LOCATIONS.filter(l => dayKey(new Date(state.locations[l.id]||0)) === today()).length;
+  if (track === "maxBond") return PARTY.some(m => {
+    const tiers = SNIPPETS[m.id] || [];
+    return tiers.length && (state.affinity[m.id]||0) >= tiers[tiers.length-1].at;
+  }) ? 1 : 0;
+  if (track.startsWith("mat:")) return state.materials[track.slice(4)] || 0;
+  return 0;
+}
+function canAfford(recipe) {
+  const goldOk = (recipe.gold||0) <= state.player.gold;
+  const matsOk = Object.entries(recipe.needs).every(([m,q]) => (state.materials[m]||0) >= q);
+  const prereqOk = !recipe.requiresCrafted || state.crafted.includes(recipe.requiresCrafted);
+  return goldOk && matsOk && prereqOk;
+}
+function ensureDaily() {
+  const t = today();
+  if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0 };
+  if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
+  if (!state.water || state.water.date !== t) state.water = { date:t, count:0, goal:(state.water && state.water.goal) || 8 };
+  if (!state.diet || state.diet.date !== t) state.diet = { date:t, checked:false, streak: state.diet ? state.diet.streak : 0, lastDate: state.diet ? state.diet.lastDate : null };
+}
+function grantReward(gold, xp) {
+  state.player.gold += gold;
+  let newXp = state.player.xp + xp, leveledUp = false;
+  while (newXp >= xpToNext(state.player.level)) {
+    newXp -= xpToNext(state.player.level);
+    state.player.level += 1; state.player.maxHp += 8; state.player.maxMp += 4;
+    leveledUp = true;
   }
-  for(let b of G.p.buffs)b.t--;
-  G.p.buffs=G.p.buffs.filter(b=>b.t>0);
+  state.player.xp = newXp;
+  return leveledUp;
 }
-
-function lvlup(){
-  while(G.p.xp>=G.p.xpN){
-    G.p.xp-=G.p.xpN; G.p.lvl++;
-    G.p.xpN=Math.floor(G.p.xpN*1.5);
-    G.p.mhp+=10; G.p.mmp+=15; G.p.hp=G.p.mhp; G.p.mp=G.p.mmp;
-    G.p.stats.int+=2; G.p.stats.con+=1;
-    lg('LEVEL UP! Now Level '+G.p.lvl+'!');
-    for(let s of G.p.skills){if(!s.on&&s.ul<=G.p.lvl){s.on=true;lg('Learned: '+s.n+'!');}}
-    for(let p of G.party){if(!p.on&&p.ul<=G.p.lvl){p.on=true;p.hp=p.mhp;lg(p.n+' '+p.t+' joins!');}}
+function todaysTasks() {
+  const idxs = TASK_POOL.map((_,i) => i);
+  let s = hashDay(today() + "-tasks");
+  const picked = [];
+  while (picked.length < 3 && idxs.length) {
+    s = (s * 1103515245 + 12345) >>> 0;
+    picked.push(idxs.splice(s % idxs.length, 1)[0]);
   }
+  return picked.map(i => TASK_POOL[i]);
 }
-
-function checkQ(){
-  for(let q of G.quests){
-    if(q.done)continue;
-    if(q.t=='kill'&&G.p.kills>=q.c+q.need)q.c=q.need;
-    if(q.c>=q.need){q.done=true;G.p.xp+=q.rw.xp;G.p.gold+=q.rw.g;G.p.quests++;lg('Quest: '+q.n+'! +'+q.rw.xp+'XP +'+q.rw.g+'G');lvlup();}
+function todaysBounties() {
+  const idxs = BOUNTY_POOL.map((_,i) => i);
+  let s = hashDay(today() + "-bounties");
+  const picked = [];
+  while (picked.length < 2 && idxs.length) {
+    s = (s * 1103515245 + 12345) >>> 0;
+    picked.push(idxs.splice(s % idxs.length, 1)[0]);
   }
+  return picked.map(i => BOUNTY_POOL[i]);
+}
+function weeklyCallsCount() {
+  const wk = isoWeekKey(new Date());
+  return Object.entries(state.daysLog).reduce((sum, [dateStr, entry]) =>
+    isoWeekKey(new Date(dateStr)) === wk ? sum + (entry.count||0) : sum, 0);
 }
 
-function addI(it){
-  const ex=G.p.inv.find(i=>i.n==it.n&&i.t==it.t);
-  if(ex)ex.q+=it.q||1;
-  else G.p.inv.push({...it,q:it.q||1});
-}
-
-function useI(ix){
-  const it=G.p.inv[ix];
-  if(!it||it.t!='pot')return;
-  if(it.eff=='heal'){G.p.hp=Math.min(G.p.mhp,G.p.hp+it.v);lg('Used '+it.n+'. +'+it.v+' HP.');}
-  else if(it.eff=='mana'){G.p.mp=Math.min(G.p.mmp,G.p.mp+it.v);lg('Used '+it.n+'. +'+it.v+' MP.');}
-  it.q--; if(it.q<=0)G.p.inv.splice(ix,1);
+/* ================= actions ================= */
+function showToast(text) {
+  ui.toast = text;
+  clearTimeout(ui.toastTimer);
+  ui.toastTimer = setTimeout(() => { ui.toast = null; render(); }, 2600);
   render();
 }
 
-function craft(ri){
-  const r=G.recipes[ri];
-  for(let [mn,mq] of Object.entries(r.m)){
-    const iv=G.p.inv.find(x=>x.n==mn);
-    if(!iv||iv.q<mq){lg('Missing mats for '+r.n);return;}
+function beginCall() {
+  const { charges } = getCharges(state, ui.now);
+  const tLog = todayLog();
+  const isBossDay = tLog.encounter === "Boss Day" && !tLog.bossDone;
+  const cost = isBossDay ? 2 : 1;
+  if (charges < cost) return;
+  if (isBossDay) {
+    const boss = BOSSES[hashDay(today() + "-boss") % BOSSES.length];
+    const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult);
+    ui.encounter = { isBoss:true, bossId:boss.id, enemyName:boss.name, cost, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
+  } else {
+    const enemy = ENEMIES[Math.floor(Math.random()*ENEMIES.length)];
+    const enemyMaxHp = Math.round((18 + state.player.level*6) * enemy.hpMod);
+    ui.encounter = { isBoss:false, enemyName:enemy.name, cost, enemyHp:enemyMaxHp, enemyMaxHp, log:[enemy.intro], resolved:false };
   }
-  for(let [mn,mq] of Object.entries(r.m)){
-    const iv=G.p.inv.find(x=>x.n==mn);
-    iv.q-=mq; if(iv.q<=0){const ix=G.p.inv.indexOf(iv);G.p.inv.splice(ix,1);}
-  }
-  addI({...r.res}); lg('Crafted: '+r.n+'!');
-  const pq=G.quests.find(q=>q.t=='craft');
-  if(pq&&!pq.done){pq.c++;checkQ();}
   render();
 }
 
-function eqI(ix){
-  const it=G.p.inv[ix];
-  if(!it||(it.t!='wep'&&it.t!='arm'&&it.t!='acc'))return;
-  const sl=it.t=='wep'?'w':it.t=='arm'?'a':'acc';
-  const old=G.p.eq[sl];
-  if(old)addI(old);
-  G.p.eq[sl]={...it};
-  G.p.inv.splice(ix,1);
-  lg('Equipped '+it.n+'!'); render();
+function castSpell() {
+  const enc = ui.encounter;
+  if (!enc || enc.resolved) return;
+  const eb = equippedBonus();
+  const luckBonus = eb.luck + (passiveActive("soel") ? 1 : 0);
+  const crit = Math.random() < 0.15 + luckBonus*0.08;
+  const focusBonus = state.focusBuff > 0 ? 2 : 0;
+  let dmg = Math.round(6 + state.player.level*1.6 + eb.atk + focusBonus + (passiveActive("zaki")?2:0));
+  if (crit) dmg = Math.round(dmg*1.8);
+  const newHp = Math.max(0, enc.enemyHp - dmg);
+  enc.log.push(crit ? `Critical! Arcane Bolt hits for ${dmg}.` : `Arcane Bolt hits for ${dmg}.`);
+
+  if (newHp <= 0) { enc.enemyHp = 0; resolveVictory(); render(); return; }
+
+  let pushedPhase = false;
+  if (enc.isBoss) {
+    const boss = BOSSES.find(b => b.id === enc.bossId);
+    const ratio = newHp / enc.enemyMaxHp;
+    if (enc.phaseSeen === 0 && ratio <= 0.66) { enc.log.push(boss.phaseLines[0]); enc.phaseSeen = 1; pushedPhase = true; }
+    else if (enc.phaseSeen === 1 && ratio <= 0.33) { enc.log.push(boss.phaseLines[1]); enc.phaseSeen = 2; pushedPhase = true; }
+  }
+  if (!pushedPhase) enc.log.push("It strikes back, but you hold your ground.");
+  enc.enemyHp = newHp;
+  render();
 }
 
-let ft=null;
-function sf(){
-  G.state='focus'; G.fs=Date.now(); G.fd=25*60*1000;
-  lg('Focus started! 25 min...'); render();
-  ft=setInterval(()=>{
-    const el=Date.now()-G.fs, rm=G.fd-el;
-    if(G.state!='focus'){clearInterval(ft);return;}
-    if(rm<=0){
-      clearInterval(ft); G.p.fstreak++; G.p.xp+=100; G.p.gold+=50;
-      const fq=G.quests.find(q=>q.t=='focus');
-      if(fq&&!fq.done){fq.c++;checkQ();}
-      lg('Focus complete! +100XP +50G Streak:'+G.p.fstreak);
-      lvlup(); G.state='menu'; render();
-    }else{
-      const el2=document.getElementById('ft');
-      if(el2){const m=Math.floor(rm/60000),s=Math.floor((rm%60000)/1000);el2.textContent=m+':'+s.toString().padStart(2,'0');}
+function resolveVictory() {
+  const enc = ui.encounter;
+  const isBoss = enc.isBoss;
+  const mult = isBoss ? 3 : 1;
+  const goldBonus = passiveActive("aisyah") ? (state.questFlags.aisyahBonus ? 1.35 : 1.2) : 1;
+  const xpBonus = passiveActive("mezstorm") ? 1.15 : 1;
+  const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult);
+  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult);
+  const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0);
+  const drops = {};
+  for (let i=0;i<dropCount;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
+  enc.resolved = true;
+  enc.log.push(isBoss ? `${enc.enemyName} shatters into scattered light.` : `${enc.enemyName} dissolves into motes of light.`, `+${baseGold} gold, +${baseXp} XP`);
+  enc.reward = { gold: baseGold, xp: baseXp, drops };
+}
+
+function claimCall() {
+  const enc = ui.encounter;
+  if (!enc || !enc.resolved) return;
+  const { gold, xp, drops } = enc.reward;
+  const cost = enc.cost || 1;
+  const wasBoss = enc.isBoss;
+  const t = today();
+  const tLog = todayLog();
+  ensureDaily();
+
+  const isNewDay = state.lastCheckInDate !== t;
+  const prevDate = state.lastCheckInDate ? new Date(state.lastCheckInDate) : null;
+  const wasYesterday = prevDate && (new Date(t) - prevDate)/86400000 === 1;
+  const newStreak = isNewDay ? (wasYesterday || !prevDate ? (prevDate ? state.streak+1 : 1) : 1) : state.streak;
+
+  let newXp = state.player.xp + xp, newLevel = state.player.level;
+  let newMaxHp = state.player.maxHp, newMaxMp = state.player.maxMp, leveledUp = false;
+  while (newXp >= xpToNext(newLevel)) { newXp -= xpToNext(newLevel); newLevel++; newMaxHp += 8; newMaxMp += 4; leveledUp = true; }
+
+  Object.entries(drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; state.dailyLog.materialsGathered += q; });
+
+  const dayEntry = { count: tLog.count + 1, encounter: tLog.encounter, bossDone: tLog.bossDone || wasBoss };
+  const newGuildDays = tLog.encounter === "Guild Day" && tLog.count === 0 ? state.guildDays + 1 : state.guildDays;
+  if (wasBoss) state.bossesDefeated = (state.bossesDefeated||0) + 1;
+
+  const spent = spendCharge(state, ui.now, cost);
+  if (!spent) { ui.encounter = null; render(); return; }
+
+  const unlockedIds = PARTY.filter(m => newLevel >= m.unlockLv).map(m => m.id);
+  const chosen = unlockedIds[Math.floor(Math.random()*unlockedIds.length)];
+  const newAff = (state.affinity[chosen]||0) + 1;
+  const hitSnippet = (SNIPPETS[chosen]||[]).find(sn => sn.at === newAff);
+
+  state.player.xp = newXp; state.player.level = newLevel;
+  state.player.maxHp = newMaxHp; state.player.maxMp = newMaxMp;
+  state.player.hp = Math.min(newMaxHp, state.player.hp + (passiveActive("eliz")?6:0) + 20);
+  state.player.gold += gold;
+  state.totalCheckIns += 1; state.streak = newStreak; state.lastCheckInDate = t;
+  state.daysLog[t] = dayEntry; state.guildDays = newGuildDays;
+  state.focusBuff = Math.max(0, state.focusBuff - 1);
+  state.charges = spent.charges; state.chargeAnchor = spent.chargeAnchor;
+  state.affinity[chosen] = newAff;
+
+  ui.encounter = null;
+  save(); render();
+
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${newLevel}.`), 300);
+  else if (hitSnippet) { const name = PARTY.find(m=>m.id===chosen).name; setTimeout(() => showToast(`${name}: ${hitSnippet.line}`), 300); }
+  else showToast(wasBoss ? "Boss defeated. That's a good break." : "Call answered. The scroll can wait.");
+}
+
+function visitLocation(id) {
+  const loc = LOCATIONS.find(l => l.id === id);
+  const last = state.locations[id] || 0;
+  if (ui.now - last < LOCATION_COOLDOWN_MS) return;
+  ensureDaily();
+  const line = loc.flavor[Math.floor(Math.random()*loc.flavor.length)];
+  const gold = 1 + Math.floor(Math.random()*4);
+  const foundMaterial = Math.random() < 0.25;
+  const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
+  state.locations[id] = ui.now;
+  state.player.gold += gold;
+  if (foundMaterial) { state.materials[mat] = (state.materials[mat]||0) + 1; state.dailyLog.materialsGathered += 1; }
+
+  let chestJustFound = false;
+  let skirmishEnemy = null;
+  if (state.player.level >= 3 && !state.questFlags.chestFound && !state.questFlags.chestChoice && Math.random() < 0.12) {
+    state.questFlags.chestFound = true;
+    chestJustFound = true;
+  } else if (Math.random() < 0.22) {
+    skirmishEnemy = WANDERING_MONSTERS[Math.floor(Math.random()*WANDERING_MONSTERS.length)];
+  }
+
+  save(); render();
+  showToast(`${line} (+${gold}g${foundMaterial ? `, +1 ${mat}` : ""})`);
+  if (chestJustFound) setTimeout(() => { ui.showChest = true; render(); }, 1600);
+  else if (skirmishEnemy) setTimeout(() => { ui.skirmish = { ...skirmishEnemy, resolved:false }; render(); }, 1400);
+}
+
+function craft(id) {
+  const r = RECIPES.find(x => x.id === id);
+  if (!canAfford(r)) return;
+  ensureDaily();
+  Object.entries(r.needs).forEach(([m,q]) => { state.materials[m] -= q; });
+
+  if (r.type === "refine") {
+    state.materials[r.produces.material] = (state.materials[r.produces.material]||0) + r.produces.qty;
+    state.refineCount = (state.refineCount||0) + 1;
+    state.dailyLog.refined += 1;
+    save(); render();
+    showToast(`Refined ${r.produces.material}.`);
+    return;
+  }
+
+  state.player.gold -= (r.gold||0);
+  if (r.type === "potion") {
+    state.potions[r.id] = (state.potions[r.id]||0) + 1;
+  } else {
+    if (r.requiresCrafted) {
+      const idx = state.crafted.indexOf(r.requiresCrafted);
+      if (idx >= 0) state.crafted.splice(idx, 1);
+      if (state.equipment[r.slot] === r.requiresCrafted) state.equipment[r.slot] = r.id;
     }
-  },1000);
+    if (!state.crafted.includes(r.id)) state.crafted.push(r.id);
+  }
+  state.craftCount = (state.craftCount||0) + 1;
+  state.dailyLog.crafted += 1;
+  save(); render();
+  showToast(`Crafted ${r.name}.`);
+}
+function equip(id) {
+  const r = RECIPES.find(x => x.id === id);
+  state.equipment[r.slot] = r.id;
+  save(); render();
+  showToast(`${r.name} equipped.`);
+}
+function usePotion(id) {
+  const r = RECIPES.find(x => x.id === id);
+  if (!state.potions[id]) return;
+  ensureDaily();
+  state.potions[id] -= 1;
+  if (id === "health_draught") state.player.hp = Math.min(maxHp(), state.player.hp + 30);
+  if (id === "greater_health_draught") state.player.hp = Math.min(maxHp(), state.player.hp + 60);
+  if (id === "focus_elixir") state.focusBuff += 1;
+  state.dailyLog.potionsUsed += 1;
+  save(); render();
+  showToast(`Used ${r.name}.`);
+}
+function claimQuest(id) {
+  const q = MILESTONE_QUESTS.find(x => x.id === id);
+  if (!q || state.questsClaimed.includes(id) || questValue(q.track) < q.goal) return;
+  state.questsClaimed.push(id);
+  const leveledUp = grantReward(q.reward.gold||0, q.reward.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Quest claimed: ${q.name}`);
+}
+function claimChainStep(chainId) {
+  const chain = QUEST_CHAINS.find(c => c.id === chainId);
+  const idx = state.questChainProgress[chainId] || 0;
+  if (idx >= chain.steps.length) return;
+  const step = chain.steps[idx];
+  if (questValue(step.track) < step.goal) return;
+  const leveledUp = grantReward(step.reward.gold||0, step.reward.xp||0);
+  state.questChainProgress[chainId] = idx + 1;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${chain.title} — step complete!`);
+}
+function claimTask(id) {
+  ensureDaily();
+  if (state.dailyTasksClaimed.ids.includes(id)) return;
+  const task = TASK_POOL.concat(BOUNTY_POOL).find(t => t.id === id);
+  if (!task || task.calc() < task.goal) return;
+  state.dailyTasksClaimed.ids.push(id);
+  const leveledUp = grantReward(task.reward.gold||0, task.reward.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Task complete: ${task.desc}`);
+}
+function claimWeeklyTask() {
+  const wk = isoWeekKey(new Date());
+  if (state.weeklyTaskClaimed && state.weeklyTaskClaimed.week === wk && state.weeklyTaskClaimed.done) return;
+  if (weeklyCallsCount() < WEEKLY_TASK.goal) return;
+  state.weeklyTaskClaimed = { week: wk, done: true };
+  const leveledUp = grantReward(WEEKLY_TASK.reward.gold, WEEKLY_TASK.reward.xp);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Weekly task complete: ${WEEKLY_TASK.desc}`);
 }
 
-function cf(){if(ft)clearInterval(ft);setS('menu');lg('Focus cancelled.');render();}
-
-function lg(msg){
-  G.log.push(msg); if(G.log.length>50)G.log.shift();
-  const el=document.getElementById('log');
-  if(el){el.innerHTML=G.log.map(m=>'<div class="le">'+m+'</div>').join('');el.scrollTop=el.scrollHeight;}
+function restNow() {
+  if (Date.now() - (state.lastRest||0) < REST_COOLDOWN_MS) return;
+  state.player.hp = maxHp();
+  state.player.mp = state.player.maxMp;
+  state.lastRest = Date.now();
+  ensureDaily();
+  state.dailyLog.restToday = (state.dailyLog.restToday||0) + 1;
+  save(); render();
+  showToast("You rest a while. HP and MP fully restored.");
 }
 
-function setS(s){G.state=s;render();}
-function rest(){G.p.hp=G.p.mhp;G.p.mp=G.p.mmp;for(let p of G.party)if(p.on)p.hp=p.mhp;lg('Rested. HP/MP restored.');render();}
-function flee(){if(Math.random()>0.5){lg('Fled!');G.cbt.on=false;G.state='explore';}else{lg('Flee failed!');eturn();}render();}
+function fightSkirmish() {
+  const enc = ui.skirmish;
+  if (!enc || enc.resolved) return;
+  ensureDaily();
+  const goldBonus = passiveActive("aisyah") ? (state.questFlags.aisyahBonus ? 1.35 : 1.2) : 1;
+  const gold = Math.round((4 + Math.random()*6) * goldBonus);
+  const xp = Math.round(5 + Math.random()*5);
+  const dropMat = Math.random() < 0.5 ? MATERIALS[Math.floor(Math.random()*MATERIALS.length)] : null;
+  if (dropMat) { state.materials[dropMat] = (state.materials[dropMat]||0) + 1; state.dailyLog.materialsGathered += 1; }
+  const leveledUp = grantReward(gold, xp);
+  state.skirmishCount = (state.skirmishCount||0) + 1;
+  state.dailyLog.skirmishToday = (state.dailyLog.skirmishToday||0) + 1;
+  ui.skirmish = null;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${enc.name} defeated! +${gold}g +${xp}xp${dropMat ? `, +1 ${dropMat}` : ""}`);
+}
 
-function rc(c){return c=='common'?'#9ca3af':c=='uncommon'?'#22c55e':c=='rare'?'#3b82f6':'#a855f7';}
-function ee(n){const m={'Goblin':'👺','Wolf':'🐺','Slime':'🟢','Skeleton':'💀','Zombie':'🧟','Ghost':'👻','Fire Imp':'🔥','Lava Slug':'🌋','Ash Wraith':'💨','Ice Elemental':'❄️','Frost Wolf':'🐕‍🦺','Frozen Knight':'🥶','Void Beast':'🌑','Shadow Demon':'👿','Abyssal Horror':'🐙'};return m[n]||'👾';}
-function re(r){const m={'Tank':'🛡️','Rogue':'🗡️','Mage':'🔮','Healer':'💚','Ranger':'🏹','Warrior':'⚔️','Support':'🍀'};return m[r]||'👤';}
-function ie(i){if(i.t=='pot')return i.eff=='heal'?'🧪':'💧';if(i.t=='wep')return'⚔️';if(i.t=='arm')return'🛡️';if(i.t=='acc')return'💍';if(i.t=='mat')return'💎';return'📦';}
+function drinkWater() {
+  ensureDaily();
+  if (state.water.count >= state.water.goal) return;
+  state.water.count += 1;
+  if (state.water.count === state.water.goal) {
+    const leveledUp = grantReward(5, 5);
+    save(); render();
+    if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+    else showToast("Hydration goal reached! +5g +5xp");
+    return;
+  }
+  save(); render();
+  showToast(`+1 cup logged. (${state.water.count}/${state.water.goal})`);
+}
 
+function markDietClean() {
+  ensureDaily();
+  if (state.diet.checked) return;
+  const t = today();
+  const prev = state.diet.lastDate;
+  const wasYesterday = prev && (new Date(t) - new Date(prev))/86400000 === 1;
+  state.diet.streak = wasYesterday ? state.diet.streak + 1 : 1;
+  state.diet.lastDate = t;
+  state.diet.checked = true;
+  const leveledUp = grantReward(6, 6);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Clean diet day logged. Streak: ${state.diet.streak} 🔥`);
+}
 
-// ============================================================
-// SAVE SYSTEM
-// ============================================================
-const SAVE_KEY = 'ldb_save_v1';
+function vigilGoal() { return 15 + (state.vigilTier||0) * 10; }
+function claimVigil() {
+  if (state.totalCheckIns < vigilGoal()) return;
+  const tier = (state.vigilTier||0) + 1;
+  const leveledUp = grantReward(20 + tier*5, 15 + tier*5);
+  state.vigilTier = tier;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`The Unending Vigil continues — Tier ${tier} reached!`);
+}
 
-function saveGame() {
-  const saveData = {
-    player: {
-      name: G.p.name, cls: G.p.cls, lvl: G.p.lvl, xp: G.p.xp, xpN: G.p.xpN,
-      hp: G.p.hp, mhp: G.p.mhp, mp: G.p.mp, mmp: G.p.mmp, gold: G.p.gold,
-      stats: G.p.stats,
-      skills: G.p.skills.map(s => ({ n: s.n, c: s.c, dmg: s.dmg, on: s.on, ul: s.ul, d: s.d, buff: s.buff })),
-      equipment: {
-        w: G.p.eq.w,
-        a: G.p.eq.a,
-        acc: G.p.eq.acc
-      },
-      inventory: G.p.inv,
-      buffs: G.p.buffs,
-      kills: G.p.kills, quests: G.p.quests, fstreak: G.p.fstreak
-    },
-    party: G.party.map(p => ({ n: p.n, t: p.t, r: p.r, hp: p.hp, mhp: p.mhp, atk: p.atk, def: p.def, spd: p.spd, on: p.on, ul: p.ul, d: p.d, b: p.b, col: p.col })),
-    quests: G.quests.map(q => ({ id: q.id, n: q.n, d: q.d, t: q.t, c: q.c, need: q.need, rw: q.rw, done: q.done })),
-    log: G.log,
-    state: G.state
-  };
+function chestChoice(choice) {
+  if (!ui.showChest) return;
+  state.questFlags.chestChoice = choice;
+  ui.showChest = false;
+  if (choice === "open") {
+    const leveledUp = grantReward(80, 20);
+    save(); render();
+    if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+    else showToast("The chest cracks open — gold spills out. (+80g +20xp)");
+  } else {
+    state.questFlags.aisyahBonus = true;
+    save(); render();
+    showToast("Aisyah grins as she appraises it. Her instincts sharpen for good.");
+  }
+}
+
+function setTab(id) { ui.tab = id; render(); }
+function monthShift(delta) { ui.monthCursor = new Date(ui.monthCursor.getFullYear(), ui.monthCursor.getMonth()+delta, 1); render(); }
+function openBackup() { ui.showBackup = true; ui.importMsg = ""; render(); }
+function closeBackup() { ui.showBackup = false; render(); }
+function closeEncounter() { if (ui.encounter && !ui.encounter.resolved) { ui.encounter = null; render(); } }
+
+async function copyBackup() {
+  try { await navigator.clipboard.writeText(JSON.stringify(state)); ui.importMsg = "Copied! Paste it somewhere safe."; }
+  catch (e) { ui.importMsg = "Couldn't auto-copy — select the text above and copy manually."; }
+  renderBackupMsg();
+  setTimeout(() => { ui.importMsg = ""; renderBackupMsg(); }, 3000);
+}
+function restoreBackup() {
+  const ta = document.getElementById("importTextarea");
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-    lg('💾 Game saved!');
-    return true;
-  } catch(e) {
-    lg('❌ Save failed: ' + e.message);
-    return false;
+    const parsed = JSON.parse(ta.value.trim());
+    if (!parsed || typeof parsed !== "object" || !parsed.player) throw new Error("bad shape");
+    state = { ...defaultState(), ...parsed };
+    save();
+    ui.importMsg = "Restored!";
+    renderBackupMsg();
+    setTimeout(() => { ui.showBackup = false; render(); }, 1000);
+  } catch (e) {
+    ui.importMsg = "That didn't look like a valid backup — check for missing characters.";
+    renderBackupMsg();
   }
 }
-
-function loadGame() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-
-    // Restore player
-    G.p.lvl = data.player.lvl;
-    G.p.xp = data.player.xp;
-    G.p.xpN = data.player.xpN;
-    G.p.hp = data.player.hp;
-    G.p.mhp = data.player.mhp;
-    G.p.mp = data.player.mp;
-    G.p.mmp = data.player.mmp;
-    G.p.gold = data.player.gold;
-    G.p.stats = data.player.stats;
-    G.p.inv = data.player.inventory;
-    G.p.buffs = data.player.buffs || [];
-    G.p.kills = data.player.kills;
-    G.p.quests = data.player.quests;
-    G.p.fstreak = data.player.fstreak;
-
-    // Restore skills
-    for (let s of G.p.skills) {
-      const saved = data.player.skills.find(ss => ss.n === s.n);
-      if (saved) s.on = saved.on;
-    }
-
-    // Restore equipment
-    G.p.eq = data.player.equipment;
-
-    // Restore party
-    for (let p of G.party) {
-      const saved = data.party.find(sp => sp.n === p.n);
-      if (saved) {
-        p.on = saved.on;
-        p.hp = saved.hp;
-        p.mhp = saved.mhp;
-      }
-    }
-
-    // Restore quests
-    for (let q of G.quests) {
-      const saved = data.quests.find(sq => sq.id === q.id);
-      if (saved) {
-        q.c = saved.c;
-        q.done = saved.done;
-      }
-    }
-
-    G.log = data.log || ['Welcome back to Legends of Daybreak, San.'];
-    lg('💾 Game loaded!');
-    return true;
-  } catch(e) {
-    console.error('Load failed:', e);
-    return false;
-  }
+function renderBackupMsg() {
+  const el = document.getElementById("backupMsg");
+  if (el) el.textContent = ui.importMsg;
 }
 
-function resetGame() {
-  if (confirm('Are you sure? ALL progress will be lost forever!')) {
-    localStorage.removeItem(SAVE_KEY);
-    location.reload();
-  }
-}
+/* ================= action dispatch ================= */
+const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, usePotion, claimQuest,
+  claimChainStep, claimTask, claimWeeklyTask, drinkWater, markDietClean, claimVigil, chestChoice,
+  restNow, fightSkirmish,
+  setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
+  openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
 
-function exportSave() {
-  const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) { lg('No save data to export.'); return; }
-  const blob = new Blob([raw], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'legends-daybreak-save.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  lg('💾 Save exported!');
-}
-
-function importSave() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
-  input.onchange = function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-      try {
-        JSON.parse(ev.target.result); // validate
-        localStorage.setItem(SAVE_KEY, ev.target.result);
-        loadGame();
-        render();
-        lg('💾 Save imported!');
-      } catch(err) {
-        lg('❌ Invalid save file!');
-      }
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-}
-
-// Auto-save every 30 seconds and on page hide
-setInterval(saveGame, 30000);
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) saveGame();
+document.getElementById("app").addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.getAttribute("data-act");
+  const arg = el.getAttribute("data-arg");
+  if (ACTIONS[act]) ACTIONS[act](arg);
 });
 
-// ============================================================
-function render(){
-  const a=document.getElementById('app'); if(!a)return;
-  let h='';
-  h+='<div class="hdr"><div class="hdr-l"><div class="pname">'+G.p.name+' <span class="cls">'+G.p.cls+'</span></div><div class="lvl">Lv.'+G.p.lvl+'</div></div>';
-  h+='<div class="hdr-r"><div class="sb"><span class="si">HP</span><div class="bar"><div class="bf bf-hp" style="width:'+((G.p.hp/G.p.mhp)*100)+'%"></div></div><span class="bt">'+G.p.hp+'/'+G.p.mhp+'</span></div>';
-  h+='<div class="sb"><span class="si">MP</span><div class="bar"><div class="bf bf-mp" style="width:'+((G.p.mp/G.p.mmp)*100)+'%"></div></div><span class="bt">'+G.p.mp+'/'+G.p.mmp+'</span></div>';
-  h+='<div class="sb"><span class="si">XP</span><div class="bar"><div class="bf bf-xp" style="width:'+((G.p.xp/G.p.xpN)*100)+'%"></div></div><span class="bt">'+G.p.xp+'/'+G.p.xpN+'</span></div>';
-  h+='<div class="gold">GOLD: '+G.p.gold+'</div></div></div>';
-  if(G.p.buffs.length>0)h+='<div class="buffs">'+G.p.buffs.map(b=>'<span class="bp">'+b.n+' ('+b.t+')</span>').join('')+'</div>';
-  h+='<div class="content">';
-  if(G.state=='menu')h+=rMenu();
-  else if(G.state=='explore')h+=rExp();
-  else if(G.state=='combat')h+=rCbt();
-  else if(G.state=='party')h+=rParty();
-  else if(G.state=='skills')h+=rSkills();
-  else if(G.state=='inventory')h+=rInv();
-  else if(G.state=='craft')h+=rCraft();
-  else if(G.state=='quest')h+=rQuest();
-  else if(G.state=='focus')h+=rFocus();
-  h+='</div>';
-  h+='<div class="log" id="log">'+G.log.map(m=>'<div class="le">'+m+'</div>').join('')+'</div>';
-  h+='<div class="nav"><button class="nb '+(G.state=='menu'?'on':'')+'" data-t="home" data-a="menu">Home</button>';
-  h+='<button class="nb '+(G.state=='explore'?'on':'')+'" data-t="exp" data-a="explore">Explore</button>';
-  h+='<button class="nb '+(G.state=='party'?'on':'')+'" data-t="party" data-a="party">Party</button>';
-  h+='<button class="nb '+(G.state=='quest'?'on':'')+'" data-t="quest" data-a="quest">Quests</button>';
-  h+='<button class="nb '+(G.state=='craft'?'on':'')+'" data-t="craft" data-a="craft">Craft</button>';
-  h+='<button class="nb '+(G.state=='inventory'?'on':'')+'" data-t="inv" data-a="inventory">Items</button></div>';
-  a.innerHTML=h;
-  attachEvents();
-  const l=document.getElementById('log'); if(l)l.scrollTop=l.scrollHeight;
+/* ================= render ================= */
+function card(inner, extraStyle) {
+  return `<div style="background:${C.card};border:1px solid ${C.border};border-radius:20px;${extraStyle||""}">${inner}</div>`;
 }
 
-function attachEvents() {
-  document.querySelectorAll('.card[data-a]').forEach(el=>{
-    el.addEventListener('click',()=>{const a=el.getAttribute('data-a');if(a=='explore')setS('explore');else if(a=='party')setS('party');else if(a=='skills')setS('skills');else if(a=='craft')setS('craft');else if(a=='quest')setS('quest');else if(a=='inventory')setS('inventory');else if(a=='focus')sf();else if(a=='rest')rest();});
-  });
-  const btnSave=document.getElementById('btn-save');if(btnSave)btnSave.addEventListener('click',()=>{saveGame();});
-  const btnExport=document.getElementById('btn-export');if(btnExport)btnExport.addEventListener('click',exportSave);
-  const btnImport=document.getElementById('btn-import');if(btnImport)btnImport.addEventListener('click',importSave);
-  const btnReset=document.getElementById('btn-reset');if(btnReset)btnReset.addEventListener('click',resetGame);
-  document.querySelectorAll('.zcard:not(.locked)').forEach(el=>{
-    el.addEventListener('click',()=>{const i=parseInt(el.getAttribute('data-i'));sc(i);});
-  });
-  document.querySelectorAll('.ecard:not(.dead)').forEach(el=>{
-    el.addEventListener('click',()=>{G.cbt.tg=parseInt(el.getAttribute('data-i'));render();});
-  });
-  document.querySelectorAll('.sbtn:not(.dis)').forEach(el=>{
-    el.addEventListener('click',()=>{G.cbt.sk=parseInt(el.getAttribute('data-i'));render();});
-  });
-  const abtn=document.querySelector('.abtn:not(.dis)');
-  if(abtn){
-    abtn.addEventListener('click',()=>{
-      const si=parseInt(abtn.getAttribute('data-si'));
-      const ti=parseInt(abtn.getAttribute('data-ti'));
-      pa(si,ti);
-    });
-  }
-  const fbtn=document.querySelector('.fbtn');
-  if(fbtn)fbtn.addEventListener('click',flee);
-  document.querySelectorAll('.ib-u').forEach(el=>{
-    el.addEventListener('click',(e)=>{e.stopPropagation();useI(parseInt(el.getAttribute('data-i')));});
-  });
-  document.querySelectorAll('.ib-e').forEach(el=>{
-    el.addEventListener('click',(e)=>{e.stopPropagation();eqI(parseInt(el.getAttribute('data-i')));});
-  });
-  document.querySelectorAll('.cb:not(.dis)').forEach(el=>{
-    el.addEventListener('click',()=>{craft(parseInt(el.getAttribute('data-i')));});
-  });
-  document.querySelectorAll('.nb').forEach(el=>{
-    el.addEventListener('click',()=>{const a=el.getAttribute('data-a');setS(a);});
-  });
-  const cfb=document.querySelector('.cfb');
-  if(cfb)cfb.addEventListener('click',cf);
+function renderHeader() {
+  const tLog = todayLog();
+  const { charges } = getCharges(state, ui.now);
+  return `
+  <div style="background:linear-gradient(135deg, ${C.mageSoft}, ${C.cream});border-bottom:1px solid ${C.border};padding:24px 20px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <p style="color:${C.inkSoft};font-size:12px;margin:0">${tLog.encounter} · ${charges}/${CHARGE_CAP} Focus</p>
+        <h1 class="disp" style="font-weight:700;font-size:22px;color:${C.mageDeep};margin:2px 0 0">Legends: Daybreak Quest</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;align-items:center;gap:4px;color:${C.gold}">
+          <span style="font-size:18px;${state.streak>0?"":"filter:grayscale(1) opacity(.35)"}">🔥</span>
+          <span class="disp" style="font-weight:700">${state.streak}</span>
+        </div>
+        <button data-act="openBackup" aria-label="Backup and restore"><span style="font-size:18px;color:${C.inkSoft}">⚙️</span></button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:16px">
+      <div style="position:relative;width:68px;height:68px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="68" height="68" viewBox="0 0 68 68">
+          <circle cx="34" cy="34" r="30" fill="${C.mageSoft}" stroke="${C.border}" stroke-width="2"/>
+          <circle cx="34" cy="34" r="30" fill="none" stroke="${C.mage}" stroke-width="4"
+            stroke-dasharray="${(state.player.xp / xpToNext(state.player.level)) * 188.5} 188.5"
+            stroke-linecap="round" transform="rotate(-90 34 34)"/>
+        </svg>
+        <span style="position:absolute;font-size:26px">🪄</span>
+      </div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:16px;margin:0">${escapeHtml(state.player.name)} the Mage · Lv.${state.player.level}</p>
+        <div style="display:flex;gap:12px;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">❤️</span><span style="font-size:13px">${state.player.hp}/${maxHp()}</span></div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">✨</span><span style="font-size:13px">${state.player.mp}/${state.player.maxMp}</span></div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">💎</span><span style="font-size:13px">${state.player.gold}g</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
 }
 
-function rMenu(){
-  const items=[
-    {i:'⚔️',l:'Adventure',d:'Explore zones and fight',a:'explore'},
-    {i:'👥',l:'Party',d:'Manage companions',a:'party'},
-    {i:'✨',l:'Skills',d:'View mage abilities',a:'skills'},
-    {i:'⚒️',l:'Crafting',d:'Brew potions, forge gear',a:'craft'},
-    {i:'📜',l:'Quests',d:'View active quests',a:'quest'},
-    {i:'🎒',l:'Inventory',d:'Manage items',a:'inventory'},
-    {i:'🧘',l:'Focus Mode',d:'25-min ADHD timer',a:'focus'},
-    {i:'💤',l:'Rest',d:'Restore HP/MP free',a:'rest'}
-  ];
-  let h='<div class="grid2">';
-  for(let m of items)h+='<div class="card" data-a="'+m.a+'"><div class="cicon">'+m.i+'</div><div class="clabel">'+m.l+'</div><div class="cdesc">'+m.d+'</div></div>';
-  h+='</div>';
-  // Save/Load section
-  h+='<div style="margin-top:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px;">';
-  h+='<h3 style="font-size:14px;margin-bottom:10px;color:var(--accent-light);">💾 Save Data</h3>';
-  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;">';
-  h+='<button class="cb" style="width:auto;padding:8px 16px;font-size:12px;" id="btn-save">Save Now</button>';
-  h+='<button class="cb" style="width:auto;padding:8px 16px;font-size:12px;background:#374151;" id="btn-export">Export</button>';
-  h+='<button class="cb" style="width:auto;padding:8px 16px;font-size:12px;background:#374151;" id="btn-import">Import</button>';
-  h+='<button class="cb" style="width:auto;padding:8px 16px;font-size:12px;background:var(--danger);" id="btn-reset">Reset</button>';
-  h+='</div>';
-  h+='<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">Auto-saves every 30 seconds</div>';
-  h+='</div>';
-  return h;
-}function rExp(){
-  let h='<div class="explore-view"><h2 class="st">🗺️ Adventure Zones</h2><div class="zlist">';
-  for(let i=0;i<G.zones.length;i++){
-    const z=G.zones[i],lk=G.p.lvl<z.lv;
-    const dc=z.dg=='low'?'#22c55e':z.dg=='medium'?'#eab308':z.dg=='high'?'#f97316':z.dg=='very high'?'#ef4444':'#a855f7';
-    h+='<div class="zcard '+(lk?'locked':'')+'" data-i="'+i+'"><div class="zh"><span class="zn">'+z.n+'</span><span class="zl">Lv.'+z.lv+(lk?' 🔒':'')+'</span></div><div class="zd">'+z.d+'</div><div class="zm"><span class="db" style="background:'+dc+'20;color:'+dc+'">'+z.dg+'</span><span class="xb">'+z.xp+' XP</span></div></div>';
-  }
-  h+='</div></div>'; return h;
+function renderToast() {
+  if (!ui.toast) return "";
+  return `<div style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:60;padding:8px 16px;border-radius:9999px;box-shadow:0 10px 25px rgba(74,59,50,.15);background:${C.mageDeep};color:white;font-size:13px;font-weight:600">${escapeHtml(ui.toast)}</div>`;
 }
 
-function rCbt(){
-  let h='<div class="combat-view"><h2 class="st">⚔️ Combat</h2><div class="erow">';
-  for(let i=0;i<G.cbt.en.length;i++){
-    const e=G.cbt.en[i],d=e.hp<=0,s=G.cbt.tg==i&&!d?'sel':'';
-    h+='<div class="ecard '+(d?'dead':'')+' '+s+'" data-i="'+i+'"><div class="eicon">'+(d?'💀':ee(e.n))+'</div><div class="ename">'+e.n+'</div>'+(d?'<div class="dt">DEFEATED</div>':'<div class="hps"><div class="bf bf-hp" style="width:'+((e.hp/e.mhp)*100)+'%"></div></div><div class="hpt">'+e.hp+'/'+e.mhp+'</div>')+'</div>';
-  }
-  h+='</div><div class="pstat"><div class="mst"><span class="md" style="background:#7c3aed"></span>San '+G.p.hp+'/'+G.p.mhp+'</div>';
-  for(let p of G.party)if(p.on)h+='<div class="mst"><span class="md" style="background:'+p.col+'"></span>'+p.n+' '+p.hp+'/'+p.mhp+'</div>';
-  h+='</div><div class="skills"><h3>Select Skill</h3><div class="slist">';
-  const ls=G.p.skills.filter(s=>s.on);
-  for(let i=0;i<ls.length;i++){
-    const s=ls[i],u=G.p.mp>=s.c,sel=G.cbt.sk==i?'sel':'';
-    h+='<div class="sbtn '+(u?'':'dis')+' '+sel+'" data-i="'+i+'"><div class="sn">'+s.n+'</div><div class="sc">'+s.c+' MP</div><div class="sd">'+s.d+'</div></div>';
-  }
-  h+='</div>';
-  const sk=ls[G.cbt.sk],ca=sk&&G.p.mp>=sk.c;
-  const si=G.p.skills.indexOf(sk);
-  h+='<button class="abtn '+(ca?'':'dis')+'" data-si="'+si+'" data-ti="'+G.cbt.tg+'">🎯 Cast '+(sk?sk.n:'...')+'</button>';
-  h+='<button class="fbtn">🏃 Flee</button></div></div>';
-  return h;
+function renderHome() {
+  const tLog = todayLog();
+  const { charges, msToNext } = getCharges(state, ui.now);
+  const isBossDay = tLog.encounter === "Boss Day" && !tLog.bossDone;
+  const callCost = isBossDay ? 2 : 1;
+  const ready = charges >= callCost;
+
+  const zaps = Array.from({length: CHARGE_CAP}).map((_,i) =>
+    `<span style="font-size:16px;${i < charges ? "" : "filter:grayscale(1) opacity(.3)"}">⚡</span>`).join("");
+
+  const callCard = card(`
+    <div style="padding:20px;text-align:center">
+      <p style="color:${C.inkSoft};font-size:13px;margin:0 0 4px">${isBossDay ? "A boss looms today — takes a bit longer, pays out a lot better." : (charges > 0 ? "A Scroll Wraith stirs nearby. Answer the call instead of the feed." : "Out of Focus for now — but the world's still open to wander.")}</p>
+      <h2 class="disp" style="font-weight:700;font-size:18px;margin:0 0 14px">${isBossDay ? "Boss Day" : "Answer the Call"}</h2>
+      <button data-act="beginCall" ${ready ? "" : "disabled"} style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15px;
+        background:${ready ? (isBossDay ? `linear-gradient(135deg, ${C.gold}, ${C.pink})` : `linear-gradient(135deg, ${C.mage}, ${C.mageDeep})`) : C.creamDeep};
+        color:${ready ? "white" : C.inkSoft}" class="disp">
+        <span>${isBossDay ? "🏆" : "🪄"}</span>
+        <span>${ready ? (isBossDay ? "Face the Boss (2 Focus)" : "Cast & Answer") : "No Focus Left"}</span>
+      </button>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px">${zaps}</div>
+      <p style="color:${C.inkSoft};font-size:11px;margin-top:8px">${charges >= CHARGE_CAP ? "Focus full" : `Next Focus in ${fmtMs(msToNext)}`} · ${tLog.count} calls answered today</p>
+    </div>
+  `);
+
+  const restRemaining = REST_COOLDOWN_MS - (ui.now - (state.lastRest||0));
+  const restReady = restRemaining <= 0;
+  const restCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🌙</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Rest</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${restReady ? "Fully restore HP and MP." : `Resting again in ${fmtMs(restRemaining)}`}</p>
+      </div>
+      <button data-act="restNow" ${restReady ? "" : "disabled"} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${restReady ? C.mageDeep : C.creamDeep};color:${restReady ? "white" : C.inkSoft}">Rest</button>
+    </div>
+  `);
+
+  const roamCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer" data-act="setTab" data-arg="explore">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.sageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🧭</span></div>
+      <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">Free Roam</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">No Focus needed — wander the map any time.</p></div>
+      <span style="color:${C.inkSoft}">▶</span>
+    </div>
+  `);
+
+  const materialChips = MATERIALS.map(m => `
+    <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.creamDeep}">
+      <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]||0}</span>
+    </div>`).join("");
+
+  const refinedChips = MATERIALS_REFINED.filter(m => (state.materials[m]||0) > 0).map(m => `
+    <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.mageSoft}">
+      <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]}</span>
+    </div>`).join("");
+
+  const potionChips = Object.entries(state.potions).filter(([,q]) => q > 0).map(([id,q]) => {
+    const r = RECIPES.find(x => x.id === id);
+    return `<button data-act="usePotion" data-arg="${id}" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.sageSoft}">
+      <span style="font-size:12px">🧪</span><span style="font-size:12px">${r.name} ×${q}</span></button>`;
+  }).join("");
+
+  const satchelCard = card(`
+    <div style="padding:16px">
+      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 10px;color:${C.mageDeep}">Satchel</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${materialChips}</div>
+      ${refinedChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${refinedChips}</div>` : ""}
+      ${potionChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">${potionChips}</div>` : ""}
+    </div>
+  `);
+
+  const wellnessCard = renderWellness();
+
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
 }
 
-function rParty(){
-  let h='<div class="party-view"><h2 class="st">👥 Party</h2><div class="plist">';
-  for(let p of G.party){
-    h+='<div class="pcard '+(p.on?'':'locked')+'"><div class="pava" style="background:'+p.col+'20;border-color:'+p.col+'"><span style="font-size:28px">'+(p.on?re(p.r):'🔒')+'</span></div><div class="pinfo"><div class="pn">'+p.n+' <span class="pt">'+p.t+'</span></div><div class="pr" style="color:'+p.col+'">'+p.r+'</div><div class="pd">'+p.d+'</div><div class="pb">'+p.b+'</div>'+(p.on?'<div class="ps">HP:'+p.hp+'/'+p.mhp+' ATK:'+p.atk+' DEF:'+p.def+' SPD:'+p.spd+'</div>':'')+'</div></div>';
-  }
-  h+='</div></div>'; return h;
+function renderWellness() {
+  ensureDaily();
+  const wGoal = state.water.goal;
+  const drops = Array.from({length: wGoal}).map((_,i) =>
+    `<span style="font-size:16px">${i < state.water.count ? "💧" : "🌫️"}</span>`).join("");
+  const waterDone = state.water.count >= wGoal;
+  const dietDone = state.diet.checked;
+  return card(`
+    <div style="padding:16px">
+      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 10px;color:${C.mageDeep}">Wellness</p>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="font-size:12.5px;margin:0">Hydration</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${state.water.count}/${wGoal} cups</p>
+        </div>
+        <button data-act="drinkWater" ${waterDone ? "disabled" : ""} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${waterDone ? C.sageSoft : C.mage};color:${waterDone ? C.sage : "white"}">${waterDone ? "Done" : "+1 Cup"}</button>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;margin-bottom:14px">${drops}</div>
+      <div style="border-top:1px solid ${C.border};padding-top:12px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="font-size:12.5px;margin:0">Clean Diet Day</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${state.diet.streak > 0 ? `🔥 ${state.diet.streak} day streak` : "Stayed on track today?"}</p>
+        </div>
+        <button data-act="markDietClean" ${dietDone ? "disabled" : ""} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${dietDone ? C.sageSoft : C.sage};color:${dietDone ? C.sage : "white"}">${dietDone ? "✔️ Logged" : "Mark Clean"}</button>
+      </div>
+    </div>
+  `);
 }
 
-function rSkills(){
-  let h='<div class="skills-view"><h2 class="st">✨ Mage Skills</h2><div class="sklist">';
-  for(let s of G.p.skills){
-    const st=s.on?'LEARNED':'Unlocks Lv.'+s.ul;
-    h+='<div class="skcard '+(s.on?'':'locked')+'"><div class="skh"><span class="ski">'+(s.buff?'🛡️':'⚡')+'</span><span class="skt">'+s.n+'</span><span class="sks">'+st+'</span></div><div class="skd"><span class="dp">'+s.c+' MP</span><span class="dp">'+(s.dmg||'Buff')+'</span></div><div class="skdsc">'+s.d+'</div></div>';
-  }
-  h+='</div><div class="stb"><h3>Character Stats</h3>';
-  for(let [k,v] of Object.entries(G.p.stats))h+='<div class="str"><span class="stn">'+k.toUpperCase()+'</span><span class="stv">'+v+'</span></div>';
-  h+='</div></div>'; return h;
+function renderExplore() {
+  const items = LOCATIONS.map(loc => {
+    const last = state.locations[loc.id] || 0;
+    const remaining = LOCATION_COOLDOWN_MS - (ui.now - last);
+    const ready = remaining <= 0;
+    return card(`
+      <div style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.sageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${loc.icon}</span></div>
+        <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">${loc.name}</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${ready ? "Ready to visit" : `Resting · ${fmtMs(remaining)}`}</p></div>
+        <button data-act="visitLocation" data-arg="${loc.id}" ${ready ? "" : "disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${ready ? C.sage : C.creamDeep};color:${ready ? "white" : C.inkSoft}">Visit</button>
+      </div>
+    `, "");
+  }).join("");
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+    <p style="color:${C.inkSoft};font-size:12px;margin:0 0 -6px">No Focus cost — wander whenever, each spot just needs a short rest between visits.</p>
+    ${items}
+  </div>`;
 }
 
-function rInv(){
-  let h='<div class="inventory-view"><h2 class="st">🎒 Inventory</h2>';
-  h+='<div class="eqs"><h3>Equipped</h3><div class="eqg">';
-  const sn={w:'Weapon',a:'Armor',acc:'Accessory'};
-  for(let sl of ['w','a','acc']){
-    const it=G.p.eq[sl];
-    h+='<div class="esl"><div class="esn">'+sn[sl]+'</div>'+(it?'<div class="eit" style="color:'+rc(it.r)+'">'+it.n+'</div><div class="est">'+(it.atk?'ATK +'+it.atk:it.def?'DEF +'+it.def:it.int?'INT +'+it.int:'')+'</div>':'<div class="ese">Empty</div>')+'</div>';
-  }
-  h+='</div></div>';
-  h+='<div class="its"><h3>Items ('+G.p.inv.length+')</h3><div class="ig">';
-  for(let i=0;i<G.p.inv.length;i++){
-    const it=G.p.inv[i];
-    h+='<div class="ic"><div class="ii">'+ie(it)+'</div><div class="in" style="color:'+rc(it.r)+'">'+it.n+'</div><div class="iq">x'+it.q+'</div><div class="ia">'+(it.t=='pot'?'<button class="ib ib-u" data-i="'+i+'">Use</button>':'')+((it.t=='wep'||it.t=='arm'||it.t=='acc')?'<button class="ib ib-e" data-i="'+i+'">Equip</button>':'')+'</div></div>';
-  }
-  if(G.p.inv.length==0)h+='<div class="ei">Your pack is empty.</div>';
-  h+='</div></div></div>'; return h;
+function renderParty() {
+  const items = PARTY.map(m => {
+    const unlocked = state.player.level >= m.unlockLv;
+    const aff = state.affinity[m.id] || 0;
+    const tiers = SNIPPETS[m.id] || [];
+    const unlockedLines = tiers.filter(t => aff >= t.at);
+    const nextTier = tiers.find(t => aff < t.at);
+    const bondBlock = unlocked && tiers.length > 0 ? `
+      <div style="margin-top:12px">
+        <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep}">
+          <div style="height:5px;background:${m.color};width:${nextTier ? Math.min(100,(aff/nextTier.at)*100) : 100}%"></div>
+        </div>
+        <p style="font-size:10px;color:${C.inkSoft};margin:3px 0 0">Bond ${aff}${nextTier ? ` · next at ${nextTier.at}` : " · fully bonded"}</p>
+        ${unlockedLines.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">${unlockedLines.map(t=>`<p style="font-size:11.5px;color:${C.inkSoft};font-style:italic;margin:0">${escapeHtml(t.line)}</p>`).join("")}</div>` : ""}
+      </div>` : "";
+    return card(`
+      <div style="padding:14px;opacity:${unlocked ? 1 : 0.55}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:46px;height:46px;border-radius:9999px;background:${m.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="font-size:${unlocked ? 22 : 18}px">${unlocked ? m.icon : "🔒"}</span>
+          </div>
+          <div style="flex:1">
+            <p class="disp" style="font-weight:700;font-size:14px;margin:0">${m.name} <span style="font-weight:500;color:${C.inkSoft};font-size:12px">· ${m.title}</span></p>
+            <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${unlocked ? m.bio : `Unlocks at Level ${m.unlockLv}`}</p>
+            ${unlocked ? `<p style="font-size:11px;color:${m.color};margin:3px 0 0;font-weight:700">${m.id === "aisyah" && state.questFlags.aisyahBonus ? "+35% Gold found (Sealed Chest bond)" : m.passive}</p>` : ""}
+          </div>
+        </div>
+        ${bondBlock}
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+  return `<div>${items}</div>`;
 }
 
-function rCraft(){
-  let h='<div class="craft-view"><h2 class="st">⚒️ Crafting</h2><div class="rlist">';
-  for(let i=0;i<G.recipes.length;i++){
-    const r=G.recipes[i]; let ok=true,ms='';
-    for(let [mn,mq] of Object.entries(r.m)){
-      const iv=G.p.inv.find(x=>x.n==mn);
-      const hv=iv?iv.q:0,en=hv>=mq;
-      if(!en)ok=false;
-      ms+='<span class="mp '+(en?'ok':'miss')+'">'+mn+': '+hv+'/'+mq+'</span>';
-    }
-    h+='<div class="rc"><div class="rr"><span class="ri">'+ie(r.res)+'</span><span class="rn" style="color:'+rc(r.res.r)+'">'+r.n+'</span><span class="rd">'+r.d+'</span></div><div class="rms">'+ms+'</div><button class="cb '+(ok?'':'dis')+'" data-i="'+i+'">Forge</button></div>';
-  }
-  h+='</div></div>'; return h;
+function renderQuests() {
+  ensureDaily();
+  const tasks = todaysTasks();
+  const taskRows = tasks.map((t,i) => {
+    const val = t.calc();
+    const complete = val >= t.goal;
+    const claimed = state.dailyTasksClaimed.ids.includes(t.id);
+    return `
+      <div style="padding:12px 14px;${i>0?`border-top:1px solid ${C.border};`:""}display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <p style="font-size:12.5px;margin:0">${t.desc}</p>
+          <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:6px">
+            <div style="height:5px;width:${Math.min(100,(val/t.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
+          </div>
+        </div>
+        ${claimed ? `<span style="font-size:14px;flex-shrink:0">✔️</span>` : complete ? `<button data-act="claimTask" data-arg="${t.id}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600;flex-shrink:0">Claim</button>` : `<span style="font-size:11px;color:${C.inkSoft};flex-shrink:0">${Math.min(val,t.goal)}/${t.goal}</span>`}
+      </div>`;
+  }).join("");
+
+  const bounties = todaysBounties();
+  const bountyRows = bounties.map((b,i) => {
+    const val = b.calc();
+    const complete = val >= b.goal;
+    const claimed = state.dailyTasksClaimed.ids.includes(b.id);
+    return `
+      <div style="padding:12px 14px;${i>0?`border-top:1px solid ${C.border};`:""}display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <p style="font-size:12.5px;margin:0">${b.icon} ${b.desc}</p>
+          <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:6px">
+            <div style="height:5px;width:${Math.min(100,(val/b.goal)*100)}%;background:${complete?C.sage:C.gold}"></div>
+          </div>
+        </div>
+        ${claimed ? `<span style="font-size:14px;flex-shrink:0">✔️</span>` : complete ? `<button data-act="claimTask" data-arg="${b.id}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.gold};color:white;font-size:11px;font-weight:600;flex-shrink:0">Claim</button>` : `<span style="font-size:11px;color:${C.inkSoft};flex-shrink:0">${Math.min(val,b.goal)}/${b.goal}</span>`}
+      </div>`;
+  }).join("");
+
+  const wk = isoWeekKey(new Date());
+  const weeklyDone = state.weeklyTaskClaimed && state.weeklyTaskClaimed.week === wk && state.weeklyTaskClaimed.done;
+  const weeklyVal = weeklyCallsCount();
+  const weeklyComplete = weeklyVal >= WEEKLY_TASK.goal;
+  const weeklyCard = card(`
+    <div style="padding:14px">
+      <p class="disp" style="font-weight:700;font-size:13px;margin:0 0 4px;color:${C.gold}">This Week</p>
+      <p style="font-size:12.5px;margin:0">${WEEKLY_TASK.desc}</p>
+      <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+        <div style="height:6px;width:${Math.min(100,(weeklyVal/WEEKLY_TASK.goal)*100)}%;background:${weeklyComplete?C.sage:C.gold}"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <span style="font-size:11px;color:${C.inkSoft}">${Math.min(weeklyVal,WEEKLY_TASK.goal)}/${WEEKLY_TASK.goal} · ${WEEKLY_TASK.reward.gold}g +${WEEKLY_TASK.reward.xp}xp</span>
+        ${weeklyDone ? `<span style="font-size:14px">✔️</span>` : weeklyComplete ? `<button data-act="claimWeeklyTask" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.gold};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+      </div>
+    </div>
+  `);
+
+  const chainItems = QUEST_CHAINS.map(chain => {
+    const idx = state.questChainProgress[chain.id] || 0;
+    const done = idx >= chain.steps.length;
+    const step = done ? null : chain.steps[idx];
+    const val = done ? 0 : questValue(step.track);
+    const complete = !done && val >= step.goal;
+    return card(`
+      <div style="padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <p class="disp" style="font-weight:700;font-size:14px;margin:0">${chain.icon} ${chain.title}</p>
+          <span style="font-size:11px;color:${C.inkSoft}">${done ? "Complete" : `Step ${idx+1}/${chain.steps.length}`}</span>
+        </div>
+        ${done ? `<p style="font-size:12px;color:${C.sage};margin:6px 0 0">All steps complete. 🎉</p>` : `
+          <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${step.desc}</p>
+          <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+            <div style="height:6px;width:${Math.min(100,(val/step.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+            <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,step.goal)}/${step.goal} · ${step.reward.gold}g${step.reward.xp?` +${step.reward.xp}xp`:""}</span>
+            ${complete ? `<button data-act="claimChainStep" data-arg="${chain.id}" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+          </div>
+        `}
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+
+  const milestoneItems = MILESTONE_QUESTS.map(q => {
+    const val = questValue(q.track);
+    const complete = val >= q.goal;
+    const claimed = state.questsClaimed.includes(q.id);
+    return card(`
+      <div style="padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <p class="disp" style="font-weight:700;font-size:14px;margin:0">${q.name}</p>
+          <span>${claimed ? "✔️" : complete ? "⭐" : "📜"}</span>
+        </div>
+        <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${q.desc}</p>
+        <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+          <div style="height:6px;width:${Math.min(100,(val/q.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+          <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,q.goal)}/${q.goal} · ${q.reward.gold}g${q.reward.xp?` +${q.reward.xp}xp`:""}</span>
+          ${complete && !claimed ? `<button data-act="claimQuest" data-arg="${q.id}" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+        </div>
+      </div>
+    `);
+  }).join("<div style='height:12px'></div>");
+
+  const vigilGoalVal = vigilGoal();
+  const vigilVal = state.totalCheckIns;
+  const vigilComplete = vigilVal >= vigilGoalVal;
+  const vigilCard = card(`
+    <div style="padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <p class="disp" style="font-weight:700;font-size:14px;margin:0">♾️ The Unending Vigil</p>
+        <span style="font-size:11px;color:${C.inkSoft}">Tier ${state.vigilTier||0}</span>
+      </div>
+      <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">An active quest with no end — keep answering calls to advance it.</p>
+      <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+        <div style="height:6px;width:${Math.min(100,(vigilVal/vigilGoalVal)*100)}%;background:${vigilComplete?C.sage:C.mage}"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <span style="font-size:11px;color:${C.inkSoft}">${Math.min(vigilVal,vigilGoalVal)}/${vigilGoalVal} total calls</span>
+        ${vigilComplete ? `<button data-act="claimVigil" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+      </div>
+    </div>
+  `);
+
+  return `<div style="display:flex;flex-direction:column;gap:18px">
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Active Quest</p>
+      ${vigilCard}
+    </div>
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">📌 Bounty Board</p>
+      ${card(bountyRows)}
+    </div>
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Today's Tasks</p>
+      ${card(taskRows)}
+    </div>
+    <div>${weeklyCard}</div>
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Quest Chains</p>
+      ${chainItems}
+    </div>
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Milestones</p>
+      ${milestoneItems}
+    </div>
+  </div>`;
 }
 
-function rQuest(){
-  let h='<div class="quest-view"><h2 class="st">📜 Active Quests</h2><div class="qlist">';
-  for(let q of G.quests){
-    const pc=Math.min(100,(q.c/q.need)*100);
-    h+='<div class="qc '+(q.done?'done':'')+'"><div class="qh"><span class="qn">'+(q.done?'✅ ':'')+q.n+'</span><span class="qr">'+q.rw.xp+' XP | '+q.rw.g+' G</span></div><div class="qd">'+q.d+'</div><div class="qp"><div class="pbar"><div class="pfill" style="width:'+pc+'%"></div></div><span class="ptxt">'+Math.min(q.c,q.need)+'/'+q.need+'</span></div></div>';
-  }
-  h+='</div><div class="sum"><div class="si2"><span class="sv">'+G.p.kills+'</span><span class="sl">Monsters</span></div><div class="si2"><span class="sv">'+G.p.quests+'</span><span class="sl">Quests</span></div><div class="si2"><span class="sv">'+G.p.fstreak+'</span><span class="sl">Focus</span></div></div></div>';
-  return h;
+function renderRecipeRow(r) {
+  const afford = canAfford(r);
+  const isEquip = r.type === "equipment";
+  const already = isEquip && state.crafted.includes(r.id);
+  const equipped = isEquip && state.equipment[r.slot] === r.id;
+  const needsStr = Object.entries(r.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (r.gold ? ` + ${r.gold}g` : "");
+  const prereqNote = r.requiresCrafted && !state.crafted.includes(r.requiresCrafted)
+    ? `<p style="font-size:10.5px;color:${C.pink};margin:2px 0 0">Requires ${RECIPES.find(x=>x.id===r.requiresCrafted).name}</p>` : "";
+  const actionBtn = isEquip && already
+    ? `<button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>`
+    : `<button data-act="craft" data-arg="${r.id}" ${afford?"":"disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${afford?C.mageDeep:C.creamDeep};color:${afford?"white":C.inkSoft}">${r.type==="refine"?"Refine":"Craft"}</button>`;
+  return card(`
+    <div style="padding:14px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${r.icon}</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">${r.name}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${r.effect}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${needsStr}</p>
+        ${prereqNote}
+      </div>
+      ${actionBtn}
+    </div>
+  `);
 }
 
-function rFocus(){
-  const el=Date.now()-(G.fs||Date.now()),rm=Math.max(0,G.fd-el);
-  const m=Math.floor(rm/60000),s=Math.floor((rm%60000)/1000);
-  return '<div class="fv"><div class="fc"><div class="ft" id="ft">'+m+':'+s.toString().padStart(2,'0')+'</div><div class="fl">Focus Mode</div></div><div class="ftips"><h3>🧠 ADHD Tips</h3><ul><li>One task at a time. No multitasking.</li><li>Put your phone face down.</li><li>Break the task into tiny steps.</li><li>Reward: +100 XP when done!</li></ul></div><button class="cfb">Cancel</button></div>';
+function renderCraft() {
+  const potions = RECIPES.filter(r => r.type === "potion");
+  const refines = RECIPES.filter(r => r.type === "refine");
+  const equips = RECIPES.filter(r => r.type === "equipment");
+  const section = (title, list) => list.length ? `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">${title}</p>
+    ${list.map(renderRecipeRow).join("<div style='height:10px'></div>")}
+  ` : "";
+  return `<div>
+    <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 4px">Alchemy & Forge</p>
+    ${section("Potions", potions)}
+    ${section("Refining", refines)}
+    ${section("Equipment", equips)}
+  </div>`;
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-  const hasSave = loadGame();
-  if (!hasSave) {
-    lg('Welcome to Legends of Daybreak, San.');
-    lg('Tap Adventure to start your journey!');
+function renderCalendar() {
+  const y = ui.monthCursor.getFullYear(), m = ui.monthCursor.getMonth();
+  const first = new Date(y, m, 1);
+  const startPad = first.getDay();
+  const days = new Date(y, m+1, 0).getDate();
+  const colors = { "Gathering Day":C.sage, "Crafting Day":C.gold, "Boss Day":C.pink, "Guild Day":C.mage, "Rest Day":C.inkSoft };
+  let cells = "";
+  for (let i=0;i<startPad;i++) cells += `<div></div>`;
+  for (let d=1; d<=days; d++) {
+    const dt = new Date(y, m, d);
+    const key = dayKey(dt);
+    const log = state.daysLog[key];
+    const enc = log ? log.encounter : encounterForDate(key);
+    const isToday = key === today();
+    const col = colors[enc] || C.inkSoft;
+    cells += `<div style="aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${log ? col+"33" : C.creamDeep};border:${isToday ? `2px solid ${C.mageDeep}` : "1px solid transparent"}">
+      <span style="font-size:11px;font-weight:${log?700:400}">${d}</span>
+      ${log ? `<div style="width:4px;height:4px;border-radius:4px;background:${col};margin-top:1px"></div>` : ""}
+    </div>`;
   }
-  render();
-});
+  const legend = ENCOUNTER_CYCLE.map(e => `<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:8px;background:${colors[e]}"></div><span style="font-size:11px;color:${C.inkSoft}">${e}</span></div>`).join("");
+  return `<div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button data-act="monthPrev">◀</button>
+      <p class="disp" style="font-weight:700;margin:0">${ui.monthCursor.toLocaleString("default",{month:"long",year:"numeric"})}</p>
+      <button data-act="monthNext">▶</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+      ${["S","M","T","W","T","F","S"].map(d=>`<p style="text-align:center;font-size:10px;color:${C.inkSoft};margin:0">${d}</p>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${cells}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">${legend}</div>
+  </div>`;
+}
+
+function renderEncounterModal() {
+  const enc = ui.encounter;
+  if (!enc) return "";
+  const pct = (enc.enemyHp / enc.enemyMaxHp) * 100;
+  const logLines = enc.log.map(l => `<p style="font-size:12.5px;color:${C.inkSoft};margin:0">${escapeHtml(l)}</p>`).join("");
+  const actionBtn = !enc.resolved
+    ? `<button data-act="castSpell" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white"><span>🪄</span><span>Cast Arcane Bolt</span></button>`
+    : `<button data-act="claimCall" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:${C.gold};color:white"><span>🏆</span><span>Claim Reward</span></button>`;
+  return `<div style="position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.45)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${enc.enemyName}${enc.isBoss ? " · Boss" : ""}</p>
+        ${!enc.resolved ? `<button data-act="closeEncounter"><span style="color:${C.inkSoft}">✖</span></button>` : ""}
+      </div>
+      <div style="height:10px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
+        <div style="height:10px;width:${pct}%;background:${C.pink};transition:width .3s"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;max-height:120px;overflow-y:auto">${logLines}</div>
+      ${actionBtn}
+    </div>
+  </div>`;
+}
+
+function renderBackupModal() {
+  if (!ui.showBackup) return "";
+  const backupText = escapeHtml(JSON.stringify(state));
+  return `<div style="position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.45)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">Backup & Restore</p>
+        <button data-act="closeBackup"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Copy this whenever you update the game, and keep it somewhere safe (like Notes). If progress ever resets, paste it back in below.</p>
+      <textarea readonly onfocus="this.select()" style="width:100%;height:70px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.inkSoft}">${backupText}</textarea>
+      <button data-act="copyBackup" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.mageSoft};color:${C.mageDeep};font-weight:600;font-size:13px"><span>📋</span><span>Copy Backup</span></button>
+      <div style="border-top:1px solid ${C.border};margin-top:16px;padding-top:16px">
+        <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Restore from a backup:</p>
+        <textarea id="importTextarea" placeholder="Paste your saved backup text here…" style="width:100%;height:70px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.ink}"></textarea>
+        <button data-act="restoreBackup" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.gold};color:white;font-weight:600;font-size:13px"><span>📥</span><span>Restore</span></button>
+      </div>
+      <p id="backupMsg" style="font-size:12px;color:${C.mageDeep};margin-top:10px;text-align:center">${escapeHtml(ui.importMsg)}</p>
+    </div>
+  </div>`;
+}
+
+function renderSkirmishModal() {
+  if (!ui.skirmish) return "";
+  const enc = ui.skirmish;
+  return `<div style="position:fixed;inset:0;z-index:56;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;text-align:center">
+      <p style="font-size:40px;margin:0 0 8px">${enc.icon}</p>
+      <p class="disp" style="font-weight:700;font-size:16px;margin:0 0 4px">A wild ${enc.name} appears!</p>
+      <p style="font-size:12px;color:${C.inkSoft};margin:0 0 16px">A quick skirmish — no Focus needed.</p>
+      <button data-act="fightSkirmish" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white">⚔️ Strike!</button>
+    </div>
+  </div>`;
+}
+
+function renderChestModal() {
+  if (!ui.showChest) return "";
+  return `<div style="position:fixed;inset:0;z-index:55;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <p class="disp" style="font-weight:700;font-size:16px;margin:0 0 6px">📦 A Sealed Chest</p>
+      <p style="font-size:12.5px;color:${C.inkSoft};margin:0 0 16px">Half-buried near the path, an old chest sealed with a merchant's mark. Crack it open now, or bring it to Aisyah unopened?</p>
+      <button data-act="chestChoice" data-arg="open" class="disp" style="width:100%;padding:12px;border-radius:16px;margin-bottom:8px;font-weight:600;background:linear-gradient(135deg, ${C.gold}, ${C.pink});color:white">Break the seal now (+80g +20xp)</button>
+      <button data-act="chestChoice" data-arg="aisyah" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white">Bring it to Aisyah unopened (permanent gold bonus)</button>
+    </div>
+  </div>`;
+}
+
+function renderNav() {
+  const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
+  const items = tabs.map(([id,icon,label]) => `
+    <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;flex:1;color:${ui.tab===id ? C.mageDeep : C.inkSoft}">
+      <span style="font-size:18px">${icon}</span>
+      <span style="font-size:11px;font-weight:${ui.tab===id?700:500}">${label}</span>
+    </button>`).join("");
+  return `<div style="position:fixed;bottom:0;left:0;right:0;display:flex;background:${C.card};border-top:1px solid ${C.border}">${items}</div>`;
+}
+
+function renderContent() {
+  if (ui.tab === "home") return renderHome();
+  if (ui.tab === "explore") return renderExplore();
+  if (ui.tab === "party") return renderParty();
+  if (ui.tab === "quests") return renderQuests();
+  if (ui.tab === "craft") return renderCraft();
+  if (ui.tab === "calendar") return renderCalendar();
+  return "";
+}
+
+function render() {
+  ensureDaily();
+  const html = `
+    ${renderHeader()}
+    ${renderToast()}
+    <div style="padding:20px 20px 96px">${renderContent()}</div>
+    ${renderEncounterModal()}
+    ${renderSkirmishModal()}
+    ${renderChestModal()}
+    ${renderBackupModal()}
+    ${renderNav()}
+  `;
+  document.getElementById("app").innerHTML = html;
+}
+
+/* ================= init ================= */
+load();
+render();
+setInterval(() => { ui.now = Date.now(); if (!ui.showBackup) render(); }, 20000);
 </script>
 </body>
 </html>
