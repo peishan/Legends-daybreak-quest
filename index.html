@@ -59,30 +59,45 @@ const WANDERING_MONSTERS = [
 ];
 
 const LOCATIONS = [
-  { id:"forest", name:"Whispering Forest", icon:"🌲", flavor:[
+  { id:"forest", name:"Whispering Forest", icon:"🌲", unlockLv:1, flavor:[
     "A patch of Moonherb glows faintly between the roots.",
     "The wraiths avoid this place. You take a slow breath.",
     "Something rustles overhead — just Soel, following at a distance.",
   ]},
-  { id:"market", name:"Market Row", icon:"🏪", flavor:[
+  { id:"market", name:"Market Row", icon:"🏪", unlockLv:1, flavor:[
     "A trader waves you over, then just as quickly gets distracted.",
     "Aisyah's voice carries from a stall two rows down, haggling loudly.",
     "You pocket a few coins someone dropped near the fountain.",
   ]},
-  { id:"fountain", name:"Guildhall Fountain", icon:"🏛️", flavor:[
+  { id:"fountain", name:"Guildhall Fountain", icon:"🏛️", unlockLv:1, flavor:[
     "Legends banners hang overhead, snapping gently in the wind.",
     "You toss a coin in. It doesn't come back, but you feel lighter.",
     "Mezstorm is humming something new here. You linger to listen.",
   ]},
-  { id:"lake", name:"Moonlit Lake", icon:"🌊", flavor:[
+  { id:"lake", name:"Moonlit Lake", icon:"🌊", unlockLv:1, flavor:[
     "The water is still enough to see the whole sky in it.",
     "Joel's usual spot on the dock is empty, but still warm.",
     "A Starlight Thread catches the light just beneath the surface.",
   ]},
-  { id:"watchtower", name:"Old Watchtower", icon:"⛰️", flavor:[
+  { id:"watchtower", name:"Old Watchtower", icon:"⛰️", unlockLv:1, flavor:[
     "From up here, the whole map feels smaller and kinder.",
     "Zaki left a practice sword leaning against the wall again.",
     "No wraiths reach this high. Just wind, and a little quiet.",
+  ]},
+  { id:"ruins", name:"Sunken Ruins", icon:"🏺", unlockLv:5, flavor:[
+    "Old Legends banners, faded, half-buried in silt.",
+    "Something valuable glints beneath the rubble.",
+    "The quiet here feels older than the guild itself.",
+  ]},
+  { id:"peak", name:"Frostpeak Summit", icon:"❄️", unlockLv:8, flavor:[
+    "The wind up here clears your head completely.",
+    "You can see all five zones from this ridge.",
+    "Frost-laced Starlight Thread grows only this high up.",
+  ]},
+  { id:"grove", name:"Elder Grove", icon:"🌳", unlockLv:12, flavor:[
+    "The oldest tree here has watched the guild for generations.",
+    "Soel refuses to leave once he's settled in the roots.",
+    "Everything feels a little more possible in this grove.",
   ]},
 ];
 
@@ -151,6 +166,54 @@ const TASK_POOL = [
   { id:"t_potion1", desc:"Use a potion today", goal:1, calc: () => state.dailyLog.potionsUsed||0, reward:{gold:6,xp:6} },
   { id:"t_material3", desc:"Gather 3 materials today", goal:3, calc: () => state.dailyLog.materialsGathered||0, reward:{gold:9,xp:5} },
 ];
+
+const DAY_QUESTS = [
+  { id:"dq_lost_charm", title:"Eliz's Lost Charm", giver:"eliz", icon:"❤️",
+    intro:'"I lost my charm somewhere near the lake — can you find it?"',
+    type:"fetch", track:"mat:Starlight Thread", goal:1,
+    complete:"You spot a glint by the shore and scoop it up. Eliz beams.",
+    reward:{gold:15,xp:12} },
+  { id:"dq_zaki_practice", title:"Sparring with Zaki", giver:"zaki", icon:"🔨",
+    intro:'"Wanna test my footwork? Answer just one Call with me today."',
+    type:"fetch", track:"totalCheckInsToday", goal:1,
+    complete:'He grins, out of breath. "Again tomorrow?"',
+    reward:{gold:10,xp:15} },
+  { id:"dq_soel_nap", title:"Soel's Sunny Spot", giver:"soel", icon:"🐱",
+    intro:"He wants his favorite napping spot — the Watchtower — visited and cleared of dust.",
+    type:"fetch", track:"visit:watchtower", goal:1,
+    complete:"Soel curls up there, one slow blink of thanks.",
+    reward:{gold:10,xp:10} },
+  { id:"dq_mez_song", title:"Mezstorm's Missing Verse", giver:"mezstorm", icon:"✨",
+    intro:'"I need quiet to finish this verse. Rest today instead of grinding?"',
+    type:"fetch", track:"restToday", goal:1,
+    complete:"She hums the finished line back to you. It's about you, a little.",
+    reward:{gold:12,xp:12} },
+  { id:"dq_senedra_map", title:"Senedra's Treasure Map", giver:"senedra", icon:"⭐",
+    intro:'"I drew a treasure map! Probably accurate. Explore 2 spots for me?"',
+    type:"fetch", track:"locationsToday", goal:2,
+    complete:'"Told you it\'d work!" she says, not looking at the map at all.',
+    reward:{gold:14,xp:10} },
+  { id:"dq_aisyah_debt", title:"Aisyah's Market Debt", giver:"aisyah", icon:"⚔️",
+    intro:'"Ugh, I owe the fruit stall 15 gold. Spot me? I\'m good for it."',
+    type:"choice",
+    options:[
+      { label:"Lend her the gold (-15g)", effect:{gold:-15,xp:12}, result:'She grins. "Knew I could count on you."' },
+      { label:"Tell her to handle it", effect:{xp:6}, result:'She laughs. "Fair enough. I\'ll figure it out."' },
+    ]},
+  { id:"dq_joel_choice", title:"Joel's Question", giver:"joel", icon:"🛡️",
+    intro:'"Rough day or good one — talk about it, or just fight something?"',
+    type:"choice",
+    options:[
+      { label:"Talk it out", effect:{xp:15}, result:'"Thanks for telling me. I\'ve got you."' },
+      { label:"Just fight something", effect:{gold:15}, result:'"Say no more." He tosses you a potion worth of coin.' },
+    ]},
+];
+
+const SELL_PRICES = {
+  "Moonherb":2, "Silver Dust":2, "Ember Shard":2, "Starlight Thread":2, "Slime Gel":2,
+  "Herbal Extract":5, "Silver Ingot":5, "Ember Core":5, "Starlight Weave":5, "Gel Solvent":5,
+};
+const POTION_SELL = { health_draught:5, focus_elixir:6, greater_health_draught:10 };
 
 const WEEKLY_TASK = { desc:"Answer 10 Calls this week", goal:10, reward:{gold:80,xp:60} };
 
@@ -249,6 +312,7 @@ function defaultState() {
     vigilTier: 0,
     questFlags: { chestFound:false, chestChoice:null, aisyahBonus:false },
     lastRest: 0, skirmishCount: 0,
+    dayQuest: { date:null, claimed:false, choiceMade:null },
   };
 }
 
@@ -306,6 +370,7 @@ function ensureDaily() {
   if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
   if (!state.water || state.water.date !== t) state.water = { date:t, count:0, goal:(state.water && state.water.goal) || 8 };
   if (!state.diet || state.diet.date !== t) state.diet = { date:t, checked:false, streak: state.diet ? state.diet.streak : 0, lastDate: state.diet ? state.diet.lastDate : null };
+  if (!state.dayQuest || state.dayQuest.date !== t) state.dayQuest = { date:t, claimed:false, choiceMade:null };
 }
 function grantReward(gold, xp) {
   state.player.gold += gold;
@@ -317,6 +382,22 @@ function grantReward(gold, xp) {
   }
   state.player.xp = newXp;
   return leveledUp;
+}
+function dayQuestValue(track) {
+  if (track === "totalCheckInsToday") return todayLog().count;
+  if (track === "restToday") return state.dailyLog.restToday || 0;
+  if (track === "locationsToday") return questValue("locationsToday");
+  if (track.startsWith("visit:")) {
+    const locId = track.slice(6);
+    const last = state.locations[locId] || 0;
+    return (last && dayKey(new Date(last)) === today()) ? 1 : 0;
+  }
+  if (track.startsWith("mat:")) return questValue(track);
+  return 0;
+}
+function todaysDayQuest() {
+  const idx = hashDay(today() + "-dayquest") % DAY_QUESTS.length;
+  return DAY_QUESTS[idx];
 }
 function todaysTasks() {
   const idxs = TASK_POOL.map((_,i) => i);
@@ -393,6 +474,13 @@ function castSpell() {
   }
   if (!pushedPhase) enc.log.push("It strikes back, but you hold your ground.");
   enc.enemyHp = newHp;
+
+  if (enc.isBoss) {
+    const retaliation = Math.round(3 + Math.random()*5);
+    state.player.hp = Math.max(1, state.player.hp - retaliation);
+    enc.log.push(`It hits back for ${retaliation} damage. (${state.player.hp}/${maxHp()} HP)`);
+    save();
+  }
   render();
 }
 
@@ -465,6 +553,7 @@ function claimCall() {
 
 function visitLocation(id) {
   const loc = LOCATIONS.find(l => l.id === id);
+  if (state.player.level < (loc.unlockLv||1)) return;
   const last = state.locations[id] || 0;
   if (ui.now - last < LOCATION_COOLDOWN_MS) return;
   ensureDaily();
@@ -583,6 +672,34 @@ function claimWeeklyTask() {
   else showToast(`Weekly task complete: ${WEEKLY_TASK.desc}`);
 }
 
+function claimDayQuest() {
+  ensureDaily();
+  const q = todaysDayQuest();
+  if (q.type !== "fetch" || state.dayQuest.claimed) return;
+  if (dayQuestValue(q.track) < q.goal) return;
+  state.dayQuest.claimed = true;
+  state.affinity[q.giver] = (state.affinity[q.giver]||0) + 1;
+  const leveledUp = grantReward(q.reward.gold||0, q.reward.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(q.complete);
+}
+
+function chooseDayQuest(optionIdx) {
+  ensureDaily();
+  const q = todaysDayQuest();
+  if (q.type !== "choice" || state.dayQuest.claimed) return;
+  const opt = q.options[optionIdx];
+  if (!opt) return;
+  state.dayQuest.claimed = true;
+  state.dayQuest.choiceMade = optionIdx;
+  state.affinity[q.giver] = (state.affinity[q.giver]||0) + 1;
+  const leveledUp = grantReward(opt.effect.gold||0, opt.effect.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(opt.result);
+}
+
 function restNow() {
   if (Date.now() - (state.lastRest||0) < REST_COOLDOWN_MS) return;
   state.player.hp = maxHp();
@@ -610,6 +727,49 @@ function fightSkirmish() {
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else showToast(`${enc.name} defeated! +${gold}g +${xp}xp${dropMat ? `, +1 ${dropMat}` : ""}`);
+}
+
+function sellMaterial(name) {
+  const qty = state.materials[name] || 0;
+  if (qty <= 0) return;
+  const price = SELL_PRICES[name] || 1;
+  state.materials[name] -= 1;
+  state.player.gold += price;
+  save(); render();
+  showToast(`Sold 1 ${name} to LLP for ${price}g.`);
+}
+
+function sellPotion(id) {
+  const qty = state.potions[id] || 0;
+  if (qty <= 0) return;
+  const price = POTION_SELL[id] || 4;
+  state.potions[id] -= 1;
+  state.player.gold += price;
+  save(); render();
+  showToast(`Sold 1 ${RECIPES.find(x=>x.id===id).name} to JT for ${price}g.`);
+}
+
+function sellEquipment(id) {
+  if (!state.crafted.includes(id)) return;
+  if (Object.values(state.equipment).includes(id)) return;
+  const r = RECIPES.find(x => x.id === id);
+  const price = Math.max(5, Math.round((r.gold||20) * 0.4));
+  state.crafted.splice(state.crafted.indexOf(id), 1);
+  state.player.gold += price;
+  save(); render();
+  showToast(`Sold ${r.name} to JT for ${price}g.`);
+}
+
+function usePotionInFight() {
+  const enc = ui.encounter;
+  if (!enc || !enc.isBoss || enc.resolved) return;
+  const id = state.potions.greater_health_draught > 0 ? "greater_health_draught" : (state.potions.health_draught > 0 ? "health_draught" : null);
+  if (!id) return;
+  state.potions[id] -= 1;
+  const heal = id === "greater_health_draught" ? 60 : 30;
+  state.player.hp = Math.min(maxHp(), state.player.hp + heal);
+  enc.log.push(`You drink a potion and recover ${heal} HP.`);
+  save(); render();
 }
 
 function drinkWater() {
@@ -704,7 +864,7 @@ function renderBackupMsg() {
 /* ================= action dispatch ================= */
 const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, usePotion, claimQuest,
   claimChainStep, claimTask, claimWeeklyTask, drinkWater, markDietClean, claimVigil, chestChoice,
-  restNow, fightSkirmish,
+  restNow, fightSkirmish, claimDayQuest, chooseDayQuest, sellMaterial, sellPotion, sellEquipment, usePotionInFight,
   setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
 
@@ -873,6 +1033,15 @@ function renderWellness() {
 
 function renderExplore() {
   const items = LOCATIONS.map(loc => {
+    const unlocked = state.player.level >= (loc.unlockLv||1);
+    if (!unlocked) {
+      return card(`
+        <div style="padding:14px;display:flex;align-items:center;gap:12px;opacity:0.55">
+          <div style="width:42px;height:42px;border-radius:12px;background:${C.creamDeep};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🔒</span></div>
+          <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">${loc.name}</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Unlocks at Level ${loc.unlockLv}</p></div>
+        </div>
+      `, "");
+    }
     const last = state.locations[loc.id] || 0;
     const remaining = LOCATION_COOLDOWN_MS - (ui.now - last);
     const ready = remaining <= 0;
@@ -1026,6 +1195,38 @@ function renderQuests() {
     `);
   }).join("<div style='height:12px'></div>");
 
+  const dq = todaysDayQuest();
+  const giver = PARTY.find(p => p.id === dq.giver);
+  const dqUnlocked = state.player.level >= giver.unlockLv;
+  let dqBody;
+  if (!dqUnlocked) {
+    dqBody = `<p style="font-size:12px;color:${C.inkSoft};margin:6px 0 0">${giver.name} hasn't joined yet — unlocks at Level ${giver.unlockLv}.</p>`;
+  } else if (dq.type === "choice") {
+    dqBody = state.dayQuest.claimed
+      ? `<p style="font-size:12px;color:${C.sage};margin:6px 0 0">${dq.options[state.dayQuest.choiceMade].result}</p>`
+      : `<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${dq.options.map((opt,i) => `<button data-act="chooseDayQuest" data-arg="${i}" class="disp" style="padding:10px;border-radius:14px;font-size:12.5px;font-weight:600;background:${C.mageSoft};color:${C.mageDeep};text-align:left">${opt.label}</button>`).join("")}</div>`;
+  } else {
+    const val = dayQuestValue(dq.track);
+    const complete = val >= dq.goal;
+    dqBody = state.dayQuest.claimed
+      ? `<p style="font-size:12px;color:${C.sage};margin:6px 0 0">${dq.complete}</p>`
+      : `
+        <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+          <div style="height:6px;width:${Math.min(100,(val/dq.goal)*100)}%;background:${complete?C.sage:C.mage}"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+          <span style="font-size:11px;color:${C.inkSoft}">${Math.min(val,dq.goal)}/${dq.goal} · ${dq.reward.gold}g +${dq.reward.xp}xp</span>
+          ${complete ? `<button data-act="claimDayQuest" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+        </div>`;
+  }
+  const dayQuestCard = card(`
+    <div style="padding:14px">
+      <p class="disp" style="font-weight:700;font-size:14px;margin:0">${dq.icon} ${dq.title}</p>
+      <p style="font-size:12px;color:${C.inkSoft};font-style:italic;margin:4px 0 0">${dq.intro}</p>
+      ${dqBody}
+    </div>
+  `);
+
   const vigilGoalVal = vigilGoal();
   const vigilVal = state.totalCheckIns;
   const vigilComplete = vigilVal >= vigilGoalVal;
@@ -1047,6 +1248,10 @@ function renderQuests() {
   `);
 
   return `<div style="display:flex;flex-direction:column;gap:18px">
+    <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">📖 Today's Story Quest</p>
+      ${dayQuestCard}
+    </div>
     <div>
       <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Active Quest</p>
       ${vigilCard}
@@ -1096,6 +1301,45 @@ function renderRecipeRow(r) {
   `);
 }
 
+function renderTraders() {
+  const matRows = MATERIALS.concat(MATERIALS_REFINED).filter(m => (state.materials[m]||0) > 0).map(m => {
+    const price = SELL_PRICES[m] || 1;
+    return `
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
+        <span style="font-size:12.5px">${m} ×${state.materials[m]}</span>
+        <button data-act="sellMaterial" data-arg="${m}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600">Sell 1 for ${price}g</button>
+      </div>`;
+  }).join("");
+
+  const potionRows = Object.entries(state.potions).filter(([,q]) => q > 0).map(([id,q]) => {
+    const r = RECIPES.find(x => x.id === id);
+    const price = POTION_SELL[id] || 4;
+    return `
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
+        <span style="font-size:12.5px">${r.name} ×${q}</span>
+        <button data-act="sellPotion" data-arg="${id}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.gold};color:white;font-size:11px;font-weight:600">Sell 1 for ${price}g</button>
+      </div>`;
+  }).join("");
+
+  const spareEquip = state.crafted.filter(id => !Object.values(state.equipment).includes(id));
+  const equipRows = spareEquip.map(id => {
+    const r = RECIPES.find(x => x.id === id);
+    const price = Math.max(5, Math.round((r.gold||20) * 0.4));
+    return `
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
+        <span style="font-size:12.5px">${r.name}</span>
+        <button data-act="sellEquipment" data-arg="${id}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.gold};color:white;font-size:11px;font-weight:600">Sell for ${price}g</button>
+      </div>`;
+  }).join("");
+
+  return `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">LLP · Materials Trader</p>
+    ${card(matRows || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — LLP only buys raw and refined materials.</p></div>`)}
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">JT · Gear & Potions Trader</p>
+    ${card((potionRows+equipRows) || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — JT buys potions and spare equipment.</p></div>`)}
+  `;
+}
+
 function renderCraft() {
   const potions = RECIPES.filter(r => r.type === "potion");
   const refines = RECIPES.filter(r => r.type === "refine");
@@ -1109,6 +1353,7 @@ function renderCraft() {
     ${section("Potions", potions)}
     ${section("Refining", refines)}
     ${section("Equipment", equips)}
+    ${renderTraders()}
   </div>`;
 }
 
@@ -1153,7 +1398,8 @@ function renderEncounterModal() {
   const pct = (enc.enemyHp / enc.enemyMaxHp) * 100;
   const logLines = enc.log.map(l => `<p style="font-size:12.5px;color:${C.inkSoft};margin:0">${escapeHtml(l)}</p>`).join("");
   const actionBtn = !enc.resolved
-    ? `<button data-act="castSpell" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white"><span>🪄</span><span>Cast Arcane Bolt</span></button>`
+    ? `<button data-act="castSpell" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white"><span>🪄</span><span>Cast Arcane Bolt</span></button>
+       ${enc.isBoss && (state.potions.health_draught>0 || state.potions.greater_health_draught>0) ? `<button data-act="usePotionInFight" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;margin-top:8px;background:${C.sageSoft};color:${C.sage}"><span>🧪</span><span>Drink Potion</span></button>` : ""}`
     : `<button data-act="claimCall" class="disp" style="width:100%;padding:12px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;background:${C.gold};color:white"><span>🏆</span><span>Claim Reward</span></button>`;
   return `<div style="position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.45)">
     <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
@@ -1164,6 +1410,7 @@ function renderEncounterModal() {
       <div style="height:10px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
         <div style="height:10px;width:${pct}%;background:${C.pink};transition:width .3s"></div>
       </div>
+      ${enc.isBoss ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px"><span style="font-size:12px;color:${C.inkSoft}">❤️ Your HP</span><span style="font-size:12px;font-weight:700;color:${C.ink}">${state.player.hp}/${maxHp()}</span></div>` : ""}
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;max-height:120px;overflow-y:auto">${logLines}</div>
       ${actionBtn}
     </div>
