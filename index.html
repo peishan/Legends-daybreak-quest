@@ -209,6 +209,86 @@ const DAY_QUESTS = [
     ]},
 ];
 
+const STORY_CHAPTERS = [
+  { id:"ch1", title:"The First Ember", icon:"🔥", unlockLv:1,
+    pages:[
+      "Legends wasn't always a guild for keeping people afloat. It started smaller — a firelit table, five chairs, and a promise: whatever comes for you, we come too.",
+      "You remember the day Joel put a Focus Charge in your hand and said, \"This one's yours now.\" You didn't know yet what it would hold back.",
+      "The Scroll Wraiths were already here then, thin as smoke, easy to ignore. They're patient. They wait for tired hands.",
+      "But so does the guild. And the guild doesn't blink first.",
+    ], reward:{gold:10,xp:10} },
+  { id:"ch2", title:"Cracks in the Feed", icon:"📜", unlockLv:3,
+    pages:[
+      "Mezstorm noticed it first — a hum under the market noise, low and constant, like something scrolling that never stops.",
+      "\"It's getting louder,\" she said. \"Not because it's stronger. Because we're listening for it now.\"",
+      "That's the trick of a Scroll Wraith: it doesn't grow until you feed it. Every ignored Call is a scrap it gets to keep.",
+      "You started answering more Calls that week — not because you had to, but because you finally understood what you were choosing between.",
+    ], reward:{gold:14,xp:12} },
+  { id:"ch3", title:"The Wraith That Doesn't Sleep", icon:"👻", unlockLv:5,
+    pages:[
+      "Aisyah found the Sunken Ruins first, half by accident, chasing a merchant who owed her coin.",
+      "\"There's something old down here,\" she said when she came back. \"Not dangerous. Just... tired. Like it forgot why it was still going.\"",
+      "You went to see for yourself. The Ruins were quiet in a way the rest of the map wasn't — no wraiths, no noise, just dust settling on something that used to matter.",
+      "Aisyah didn't say it, but you both knew: that's what waits for anything left unanswered long enough. You left with a little more Moonherb, and a little more resolve.",
+    ], reward:{gold:16,xp:14} },
+  { id:"ch4", title:"Watchtower Vigil", icon:"⛰️", unlockLv:7,
+    pages:[
+      "Zaki dragged a practice sword up the Watchtower stairs and refused to say why until you'd climbed all of them with him.",
+      "\"Highest point on the map,\" he said, out of breath. \"Nothing reaches you up here. Not even the noise.\"",
+      "You stood there a while, the whole guild's little world laid out below — Market Row, the Fountain, the Lake catching the last of the light.",
+      "It occurred to you that this was the first time in weeks you'd stood still on purpose. Zaki grinned like he'd planned that part too.",
+    ], reward:{gold:18,xp:16} },
+  { id:"ch5", title:"The Notification King's Shadow", icon:"👑", unlockLv:9,
+    pages:[
+      "Word reached the guild hall before you did: something crowned in badges was gathering strength near the old signal towers.",
+      "\"He feeds on the ping before the message,\" Mezstorm said. \"The dread of checking, more than what's actually there.\"",
+      "Joel offered to face him alongside you. Aisyah offered gold for information instead — hire it out, keep your energy for yourself.",
+      "Both are good instincts. The guild's never been about doing it alone, but it's not about never trusting yourself either. What feels right, this time?",
+    ], choice:{
+      options:[
+        { label:"Face him together with Joel", effect:{gold:20,xp:20}, result:"You and Joel answer the call side by side. The Notification King's crown flickers — smaller now, watched instead of feared." },
+        { label:"Send Aisyah to scout it out first", effect:{gold:35,xp:8}, result:"Aisyah comes back with coin and a plan. \"Knowledge first,\" she says. \"Then you swing.\"" },
+      ]} },
+  { id:"ch6", title:"What the Chest Remembered", icon:"📦", unlockLv:11,
+    pages:[
+      "Whatever you decided about that sealed chest, weeks back, it changed something small and lasting — the kind of thing only the guild notices.",
+      "Aisyah still brings it up sometimes, unprompted, like it proved something she already suspected about you.",
+      "Legends keeps its memory that way. Not in trophies. In the way people talk about you when you're not in the room.",
+      "You're starting to like what they'd say.",
+    ], reward:{gold:20,xp:20} },
+  { id:"ch7", title:"Frostpeak, Clear Sky", icon:"❄️", unlockLv:13,
+    pages:[
+      "The climb to Frostpeak Summit is longer than it looks from the Watchtower. Senedra swore there was treasure. There wasn't — just cold air and a very long view.",
+      "\"Still worth it though,\" she said, unbothered, already looking for the next thing to be excited about.",
+      "You found yourself agreeing. Some places aren't about what you find. They're about what gets quiet in you once you're standing there.",
+      "Starlight Thread grows only this high, brittle and rare. You gathered a little, mostly as an excuse to stay a while longer.",
+    ], reward:{gold:22,xp:22} },
+  { id:"ch8", title:"Daybreak", icon:"🌅", unlockLv:16,
+    pages:[
+      "There's no final wraith to slay. That was never really the shape of this story.",
+      "The guild hall looks the same as it always has — Joel by the door, Aisyah counting coin she'll spend by evening, Mezstorm humming something new, Soel claiming the warmest spot without asking.",
+      "What's different is you. Quieter mornings. Fewer scrolls you didn't mean to fall into. A streak that means something because you kept choosing it, not because you had to.",
+      "Daybreak was never a place you'd arrive at once and stay. It's just what it's called every time you answer the Call instead of the feed. Which, lately, is most days.",
+    ], reward:{gold:40,xp:40} },
+];
+
+const BOUNTY_GEAR = [
+  { id:"bounty_ring", slot:"trinket", name:"Hunter's Signet", effect:"+3 Luck (bigger crit chance)", bonus:{luck:3}, icon:"💍" },
+  { id:"bounty_cloak", slot:"armor", name:"Bounty Hunter's Cloak", effect:"+45 Max HP", bonus:{hp:45}, icon:"🧥" },
+  { id:"bounty_blade", slot:"weapon", name:"Wraithbane Blade", effect:"+12 Attack", bonus:{atk:12}, icon:"🗡️" },
+];
+const BOUNTY_GEAR_MILESTONES = [3, 7, 12];
+
+const HIT_LIST = [
+  { id:"hl_wraith", icon:"🎯", target:"Scroll Wraith", goal:3, reward:{gold:25,xp:20} },
+  { id:"hl_imp", icon:"🎯", target:"Notification Imp", goal:2, reward:{gold:20,xp:18} },
+  { id:"hl_serpent", icon:"🎯", target:"Feed Serpent", goal:2, reward:{gold:22,xp:20} },
+  { id:"hl_specter", icon:"🎯", target:"Doubt Specter", goal:3, reward:{gold:26,xp:22} },
+  { id:"hl_wraithling", icon:"🎯", target:"Wraithling", goal:3, reward:{gold:18,xp:14} },
+  { id:"hl_gnat", icon:"🎯", target:"Notification Gnat", goal:3, reward:{gold:18,xp:14} },
+  { id:"hl_anymix", icon:"🎯", target:"any", goal:5, reward:{gold:30,xp:25} },
+];
+
 const SELL_PRICES = {
   "Moonherb":2, "Silver Dust":2, "Ember Shard":2, "Starlight Thread":2, "Slime Gel":2,
   "Herbal Extract":5, "Silver Ingot":5, "Ember Core":5, "Starlight Weave":5, "Gel Solvent":5,
@@ -303,7 +383,7 @@ function defaultState() {
     daysLog: {}, guildDays:0, crafted:[], questsClaimed:[], focusBuff:0,
     charges: CHARGE_CAP, chargeAnchor: Date.now(), locations:{}, affinity:{},
     craftCount:0, refineCount:0, bossesDefeated:0,
-    dailyLog: { date:null, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0 },
+    dailyLog: { date:null, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0, enemyKillsToday:{} },
     dailyTasksClaimed: { date:null, ids:[] },
     weeklyTaskClaimed: { week:null, done:false },
     questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
@@ -313,12 +393,15 @@ function defaultState() {
     questFlags: { chestFound:false, chestChoice:null, aisyahBonus:false },
     lastRest: 0, skirmishCount: 0,
     dayQuest: { date:null, claimed:false, choiceMade:null },
+    storyProgress: { read:[], flags:{} },
+    hitListClaimed: { date:null, claimed:false },
+    hitListCompletions: 0,
   };
 }
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0 };
 
 function load() {
   try {
@@ -332,10 +415,11 @@ function save() {
 
 /* ================= derived helpers ================= */
 function todayLog() { return state.daysLog[today()] || { count:0, encounter: encounterForDate(today()), bossDone:false }; }
+function findGearItem(id) { return RECIPES.find(x => x.id === id) || BOUNTY_GEAR.find(x => x.id === id); }
 function equippedBonus() {
   return Object.values(state.equipment).reduce((acc, id) => {
     if (!id) return acc;
-    const r = RECIPES.find(x => x.id === id);
+    const r = findGearItem(id);
     if (!r) return acc;
     return { atk: acc.atk + (r.bonus.atk||0), hp: acc.hp + (r.bonus.hp||0), luck: acc.luck + (r.bonus.luck||0) };
   }, { atk:0, hp:0, luck:0 });
@@ -366,11 +450,12 @@ function canAfford(recipe) {
 }
 function ensureDaily() {
   const t = today();
-  if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0 };
+  if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0, enemyKillsToday:{} };
   if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
   if (!state.water || state.water.date !== t) state.water = { date:t, count:0, goal:(state.water && state.water.goal) || 8 };
   if (!state.diet || state.diet.date !== t) state.diet = { date:t, checked:false, streak: state.diet ? state.diet.streak : 0, lastDate: state.diet ? state.diet.lastDate : null };
   if (!state.dayQuest || state.dayQuest.date !== t) state.dayQuest = { date:t, claimed:false, choiceMade:null };
+  if (!state.hitListClaimed || state.hitListClaimed.date !== t) state.hitListClaimed = { date:t, claimed:false };
 }
 function grantReward(gold, xp) {
   state.player.gold += gold;
@@ -382,6 +467,21 @@ function grantReward(gold, xp) {
   }
   state.player.xp = newXp;
   return leveledUp;
+}
+function currentChapter() {
+  return STORY_CHAPTERS.find(c => state.player.level >= c.unlockLv && !state.storyProgress.read.includes(c.id)) || null;
+}
+function nextLockedChapter() {
+  return STORY_CHAPTERS.find(c => !state.storyProgress.read.includes(c.id) && state.player.level < c.unlockLv) || null;
+}
+function todaysHitList() {
+  const idx = hashDay(today() + "-hitlist") % HIT_LIST.length;
+  return HIT_LIST[idx];
+}
+function hitListValue(target) {
+  const kills = state.dailyLog.enemyKillsToday || {};
+  if (target === "any") return Object.values(kills).reduce((a,b) => a+b, 0);
+  return kills[target] || 0;
 }
 function dayQuestValue(track) {
   if (track === "totalCheckInsToday") return todayLog().count;
@@ -524,6 +624,7 @@ function claimCall() {
   const dayEntry = { count: tLog.count + 1, encounter: tLog.encounter, bossDone: tLog.bossDone || wasBoss };
   const newGuildDays = tLog.encounter === "Guild Day" && tLog.count === 0 ? state.guildDays + 1 : state.guildDays;
   if (wasBoss) state.bossesDefeated = (state.bossesDefeated||0) + 1;
+  else state.dailyLog.enemyKillsToday[enc.enemyName] = (state.dailyLog.enemyKillsToday[enc.enemyName]||0) + 1;
 
   const spent = spendCharge(state, ui.now, cost);
   if (!spent) { ui.encounter = null; render(); return; }
@@ -612,7 +713,7 @@ function craft(id) {
   showToast(`Crafted ${r.name}.`);
 }
 function equip(id) {
-  const r = RECIPES.find(x => x.id === id);
+  const r = findGearItem(id);
   state.equipment[r.slot] = r.id;
   save(); render();
   showToast(`${r.name} equipped.`);
@@ -700,6 +801,25 @@ function chooseDayQuest(optionIdx) {
   else showToast(opt.result);
 }
 
+function claimHitList() {
+  ensureDaily();
+  const b = todaysHitList();
+  if (state.hitListClaimed.claimed) return;
+  if (hitListValue(b.target) < b.goal) return;
+  state.hitListClaimed.claimed = true;
+  state.hitListCompletions = (state.hitListCompletions||0) + 1;
+  let gearMsg = "";
+  const milestoneIdx = BOUNTY_GEAR_MILESTONES.indexOf(state.hitListCompletions);
+  if (milestoneIdx >= 0 && BOUNTY_GEAR[milestoneIdx] && !state.crafted.includes(BOUNTY_GEAR[milestoneIdx].id)) {
+    state.crafted.push(BOUNTY_GEAR[milestoneIdx].id);
+    gearMsg = ` A bounty reward awaits in your Craft tab: ${BOUNTY_GEAR[milestoneIdx].name}!`;
+  }
+  const leveledUp = grantReward(b.reward.gold||0, b.reward.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Hit List cleared: ${b.target === "any" ? "5 monsters" : b.target}.${gearMsg}`);
+}
+
 function restNow() {
   if (Date.now() - (state.lastRest||0) < REST_COOLDOWN_MS) return;
   state.player.hp = maxHp();
@@ -723,6 +843,7 @@ function fightSkirmish() {
   const leveledUp = grantReward(gold, xp);
   state.skirmishCount = (state.skirmishCount||0) + 1;
   state.dailyLog.skirmishToday = (state.dailyLog.skirmishToday||0) + 1;
+  state.dailyLog.enemyKillsToday[enc.name] = (state.dailyLog.enemyKillsToday[enc.name]||0) + 1;
   ui.skirmish = null;
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
@@ -770,6 +891,38 @@ function usePotionInFight() {
   state.player.hp = Math.min(maxHp(), state.player.hp + heal);
   enc.log.push(`You drink a potion and recover ${heal} HP.`);
   save(); render();
+}
+
+function openStory() {
+  const ch = currentChapter();
+  if (!ch) return;
+  ui.showStory = true;
+  ui.storyPage = 0;
+  render();
+}
+function closeStory() { ui.showStory = false; render(); }
+function storyNext() {
+  const ch = currentChapter();
+  if (!ch) return;
+  if (ui.storyPage < ch.pages.length - 1) { ui.storyPage += 1; render(); return; }
+  if (ch.choice) { render(); return; }
+  finishChapter(ch, ch.reward);
+}
+function storyChoice(idx) {
+  const ch = currentChapter();
+  if (!ch || !ch.choice) return;
+  const opt = ch.choice.options[idx];
+  if (!opt) return;
+  state.storyProgress.flags[ch.id] = idx;
+  finishChapter(ch, opt.effect, opt.result);
+}
+function finishChapter(ch, reward, resultText) {
+  state.storyProgress.read.push(ch.id);
+  const leveledUp = grantReward(reward.gold||0, reward.xp||0);
+  ui.showStory = false;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(resultText || `Chapter complete: ${ch.title}`);
 }
 
 function drinkWater() {
@@ -865,6 +1018,7 @@ function renderBackupMsg() {
 const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, usePotion, claimQuest,
   claimChainStep, claimTask, claimWeeklyTask, drinkWater, markDietClean, claimVigil, chestChoice,
   restNow, fightSkirmish, claimDayQuest, chooseDayQuest, sellMaterial, sellPotion, sellEquipment, usePotionInFight,
+  openStory, closeStory, storyNext, storyChoice, claimHitList,
   setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
 
@@ -997,9 +1151,22 @@ function renderHome() {
     </div>
   `);
 
+  const chapterReady = currentChapter();
+  const chapterLocked = !chapterReady ? nextLockedChapter() : null;
+  const chronicleCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">📖</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">The Chronicle</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${chapterReady ? `New chapter: ${chapterReady.title}` : chapterLocked ? `Next chapter unlocks at Level ${chapterLocked.unlockLv}` : "You're all caught up."}</p>
+      </div>
+      ${chapterReady ? `<button data-act="openStory" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Read</button>` : ""}
+    </div>
+  `);
+
   const wellnessCard = renderWellness();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${chronicleCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -1111,6 +1278,29 @@ function renderQuests() {
         ${claimed ? `<span style="font-size:14px;flex-shrink:0">✔️</span>` : complete ? `<button data-act="claimTask" data-arg="${t.id}" class="disp" style="padding:4px 10px;border-radius:9999px;background:${C.mageDeep};color:white;font-size:11px;font-weight:600;flex-shrink:0">Claim</button>` : `<span style="font-size:11px;color:${C.inkSoft};flex-shrink:0">${Math.min(val,t.goal)}/${t.goal}</span>`}
       </div>`;
   }).join("");
+
+  const hl = todaysHitList();
+  const hlVal = hitListValue(hl.target);
+  const hlComplete = hlVal >= hl.goal;
+  const nextGearIdx = BOUNTY_GEAR_MILESTONES.findIndex(m => m > (state.hitListCompletions||0));
+  const gearHint = nextGearIdx >= 0 ? `${BOUNTY_GEAR_MILESTONES[nextGearIdx] - (state.hitListCompletions||0)} more clears until ${BOUNTY_GEAR[nextGearIdx].name}` : "All bounty gear unlocked";
+  const hitListCard = card(`
+    <div style="padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <p class="disp" style="font-weight:700;font-size:14px;margin:0">🎯 Hit List</p>
+        <span style="font-size:11px;color:${C.inkSoft}">${state.hitListCompletions||0} cleared</span>
+      </div>
+      <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${hl.target === "any" ? "Defeat 5 monsters of any kind today" : `Defeat ${hl.goal}× ${hl.target}`}</p>
+      <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-top:8px">
+        <div style="height:6px;width:${Math.min(100,(hlVal/hl.goal)*100)}%;background:${hlComplete?C.sage:C.pink}"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <span style="font-size:11px;color:${C.inkSoft}">${Math.min(hlVal,hl.goal)}/${hl.goal} · ${hl.reward.gold}g +${hl.reward.xp}xp</span>
+        ${state.hitListClaimed.claimed ? `<span style="font-size:14px">✔️</span>` : hlComplete ? `<button data-act="claimHitList" class="disp" style="padding:4px 12px;border-radius:9999px;background:${C.pink};color:white;font-size:11px;font-weight:600">Claim</button>` : ""}
+      </div>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:8px 0 0;font-style:italic">${gearHint}</p>
+    </div>
+  `);
 
   const bounties = todaysBounties();
   const bountyRows = bounties.map((b,i) => {
@@ -1257,6 +1447,10 @@ function renderQuests() {
       ${vigilCard}
     </div>
     <div>
+      <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">Bounty Hunting</p>
+      ${hitListCard}
+    </div>
+    <div>
       <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 10px">📌 Bounty Board</p>
       ${card(bountyRows)}
     </div>
@@ -1299,6 +1493,26 @@ function renderRecipeRow(r) {
       ${actionBtn}
     </div>
   `);
+}
+
+function renderBountyGear() {
+  const owned = BOUNTY_GEAR.filter(g => state.crafted.includes(g.id));
+  if (!owned.length) return "";
+  const rows = owned.map(r => {
+    const equipped = state.equipment[r.slot] === r.id;
+    return card(`
+      <div style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${r.icon}</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">${r.name}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${r.effect}</p>
+          <p style="font-size:10.5px;color:${C.pink};margin:2px 0 0">Bounty-exclusive</p>
+        </div>
+        <button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>
+      </div>
+    `);
+  }).join("<div style='height:10px'></div>");
+  return `<p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">Bounty Rewards</p>${rows}`;
 }
 
 function renderTraders() {
@@ -1353,6 +1567,7 @@ function renderCraft() {
     ${section("Potions", potions)}
     ${section("Refining", refines)}
     ${section("Equipment", equips)}
+    ${renderBountyGear()}
     ${renderTraders()}
   </div>`;
 }
@@ -1439,6 +1654,29 @@ function renderBackupModal() {
   </div>`;
 }
 
+function renderStoryModal() {
+  if (!ui.showStory) return "";
+  const ch = currentChapter();
+  if (!ch) { ui.showStory = false; return ""; }
+  const page = ch.pages[ui.storyPage];
+  const isLastPage = ui.storyPage >= ch.pages.length - 1;
+  const dots = ch.pages.map((_,i) => `<span style="width:6px;height:6px;border-radius:6px;background:${i===ui.storyPage ? C.mageDeep : C.creamDeep}"></span>`).join("");
+  const showChoice = isLastPage && ch.choice;
+  return `<div style="position:fixed;inset:0;z-index:57;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${ch.icon} ${ch.title}</p>
+        <button data-act="closeStory"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:13.5px;line-height:1.6;color:${C.ink};min-height:110px">${escapeHtml(page)}</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 16px">${dots}</div>
+      ${showChoice
+        ? `<div style="display:flex;flex-direction:column;gap:8px">${ch.choice.options.map((opt,i) => `<button data-act="storyChoice" data-arg="${i}" class="disp" style="padding:12px;border-radius:16px;font-size:13px;font-weight:600;background:${C.mageSoft};color:${C.mageDeep};text-align:left">${opt.label}</button>`).join("")}</div>`
+        : `<button data-act="storyNext" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white">${isLastPage ? "Finish Chapter" : "Continue"}</button>`}
+    </div>
+  </div>`;
+}
+
 function renderSkirmishModal() {
   if (!ui.skirmish) return "";
   const enc = ui.skirmish;
@@ -1467,42 +1705,4 @@ function renderChestModal() {
 function renderNav() {
   const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
   const items = tabs.map(([id,icon,label]) => `
-    <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;flex:1;color:${ui.tab===id ? C.mageDeep : C.inkSoft}">
-      <span style="font-size:18px">${icon}</span>
-      <span style="font-size:11px;font-weight:${ui.tab===id?700:500}">${label}</span>
-    </button>`).join("");
-  return `<div style="position:fixed;bottom:0;left:0;right:0;display:flex;background:${C.card};border-top:1px solid ${C.border}">${items}</div>`;
-}
-
-function renderContent() {
-  if (ui.tab === "home") return renderHome();
-  if (ui.tab === "explore") return renderExplore();
-  if (ui.tab === "party") return renderParty();
-  if (ui.tab === "quests") return renderQuests();
-  if (ui.tab === "craft") return renderCraft();
-  if (ui.tab === "calendar") return renderCalendar();
-  return "";
-}
-
-function render() {
-  ensureDaily();
-  const html = `
-    ${renderHeader()}
-    ${renderToast()}
-    <div style="padding:20px 20px 96px">${renderContent()}</div>
-    ${renderEncounterModal()}
-    ${renderSkirmishModal()}
-    ${renderChestModal()}
-    ${renderBackupModal()}
-    ${renderNav()}
-  `;
-  document.getElementById("app").innerHTML = html;
-}
-
-/* ================= init ================= */
-load();
-render();
-setInterval(() => { ui.now = Date.now(); if (!ui.showBackup) render(); }, 20000);
-</script>
-</body>
-</html>
+    <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:ce
