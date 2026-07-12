@@ -1705,4 +1705,43 @@ function renderChestModal() {
 function renderNav() {
   const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
   const items = tabs.map(([id,icon,label]) => `
-    <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:ce
+    <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;flex:1;color:${ui.tab===id ? C.mageDeep : C.inkSoft}">
+      <span style="font-size:18px">${icon}</span>
+      <span style="font-size:11px;font-weight:${ui.tab===id?700:500}">${label}</span>
+    </button>`).join("");
+  return `<div style="position:fixed;bottom:0;left:0;right:0;display:flex;background:${C.card};border-top:1px solid ${C.border}">${items}</div>`;
+}
+
+function renderContent() {
+  if (ui.tab === "home") return renderHome();
+  if (ui.tab === "explore") return renderExplore();
+  if (ui.tab === "party") return renderParty();
+  if (ui.tab === "quests") return renderQuests();
+  if (ui.tab === "craft") return renderCraft();
+  if (ui.tab === "calendar") return renderCalendar();
+  return "";
+}
+
+function render() {
+  ensureDaily();
+  const html = `
+    ${renderHeader()}
+    ${renderToast()}
+    <div style="padding:20px 20px 96px">${renderContent()}</div>
+    ${renderEncounterModal()}
+    ${renderStoryModal()}
+    ${renderSkirmishModal()}
+    ${renderChestModal()}
+    ${renderBackupModal()}
+    ${renderNav()}
+  `;
+  document.getElementById("app").innerHTML = html;
+}
+
+/* ================= init ================= */
+load();
+render();
+setInterval(() => { ui.now = Date.now(); if (!ui.showBackup) render(); }, 20000);
+</script>
+</body>
+</html>
