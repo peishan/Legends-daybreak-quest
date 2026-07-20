@@ -323,6 +323,17 @@ const RECIPES = [
   { id:"echostaff", type:"equipment", slot:"weapon", name:"Echostaff", needs:{"Echo Shard":3,"Ember Core":2}, gold:300, requiresCrafted:"archmage_staff", effect:"+32 Attack, +3 INT", bonus:{atk:32}, abilityBonus:{int:3}, icon:"⚡" },
   { id:"everguard_aegis", type:"equipment", slot:"armor", name:"Everguard Aegis", needs:{"Echo Shard":3,"Gel Solvent":2}, gold:280, requiresCrafted:"aegis_of_the_guild", effect:"+130 Max HP, +3 CON", bonus:{hp:130}, abilityBonus:{con:3}, icon:"🌊" },
   { id:"diadem_of_the_unwritten", type:"equipment", slot:"trinket", name:"Diadem of the Unwritten", needs:{"Echo Shard":3,"Starlight Weave":2}, gold:310, requiresCrafted:"crown_of_daybreak", effect:"+7 Luck, +3 WIS, +2 CHA", bonus:{luck:7}, abilityBonus:{wis:3,cha:2}, icon:"📖" },
+  { id:"ring_vigor", type:"equipment", slot:"ring", name:"Ring of Vigor", needs:{"Slime Gel":2,"Silver Dust":1}, gold:20, effect:"+12 Max HP", bonus:{hp:12}, icon:"💍" },
+  { id:"ring_precision", type:"equipment", slot:"ring", name:"Ring of Precision", needs:{"Starlight Thread":2,"Moonherb":1}, gold:20, effect:"+2 DEX", bonus:{}, abilityBonus:{dex:2}, icon:"💍" },
+  { id:"ring_focus", type:"equipment", slot:"ring", name:"Ring of Focus", needs:{"Ember Shard":2,"Moonherb":1}, gold:20, effect:"+2 INT", bonus:{}, abilityBonus:{int:2}, icon:"💍" },
+  { id:"ring_fortune", type:"equipment", slot:"ring", name:"Ring of Fortune", needs:{"Starlight Weave":1,"Silver Ingot":1}, gold:55, effect:"+2 Luck", bonus:{luck:2}, icon:"💍" },
+  { id:"amulet_focus", type:"equipment", slot:"amulet", name:"Amulet of Focus", needs:{"Starlight Thread":2,"Ember Shard":1}, gold:25, effect:"+2 INT, +1 WIS", bonus:{}, abilityBonus:{int:2,wis:1}, icon:"🔯" },
+  { id:"amulet_greater_focus", type:"equipment", slot:"amulet", name:"Greater Amulet of Focus", needs:{"Starlight Weave":2,"Ember Core":1}, gold:90, requiresCrafted:"amulet_focus", effect:"+4 INT, +2 WIS", bonus:{}, abilityBonus:{int:4,wis:2}, icon:"🔯" },
+  { id:"cloak_wanderer", type:"equipment", slot:"cloak", name:"Wanderer's Cloak", needs:{"Slime Gel":2,"Moonherb":1}, gold:25, effect:"+10 Max HP, +1 Luck", bonus:{hp:10,luck:1}, icon:"🧣" },
+  { id:"cloak_guardian", type:"equipment", slot:"cloak", name:"Guardian's Cloak", needs:{"Gel Solvent":2,"Herbal Extract":1}, gold:90, requiresCrafted:"cloak_wanderer", effect:"+25 Max HP, +2 CON", bonus:{hp:25}, abilityBonus:{con:2}, icon:"🧣" },
+  { id:"emberforged_blade", type:"equipment", slot:"weapon", name:"Emberforged Blade", needs:{"Legend Shard":5,"Echo Shard":5}, gold:400, requiresCrafted:"echostaff", forgeTier:true, effect:"+40 Attack, +4 INT", bonus:{atk:40}, abilityBonus:{int:4}, icon:"🔥" },
+  { id:"aegis_eternal", type:"equipment", slot:"armor", name:"Aegis Eternal", needs:{"Legend Shard":5,"Echo Shard":5}, gold:400, requiresCrafted:"everguard_aegis", forgeTier:true, effect:"+160 Max HP, +4 CON", bonus:{hp:160}, abilityBonus:{con:4}, icon:"🔱" },
+  { id:"forgemasters_seal", type:"equipment", slot:"trinket", name:"The Forgemaster's Seal", needs:{"Legend Shard":6,"Echo Shard":6}, gold:500, requiresCrafted:"diadem_of_the_unwritten", forgeTier:true, effect:"+9 Luck, +4 WIS, +3 CHA — Raids cost 1 less Focus", bonus:{luck:9}, abilityBonus:{wis:4,cha:3}, icon:"⚒️" },
 ];
 
 const QUEST_CHAINS = [
@@ -601,18 +612,83 @@ const STORY_CHAPTERS = [
     ], reward:{gold:40,xp:36} },
 ];
 
+const STRONGHOLD_STAGES = [
+  { id:"sh1", title:"The Old Tower", icon:"🗼", unlockLv:12,
+    pages:[
+      "There's a tower on the edge of guild territory — half-collapsed, ivy-thick, abandoned long before anyone currently in the guild was born.",
+      "Aisyah dares you to claim it. \"Free real estate,\" she says, like that settles everything.",
+      "You climb to the top floor anyway, mostly out of curiosity. The view is better than it has any right to be.",
+      "By the time you climb back down, you've already started planning where the bookshelves go. Some decisions make themselves.",
+    ], reward:{gold:40,xp:35} },
+  { id:"sh2", title:"A Rival's Claim", icon:"⚔️", unlockLv:20,
+    pages:[
+      "A traveling mage arrives at the tower's door, unimpressed, insisting the tower was promised to her guild years ago.",
+      "She's not wrong, exactly. The paperwork is real. It's just also thirty years old and nobody's touched it since.",
+      "Joel offers to handle it quietly — guild contacts, a fair settlement. Mezstorm just wants to duel her for it, mostly for the drama.",
+      "Either way, the tower's future gets decided today.",
+    ], choice:{
+      options:[
+        { label:"Let Joel negotiate a settlement", effect:{gold:60,xp:20}, result:"Joel handles it in an afternoon, calm as ever. The rival mage leaves with coin and no hard feelings." },
+        { label:"Let Mezstorm duel for it", effect:{gold:20,xp:60}, result:"Mezstorm wins in three moves, mostly on style. The rival mage leaves impressed despite herself." },
+      ]} },
+  { id:"sh3", title:"First Apprentice", icon:"📚", unlockLv:30,
+    pages:[
+      "A kid shows up at the tower gate, maybe fifteen, insisting she's ready to learn \"real magic\" immediately.",
+      "She is not ready. You tell her so. She stays anyway, sitting on the front step until you give in.",
+      "Eliz adores her instantly. Senedra is convinced she's secretly a spy. Neither is true, probably.",
+      "It's strange, having someone else's whole future partly in your hands now. You start taking the lessons more seriously than you expected to.",
+    ], reward:{gold:70,xp:60} },
+  { id:"sh4", title:"What the Tower Remembers", icon:"🌀", unlockLv:40,
+    pages:[
+      "Something old wakes up in the tower's lowest floor — a leftover ward, or a leftover grudge, nobody's sure which.",
+      "It doesn't attack so much as insist, over and over, that the tower was never really yours to claim.",
+      "You spend three straight days answering it back. Not with force. Just with proof: the mended roof, the full shelves, the apprentice asleep in the study.",
+      "Eventually it goes quiet. Not defeated, exactly. Just outnumbered by evidence.",
+    ], reward:{gold:100,xp:90} },
+  { id:"sh5", title:"The Tower's Purpose", icon:"🕯️", unlockLv:50,
+    pages:[
+      "Your apprentice asks, one evening, what the tower is actually for. You realize you don't have a tidy answer.",
+      "It's not a monument. It's not really a fortress either, despite the old stonework.",
+      "\"It's just somewhere that's still standing because people kept choosing to keep it standing,\" you tell her, and it sounds truer out loud than you expected.",
+      "She writes that down like it's important. Maybe it is.",
+    ], reward:{gold:120,xp:110} },
+  { id:"sh6", title:"The Warden's Sigil", icon:"🗝️", unlockLv:60,
+    pages:[
+      "The old rival mage returns, years later, not for the tower this time — just curious what became of it.",
+      "She finds a working tower, a trained apprentice, and shelves that are, against all odds, still organized.",
+      "\"Fine,\" she admits. \"You actually earned it.\" She leaves behind an old sigil, a tower-warden's mark, passed down through whoever holds a stronghold honestly.",
+      "You hang it by the door. Not for show. Just so the tower remembers this part too.",
+    ], reward:{gold:200,xp:180}, grantsItem:"tower_wardens_sigil" },
+];
+
 const BOUNTY_GEAR = [
   { id:"bounty_ring", slot:"trinket", name:"Hunter's Signet", effect:"+3 Luck, +2 DEX", bonus:{luck:3}, abilityBonus:{dex:2}, icon:"💍" },
   { id:"bounty_cloak", slot:"armor", name:"Bounty Hunter's Cloak", effect:"+45 Max HP, +2 CON", bonus:{hp:45}, abilityBonus:{con:2}, icon:"🧥" },
   { id:"bounty_blade", slot:"weapon", name:"Wraithbane Blade", effect:"+12 Attack, +2 STR", bonus:{atk:12}, abilityBonus:{str:2}, icon:"🗡️" },
+  { id:"tower_wardens_sigil", slot:"trinket", name:"Tower-Warden's Sigil", effect:"+4 Luck, +2 WIS — Dungeon Crawls cost 1 less Focus", bonus:{luck:4}, abilityBonus:{wis:2}, icon:"🗝️" },
 ];
 const BOUNTY_GEAR_MILESTONES = [3, 7, 12];
 
 const COMPANION_GEAR = [
-  { id:"comp_blade", name:"Companion's Blade", icon:"⚔️", dmgBonus:3, hitBonus:0, needs:{"Ember Shard":2,"Silver Dust":1}, gold:25 },
-  { id:"comp_charm", name:"Companion's Charm", icon:"🍀", dmgBonus:0, hitBonus:2, needs:{"Starlight Thread":2,"Moonherb":1}, gold:25 },
-  { id:"comp_gauntlets", name:"Companion's Gauntlets", icon:"🥊", dmgBonus:5, hitBonus:1, needs:{"Ember Core":2,"Silver Ingot":1}, gold:60 },
-  { id:"comp_sigil", name:"Companion's Sigil", icon:"🔱", dmgBonus:4, hitBonus:3, needs:{"Legend Shard":2}, gold:100 },
+  { id:"comp_blade", name:"Companion's Blade", icon:"⚔️", slot:"weapon", dmgBonus:3, hitBonus:0, needs:{"Ember Shard":2,"Silver Dust":1}, gold:25 },
+  { id:"comp_gauntlets", name:"Companion's Gauntlets", icon:"🥊", slot:"weapon", dmgBonus:5, hitBonus:1, needs:{"Ember Core":2,"Silver Ingot":1}, gold:60 },
+  { id:"comp_greatblade", name:"Companion's Greatblade", icon:"🗡️", slot:"weapon", dmgBonus:9, hitBonus:2, needs:{"Legend Shard":2}, gold:120 },
+  { id:"comp_charm", name:"Companion's Charm", icon:"🍀", slot:"armor", dmgBonus:0, hitBonus:2, needs:{"Starlight Thread":2,"Moonherb":1}, gold:25 },
+  { id:"comp_sigil", name:"Companion's Sigil", icon:"🔱", slot:"armor", dmgBonus:4, hitBonus:3, needs:{"Legend Shard":2}, gold:100 },
+  { id:"comp_ward", name:"Companion's Ward", icon:"🛡️", slot:"armor", dmgBonus:0, hitBonus:5, needs:{"Echo Shard":2}, gold:140 },
+  { id:"comp_trinket_luck", name:"Companion's Lucky Charm", icon:"💎", slot:"trinket", dmgBonus:0, hitBonus:2, needs:{"Moonherb":2,"Silver Dust":1}, gold:30 },
+  { id:"comp_trinket_power", name:"Companion's Power Trinket", icon:"💠", slot:"trinket", dmgBonus:6, hitBonus:2, needs:{"Echo Shard":2}, gold:130 },
+  { id:"comp_ring_might", name:"Companion's Ring of Might", icon:"💍", slot:"ring", dmgBonus:3, hitBonus:0, needs:{"Ember Shard":2,"Slime Gel":1}, gold:35 },
+  { id:"comp_ring_swift", name:"Companion's Ring of Swiftness", icon:"💍", slot:"ring", dmgBonus:0, hitBonus:3, needs:{"Starlight Thread":2,"Silver Dust":1}, gold:35 },
+  { id:"comp_amulet_vigor", name:"Companion's Amulet of Vigor", icon:"🔯", slot:"amulet", dmgBonus:4, hitBonus:1, needs:{"Gel Solvent":2,"Herbal Extract":1}, gold:70 },
+  { id:"comp_amulet_grand", name:"Grand Companion Amulet", icon:"🔯", slot:"amulet", dmgBonus:7, hitBonus:4, needs:{"Legend Shard":3}, gold:180 },
+  { id:"comp_cloak_shadow", name:"Companion's Shadow Cloak", icon:"🧣", slot:"cloak", dmgBonus:1, hitBonus:3, needs:{"Slime Gel":2,"Starlight Thread":1}, gold:45 },
+  { id:"comp_cloak_storm", name:"Companion's Storm Cloak", icon:"🧣", slot:"cloak", dmgBonus:5, hitBonus:3, needs:{"Echo Shard":2,"Legend Shard":1}, gold:160 },
+];
+
+const FAMILIAR_TRINKETS = [
+  { id:"soel_collar", name:"Soel's Collar", icon:"🔔", luckBonus:1, trapBonus:0, needs:{"Starlight Thread":2,"Moonherb":1}, gold:20 },
+  { id:"soel_bell", name:"Soel's Silver Bell", icon:"🎐", luckBonus:0, trapBonus:3, needs:{"Silver Ingot":1,"Starlight Weave":1}, gold:50 },
 ];
 
 const HIT_LIST = [
@@ -714,7 +790,7 @@ function spendCharge(s, now, amount) {
 function defaultState() {
   return {
     player: { name:"San", level:1, xp:0, gold:15, hp:60, maxHp:60, mp:30, maxMp:30 },
-    equipment: { weapon:null, armor:null, trinket:null },
+    equipment: { weapon:null, armor:null, trinket:null, ring1:null, ring2:null, amulet:null, cloak:null },
     materials: {}, potions: {}, totalCheckIns:0, streak:0, lastCheckInDate:null,
     daysLog: {}, guildDays:0, crafted:[], questsClaimed:[], focusBuff:0,
     charges: CHARGE_CAP, chargeAnchor: Date.now(), locations:{}, affinity:{},
@@ -730,18 +806,25 @@ function defaultState() {
     lastRest: 0, skirmishCount: 0,
     dayQuest: { date:null, claimed:false, choiceMade:null },
     storyProgress: { read:[], flags:{} },
+    strongholdProgress: { read:[], flags:{} },
     hitListClaimed: { date:null, claimed:false },
     hitListCompletions: 0,
     activeParty: [],
     companionGearOwned: {},
     companionGear: {},
+    companionEquipment: {},
+    familiarOut: true,
+    familiarTrinket: null,
+    familiarTrinketOwned: {},
     specialization: null,
+    reputation: 0,
+    repBonusClaimed: false,
   };
 }
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0 };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -759,7 +842,30 @@ function load() {
   try {
     const raw = localStorage.getItem("legends-save");
     state = raw ? mergeDefaults(defaultState(), JSON.parse(raw)) : defaultState();
+    migrateCompanionGear();
+    migrateFamiliar();
   } catch (e) { state = defaultState(); }
+}
+function migrateFamiliar() {
+  if (state.activeParty && state.activeParty.includes("soel")) {
+    state.activeParty = state.activeParty.filter(id => id !== "soel");
+  }
+  if (state.companionEquipment && state.companionEquipment.soel) {
+    delete state.companionEquipment.soel;
+  }
+}
+function migrateCompanionGear() {
+  if (!state.companionGear) return;
+  Object.entries(state.companionGear).forEach(([companionId, itemId]) => {
+    if (!itemId) return;
+    const item = COMPANION_GEAR.find(g => g.id === itemId);
+    if (!item) return;
+    if (!state.companionEquipment[companionId]) state.companionEquipment[companionId] = {};
+    if (!state.companionEquipment[companionId][item.slot]) {
+      state.companionEquipment[companionId][item.slot] = itemId;
+    }
+  });
+  state.companionGear = {};
 }
 function save() {
   try { localStorage.setItem("legends-save", JSON.stringify(state)); } catch (e) {}
@@ -804,6 +910,19 @@ function abilityMod(score) { return Math.floor((score-10)/2); }
 
 function maxHp() { return state.player.maxHp + equippedBonus().hp + abilityMod(abilityScores().con)*5; }
 function passiveActive(id) { const m = PARTY.find(x=>x.id===id); return m && state.player.level >= m.unlockLv; }
+function familiarActive() { return passiveActive("soel") && state.familiarOut; }
+function familiarTrinketBonus() {
+  const item = state.familiarTrinket ? FAMILIAR_TRINKETS.find(t => t.id === state.familiarTrinket) : null;
+  return item ? { luckBonus: item.luckBonus, trapBonus: item.trapBonus } : { luckBonus:0, trapBonus:0 };
+}
+function familiarLuckBonus() {
+  if (!familiarActive()) return 0;
+  return 1 + familiarTrinketBonus().luckBonus;
+}
+function familiarTrapBonus() {
+  if (!familiarActive()) return 0;
+  return 2 + familiarTrinketBonus().trapBonus;
+}
 function questValue(track) {
   if (track === "level") return state.player.level;
   if (track === "streak") return state.streak;
@@ -849,11 +968,38 @@ function grantReward(gold, xp) {
   state.player.xp = newXp;
   return leveledUp;
 }
+
+const REPUTATION_TIERS = [
+  { min:0, title:"Newcomer" },
+  { min:5, title:"Familiar Face" },
+  { min:15, title:"Trusted Face" },
+  { min:30, title:"Guild Regular" },
+  { min:50, title:"Well Liked" },
+  { min:75, title:"Guild Confidant" },
+  { min:110, title:"Living Legend of the Guild" },
+];
+function reputationTier(rep) {
+  let tier = REPUTATION_TIERS[0];
+  for (const t of REPUTATION_TIERS) { if (rep >= t.min) tier = t; else break; }
+  return tier;
+}
+function nextReputationTier(rep) {
+  return REPUTATION_TIERS.find(t => t.min > rep) || null;
+}
+function reputationDiscount() { return Math.min(0.25, (state.reputation||0) * 0.0025); }
+function gainReputation(amount) { state.reputation = (state.reputation||0) + amount; }
+
 function currentChapter() {
   return STORY_CHAPTERS.find(c => state.player.level >= c.unlockLv && !state.storyProgress.read.includes(c.id)) || null;
 }
 function nextLockedChapter() {
   return STORY_CHAPTERS.find(c => !state.storyProgress.read.includes(c.id) && state.player.level < c.unlockLv) || null;
+}
+function currentStrongholdStage() {
+  return STRONGHOLD_STAGES.find(s => state.player.level >= s.unlockLv && !state.strongholdProgress.read.includes(s.id)) || null;
+}
+function nextLockedStrongholdStage() {
+  return STRONGHOLD_STAGES.find(s => !state.strongholdProgress.read.includes(s.id) && state.player.level < s.unlockLv) || null;
 }
 function todaysHitList() {
   const idx = hashDay(today() + "-hitlist") % HIT_LIST.length;
@@ -914,13 +1060,15 @@ function showToast(text) {
   render();
 }
 
+function raidCost() { return state.equipment.trinket === "forgemasters_seal" ? 3 : 4; }
 function beginRaid() {
+  const cost = raidCost();
   const { charges } = getCharges(state, ui.now);
-  if (charges < 4) return;
+  if (charges < cost) return;
   if ((state.activeParty||[]).length < 3) { showToast("Bring at least 3 companions before starting a Raid."); return; }
   const boss = pickBossForLevel(state.player.level);
   const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult * 1.8);
-  ui.encounter = { isBoss:true, isRaid:true, bossId:boss.id, enemyName:`${boss.name} (Raid)`, cost:4, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
+  ui.encounter = { isBoss:true, isRaid:true, bossId:boss.id, enemyName:`${boss.name} (Raid)`, cost, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
   render();
 }
 
@@ -1007,7 +1155,7 @@ function rollAndApplyDamage(enc, isBoss, spell) {
     return;
   }
 
-  const luckBonus = eb.luck + (passiveActive("soel") ? 1 : 0);
+  const luckBonus = eb.luck + familiarLuckBonus();
   const debuffPenalty = (enc.hitPenaltyRounds > 0) ? (enc.hitPenalty||0) : 0;
   const hitBonus = Math.floor(state.player.level/4) + luckBonus + dexMod + divinerBonus - debuffPenalty;
   const AC = isBoss ? 12 : 9;
@@ -1029,6 +1177,34 @@ function rollAndApplyDamage(enc, isBoss, spell) {
   enc.log.push(isCrit ? `Natural 20! ${spell.name} critically hits for ${dmg} damage!` : `You roll ${roll} (+${hitBonus} = ${total}) — ${spell.name} hits for ${dmg} damage.`);
   if (spell.vampiric) { const heal = state.specialization === "necromancer" ? dmg : Math.round(dmg/2); state.player.hp = Math.min(maxHp(), state.player.hp + heal); enc.log.push(`You drain ${heal} HP back.`); }
   if (spell.dot) enc.acidTick = rollDice(spell.dotDice[0], spell.dotDice[1]);
+}
+
+const REP_BONUS_SCENE = {
+  title: "The Guild Remembers", icon: "🏅",
+  pages: [
+    "Word travels fast in a guild this size, and lately what it's been saying is about you.",
+    "Aisyah brings it up first, typically blunt about it: \"You're basically a fixture at this point. Might as well get a nameplate.\"",
+    "Joel says it more simply, the way he says most things that matter: \"People notice when someone keeps showing up. We noticed.\"",
+    "Nobody makes a big thing of it. That's sort of the point — you didn't do this for a ceremony. You did it because you kept choosing to. This is just what that adds up to, eventually.",
+  ],
+  reward: { gold:150, xp:100 },
+};
+function openRepBonus() {
+  if ((state.reputation||0) < 75 || state.repBonusClaimed) return;
+  ui.showRepBonus = true;
+  ui.repBonusPage = 0;
+  render();
+}
+function closeRepBonus() { ui.showRepBonus = false; render(); }
+function repBonusNext() {
+  if (!ui.showRepBonus) return;
+  if (ui.repBonusPage < REP_BONUS_SCENE.pages.length - 1) { ui.repBonusPage += 1; render(); return; }
+  state.repBonusClaimed = true;
+  const leveledUp = grantReward(REP_BONUS_SCENE.reward.gold, REP_BONUS_SCENE.reward.xp);
+  ui.showRepBonus = false;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast("The guild remembers. +150g +100xp");
 }
 
 function chooseSpecialization(id) {
@@ -1088,10 +1264,13 @@ function applyPartyStrikes(enc, isBoss) {
     if (encAllDefeated(enc)) return;
     const member = PARTY.find(p => p.id === pid);
     if (!member || state.player.level < member.unlockLv) return;
-    const gearId = state.companionGear[pid];
-    const gear = gearId ? COMPANION_GEAR.find(g => g.id === gearId) : null;
-    const gearHit = gear ? gear.hitBonus : 0;
-    const gearDmg = gear ? gear.dmgBonus : 0;
+    const equipped = state.companionEquipment[pid] || {};
+    const slotKeys = ["weapon","armor","trinket","amulet","cloak","ring1","ring2"];
+    let gearHit = 0, gearDmg = 0;
+    slotKeys.forEach(sk => {
+      const item = equipped[sk] ? COMPANION_GEAR.find(g => g.id === equipped[sk]) : null;
+      if (item) { gearHit += item.hitBonus; gearDmg += item.dmgBonus; }
+    });
     const roll = rollD20();
     const hitBonus = Math.floor(state.player.level/4) + gearHit;
     const AC = isBoss ? 12 : 9;
@@ -1366,9 +1545,19 @@ function craft(id) {
 }
 function equip(id) {
   const r = findGearItem(id);
+  if (!r || r.slot === "ring") return;
   state.equipment[r.slot] = r.id;
   save(); render();
   showToast(`${r.name} equipped.`);
+}
+function equipRing(combinedArg) {
+  const [itemId, targetSlot] = combinedArg.split("|");
+  if (targetSlot !== "ring1" && targetSlot !== "ring2") return;
+  const r = findGearItem(itemId);
+  if (!r || r.slot !== "ring") return;
+  state.equipment[targetSlot] = itemId;
+  save(); render();
+  showToast(`${r.name} equipped to ${targetSlot === "ring1" ? "Ring 1" : "Ring 2"}.`);
 }
 function usePotion(id) {
   const r = RECIPES.find(x => x.id === id);
@@ -1432,6 +1621,7 @@ function claimDayQuest() {
   if (dayQuestValue(q.track) < q.goal) return;
   state.dayQuest.claimed = true;
   state.affinity[q.giver] = (state.affinity[q.giver]||0) + 1;
+  gainReputation(2);
   const leveledUp = grantReward(q.reward.gold||0, q.reward.xp||0);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
@@ -1447,6 +1637,7 @@ function chooseDayQuest(optionIdx) {
   state.dayQuest.claimed = true;
   state.dayQuest.choiceMade = optionIdx;
   state.affinity[q.giver] = (state.affinity[q.giver]||0) + 1;
+  gainReputation(2);
   const leveledUp = grantReward(opt.effect.gold||0, opt.effect.xp||0);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
@@ -1460,6 +1651,7 @@ function claimHitList() {
   if (hitListValue(b.target) < b.goal) return;
   state.hitListClaimed.claimed = true;
   state.hitListCompletions = (state.hitListCompletions||0) + 1;
+  gainReputation(1);
   let gearMsg = "";
   const milestoneIdx = BOUNTY_GEAR_MILESTONES.indexOf(state.hitListCompletions);
   if (milestoneIdx >= 0 && BOUNTY_GEAR[milestoneIdx] && !state.crafted.includes(BOUNTY_GEAR[milestoneIdx].id)) {
@@ -1472,7 +1664,7 @@ function claimHitList() {
   else showToast(`Hit List cleared: ${b.target === "any" ? "5 monsters" : b.target}.${gearMsg}`);
 }
 
-const MAX_ACTIVE_PARTY = PARTY.length;
+const MAX_ACTIVE_PARTY = PARTY.filter(p => p.id !== "soel").length;
 
 function canAffordCompanionGear(item) {
   const goldOk = (item.gold||0) <= state.player.gold;
@@ -1489,20 +1681,58 @@ function craftCompanionGear(id) {
   showToast(`Crafted ${item.name}.`);
 }
 function assignCompanionGear(combinedArg) {
-  const [companionId, itemId] = combinedArg.split("|");
+  const [companionId, targetSlot, itemId] = combinedArg.split("|");
   const member = PARTY.find(p => p.id === companionId);
-  if (!member || state.player.level < member.unlockLv) return;
-  const current = state.companionGear[companionId];
-  if (current) { state.companionGearOwned[current] = (state.companionGearOwned[current]||0) + 1; delete state.companionGear[companionId]; }
+  if (!member || state.player.level < member.unlockLv || companionId === "soel") return;
+  const validSlots = ["weapon","armor","trinket","amulet","cloak","ring1","ring2"];
+  if (!validSlots.includes(targetSlot)) return;
+  if (!state.companionEquipment[companionId]) state.companionEquipment[companionId] = {};
+  const current = state.companionEquipment[companionId][targetSlot];
+  if (current) { state.companionGearOwned[current] = (state.companionGearOwned[current]||0) + 1; state.companionEquipment[companionId][targetSlot] = null; }
   if (itemId && itemId !== "none") {
     if (!state.companionGearOwned[itemId] || state.companionGearOwned[itemId] <= 0) return;
+    const item = COMPANION_GEAR.find(g => g.id === itemId);
+    const expectedItemSlot = (targetSlot === "ring1" || targetSlot === "ring2") ? "ring" : targetSlot;
+    if (!item || item.slot !== expectedItemSlot) return;
     state.companionGearOwned[itemId] -= 1;
-    state.companionGear[companionId] = itemId;
+    state.companionEquipment[companionId][targetSlot] = itemId;
+  }
+  save(); render();
+}
+
+function toggleFamiliarOut() {
+  if (!passiveActive("soel")) return;
+  state.familiarOut = !state.familiarOut;
+  save(); render();
+  showToast(state.familiarOut ? "Soel hops out, alert and unbothered." : "Soel tucks himself into the bag, safe and unimpressed.");
+}
+function canAffordFamiliarTrinket(item) {
+  const goldOk = (item.gold||0) <= state.player.gold;
+  const matsOk = Object.entries(item.needs).every(([m,q]) => (state.materials[m]||0) >= q);
+  return goldOk && matsOk;
+}
+function craftFamiliarTrinket(id) {
+  const item = FAMILIAR_TRINKETS.find(x => x.id === id);
+  if (!item || !canAffordFamiliarTrinket(item)) return;
+  Object.entries(item.needs).forEach(([m,q]) => { state.materials[m] -= q; });
+  state.player.gold -= (item.gold||0);
+  state.familiarTrinketOwned[id] = (state.familiarTrinketOwned[id]||0) + 1;
+  save(); render();
+  showToast(`Crafted ${item.name}.`);
+}
+function assignFamiliarTrinket(itemId) {
+  const current = state.familiarTrinket;
+  if (current) { state.familiarTrinketOwned[current] = (state.familiarTrinketOwned[current]||0) + 1; state.familiarTrinket = null; }
+  if (itemId && itemId !== "none") {
+    if (!state.familiarTrinketOwned[itemId] || state.familiarTrinketOwned[itemId] <= 0) return;
+    state.familiarTrinketOwned[itemId] -= 1;
+    state.familiarTrinket = itemId;
   }
   save(); render();
 }
 
 function toggleActiveParty(id) {
+  if (id === "soel") return;
   const member = PARTY.find(p => p.id === id);
   if (!member || state.player.level < member.unlockLv) return;
   const idx = state.activeParty.indexOf(id);
@@ -1533,11 +1763,13 @@ const DUNGEON_ROOMS = [
   { type:"boss" },
 ];
 const DUNGEON_COST = 4;
+function dungeonCost() { return state.equipment.trinket === "tower_wardens_sigil" ? DUNGEON_COST - 1 : DUNGEON_COST; }
 
 function beginDungeon() {
+  const cost = dungeonCost();
   const { charges } = getCharges(state, ui.now);
-  if (charges < DUNGEON_COST) return;
-  ui.dungeon = { roomIndex:-1, overrideType:null, cumGold:0, cumXp:0, cumDrops:{}, roomState:null, resolved:false };
+  if (charges < cost) return;
+  ui.dungeon = { roomIndex:-1, overrideType:null, cost, cumGold:0, cumXp:0, cumDrops:{}, roomState:null, resolved:false };
   advanceDungeonRoom();
   render();
 }
@@ -1619,13 +1851,15 @@ function resolveDungeonTrap() {
   if (!dg || !dg.roomState || dg.roomState.type !== "trap" || dg.roomState.resolved) return;
   const abs = abilityScores();
   const roll = rollD20();
-  const bonus = Math.floor(state.player.level/4) + abilityMod(abs.dex);
+  const trapBonus = familiarTrapBonus();
+  const bonus = Math.floor(state.player.level/4) + abilityMod(abs.dex) + trapBonus;
   const DC = 12;
   const success = roll === 20 || (roll !== 1 && roll + bonus >= DC);
+  const familiarNote = trapBonus > 0 ? " Soel's ears twitch toward it first." : "";
   if (success) {
     const g = 8 + Math.floor(Math.random()*8);
     ui.dungeon.cumGold += g;
-    dg.roomState.log = [`You roll ${roll} (+${bonus}) — you spot the trigger and step past it cleanly. (+${g}g)`];
+    dg.roomState.log = [`You roll ${roll} (+${bonus}) — you spot the trigger and step past it cleanly.${familiarNote} (+${g}g)`];
   } else {
     const dmg = 5 + Math.floor(Math.random()*8);
     state.player.hp = Math.max(1, state.player.hp - dmg);
@@ -1669,11 +1903,12 @@ function chooseDungeonBranch(idx) {
 function claimDungeon() {
   const dg = ui.dungeon;
   if (!dg || !dg.resolved) return;
-  const spent = spendCharge(state, ui.now, DUNGEON_COST);
+  const spent = spendCharge(state, ui.now, dg.cost || DUNGEON_COST);
   if (!spent) { ui.dungeon = null; render(); return; }
   state.charges = spent.charges; state.chargeAnchor = spent.chargeAnchor;
   ensureDaily();
   Object.entries(dg.cumDrops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; state.dailyLog.materialsGathered += q; });
+  gainReputation(6);
   const leveledUp = grantReward(dg.cumGold, dg.cumXp);
   ui.dungeon = null;
   save(); render();
@@ -1752,6 +1987,7 @@ function claimExpedition() {
   state.charges = spent.charges; state.chargeAnchor = spent.chargeAnchor;
   ensureDaily();
   Object.entries(exp.drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; state.dailyLog.materialsGathered += q; });
+  gainReputation(5);
   const leveledUp = grantReward(exp.cumGold, exp.cumXp);
   ui.expedition = null;
   save(); render();
@@ -1792,7 +2028,7 @@ function fightSkirmish() {
 function sellMaterial(name) {
   const qty = state.materials[name] || 0;
   if (qty <= 0) return;
-  const price = SELL_PRICES[name] || 1;
+  const price = Math.round((SELL_PRICES[name] || 1) * (1 + reputationDiscount()));
   state.materials[name] -= 1;
   state.player.gold += price;
   save(); render();
@@ -1802,7 +2038,7 @@ function sellMaterial(name) {
 function sellPotion(id) {
   const qty = state.potions[id] || 0;
   if (qty <= 0) return;
-  const price = POTION_SELL[id] || 4;
+  const price = Math.round((POTION_SELL[id] || 4) * (1 + reputationDiscount()));
   state.potions[id] -= 1;
   state.player.gold += price;
   save(); render();
@@ -1813,7 +2049,7 @@ function sellEquipment(id) {
   if (!state.crafted.includes(id)) return;
   if (Object.values(state.equipment).includes(id)) return;
   const r = RECIPES.find(x => x.id === id);
-  const price = Math.max(5, Math.round((r.gold||20) * 0.4));
+  const price = Math.round(Math.max(5, Math.round((r.gold||20) * 0.4)) * (1 + reputationDiscount()));
   state.crafted.splice(state.crafted.indexOf(id), 1);
   state.player.gold += price;
   save(); render();
@@ -1857,11 +2093,51 @@ function storyChoice(idx) {
 }
 function finishChapter(ch, reward, resultText) {
   state.storyProgress.read.push(ch.id);
+  gainReputation(3);
   const leveledUp = grantReward(reward.gold||0, reward.xp||0);
   ui.showStory = false;
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else showToast(resultText || `Chapter complete: ${ch.title}`);
+}
+
+function openStronghold() {
+  const s = currentStrongholdStage();
+  if (!s) return;
+  ui.showStronghold = true;
+  ui.strongholdPage = 0;
+  render();
+}
+function closeStronghold() { ui.showStronghold = false; render(); }
+function strongholdNext() {
+  const s = currentStrongholdStage();
+  if (!s) return;
+  if (ui.strongholdPage < s.pages.length - 1) { ui.strongholdPage += 1; render(); return; }
+  if (s.choice) { render(); return; }
+  finishStrongholdStage(s, s.reward);
+}
+function strongholdChoice(idx) {
+  const s = currentStrongholdStage();
+  if (!s || !s.choice) return;
+  const opt = s.choice.options[idx];
+  if (!opt) return;
+  state.strongholdProgress.flags[s.id] = idx;
+  finishStrongholdStage(s, opt.effect, opt.result);
+}
+function finishStrongholdStage(s, reward, resultText) {
+  state.strongholdProgress.read.push(s.id);
+  gainReputation(4);
+  let itemMsg = "";
+  if (s.grantsItem && !state.crafted.includes(s.grantsItem)) {
+    state.crafted.push(s.grantsItem);
+    const item = BOUNTY_GEAR.find(g => g.id === s.grantsItem);
+    itemMsg = item ? ` The ${item.name} awaits in your Craft tab.` : "";
+  }
+  const leveledUp = grantReward(reward.gold||0, reward.xp||0);
+  ui.showStronghold = false;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast((resultText || `Stronghold: ${s.title} complete!`) + itemMsg);
 }
 
 function drinkWater() {
@@ -1954,15 +2230,18 @@ function renderBackupMsg() {
 }
 
 /* ================= action dispatch ================= */
-const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, usePotion, claimQuest,
+const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, equipRing, usePotion, claimQuest,
   claimChainStep, claimTask, claimWeeklyTask, drinkWater, markDietClean, claimVigil, chestChoice,
   restNow, fightSkirmish, claimDayQuest, chooseDayQuest, sellMaterial, sellPotion, sellEquipment, usePotionInFight,
   openStory, closeStory, storyNext, storyChoice, claimHitList, trainingAttack,
+  openStronghold, closeStronghold, strongholdNext, strongholdChoice,
   toggleActiveParty, beginExpedition, closeExpedition, castExpeditionSpell, claimExpedition,
   craftCompanionGear, assignCompanionGear, beginRaid, selectTarget, attackBossAdd,
+  toggleFamiliarOut, craftFamiliarTrinket, assignFamiliarTrinket,
   beginDungeon, closeDungeon, castDungeonSpell, attackDungeonBossAdd, continueDungeon,
   resolveDungeonTrap, collectDungeonTreasure, restDungeonRoom, chooseDungeonBranch, claimDungeon,
   chooseSpecialization, openSpecPicker, closeSpecPicker,
+  openRepBonus, closeRepBonus, repBonusNext,
   setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
 
@@ -2079,14 +2358,15 @@ function renderHome() {
     </div>
   `);
 
-  const raidReady = expCharges >= 4 && state.activeParty.length >= 3;
+  const raidCostVal = raidCost();
+  const raidReady = expCharges >= raidCostVal && state.activeParty.length >= 3;
   const raidCard = card(`
     <div style="padding:16px">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">💀</span></div>
         <div style="flex:1">
           <p class="disp" style="font-weight:700;font-size:13px;margin:0">Raid</p>
-          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">One brutal boss · costs 4 Focus · needs 3+ companions${partyNames ? ` · with ${partyNames}` : ""}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">One brutal boss · costs ${raidCostVal} Focus${raidCostVal<4?" (Forgemaster's Seal)":""} · needs 3+ companions${partyNames ? ` · with ${partyNames}` : ""}</p>
         </div>
         <button data-act="beginRaid" ${raidReady ? "" : "disabled"} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${raidReady ? C.pink : C.creamDeep};color:${raidReady ? "white" : C.inkSoft}">Begin</button>
       </div>
@@ -2094,13 +2374,14 @@ function renderHome() {
     </div>
   `);
 
-  const dungeonReady = expCharges >= DUNGEON_COST;
+  const dungeonCostVal = dungeonCost();
+  const dungeonReady = expCharges >= dungeonCostVal;
   const dungeonCard = card(`
     <div style="padding:16px;display:flex;align-items:center;gap:12px">
       <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🕯️</span></div>
       <div style="flex:1">
         <p class="disp" style="font-weight:700;font-size:13px;margin:0">Dungeon Crawl</p>
-        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">7 rooms · fights, traps, treasure, a boss · costs ${DUNGEON_COST} Focus</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">7 rooms · fights, traps, treasure, a boss · costs ${dungeonCostVal} Focus${dungeonCostVal<DUNGEON_COST?" (Tower-Warden's Sigil)":""}</p>
       </div>
       <button data-act="beginDungeon" ${dungeonReady ? "" : "disabled"} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${dungeonReady ? C.mageDeep : C.creamDeep};color:${dungeonReady ? "white" : C.inkSoft}">Begin</button>
     </div>
@@ -2114,6 +2395,17 @@ function renderHome() {
         <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Choose a school of magic — permanent, one time.</p>
       </div>
       <button data-act="openSpecPicker" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Choose</button>
+    </div>
+  `) : "";
+
+  const repBonusCard = ((state.reputation||0) >= 75 && !state.repBonusClaimed) ? card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.gold}22, ${C.cream})">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.gold}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🏅</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">The Guild Has Something to Say</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Your standing has earned you a moment with the whole party.</p>
+      </div>
+      <button data-act="openRepBonus" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.gold};color:white">Read</button>
     </div>
   `) : "";
 
@@ -2175,9 +2467,22 @@ function renderHome() {
     </div>
   `);
 
+  const stageReady = currentStrongholdStage();
+  const stageLocked = !stageReady ? nextLockedStrongholdStage() : null;
+  const strongholdCard = (stageReady || stageLocked) ? card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🗼</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Your Stronghold</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${stageReady ? `New stage: ${stageReady.title}` : `Next stage unlocks at Level ${stageLocked.unlockLv}`}</p>
+      </div>
+      ${stageReady ? `<button data-act="openStronghold" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Visit</button>` : ""}
+    </div>
+  `) : "";
+
   const wellnessCard = renderWellness();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${specCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${specCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -2221,65 +2526,123 @@ function renderExplore() {
     </div>
   `);
 
-  const items = LOCATIONS.map(loc => {
+  const nodes = LOCATIONS.map((loc, i) => {
     const unlocked = state.player.level >= (loc.unlockLv||1);
-    if (!unlocked) {
-      return card(`
-        <div style="padding:14px;display:flex;align-items:center;gap:12px;opacity:0.55">
-          <div style="width:42px;height:42px;border-radius:12px;background:${C.creamDeep};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🔒</span></div>
-          <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">${loc.name}</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Unlocks at Level ${loc.unlockLv}</p></div>
-        </div>
-      `, "");
-    }
+    const isLeft = i % 2 === 0;
     const last = state.locations[loc.id] || 0;
     const remaining = LOCATION_COOLDOWN_MS - (ui.now - last);
-    const ready = remaining <= 0;
-    return card(`
-      <div style="padding:14px;display:flex;align-items:center;gap:12px">
-        <div style="width:42px;height:42px;border-radius:12px;background:${C.sageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${loc.icon}</span></div>
-        <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">${loc.name}</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${ready ? "Ready to visit" : `Resting · ${fmtMs(remaining)}`}</p></div>
-        <button data-act="visitLocation" data-arg="${loc.id}" ${ready ? "" : "disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${ready ? C.sage : C.creamDeep};color:${ready ? "white" : C.inkSoft}">Visit</button>
-      </div>
-    `, "");
+    const ready = unlocked && remaining <= 0;
+    const nodeContent = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:84px">
+        <button data-act="visitLocation" data-arg="${loc.id}" ${(!unlocked || !ready) ? "disabled" : ""} class="disp" style="width:54px;height:54px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:22px;background:${unlocked ? (ready ? C.sage : C.sageSoft) : C.creamDeep};border:3px solid ${unlocked ? C.sage : C.border};opacity:${unlocked ? 1 : 0.6};box-shadow:0 2px 6px rgba(74,59,50,.15)">${unlocked ? loc.icon : "🔒"}</button>
+        <p class="disp" style="font-size:9.5px;font-weight:700;text-align:center;margin:0;color:${unlocked?C.ink:C.inkSoft};line-height:1.2">${loc.name}</p>
+        <p style="font-size:8.5px;color:${C.inkSoft};margin:0;text-align:center">${unlocked ? (ready ? "Ready" : fmtMs(remaining)) : `Lv.${loc.unlockLv}`}</p>
+      </div>`;
+    return `<div style="display:flex;justify-content:${isLeft ? "flex-start" : "flex-end"};position:relative;z-index:1;margin-bottom:6px">${nodeContent}</div>`;
   }).join("");
+
   return `<div style="display:flex;flex-direction:column;gap:12px">
     ${trainingCard}
-    <p style="color:${C.inkSoft};font-size:12px;margin:0 0 -6px">Zones below have a short rest between visits — the Training Grounds above doesn't.</p>
-    ${items}
+    <p style="color:${C.inkSoft};font-size:12px;margin:0 0 -2px">Your path through the Legends map — tap an unlocked stop to visit.</p>
+    <div style="position:relative;padding:4px 4px 0">
+      <div style="position:absolute;left:50%;top:0;bottom:24px;width:3px;background:${C.border};transform:translateX(-50%);z-index:0"></div>
+      ${nodes}
+    </div>
   </div>`;
 }
 
 function renderCharacterSheet() {
   const scores = abilityScores();
-  const labels = [["str","STR"],["dex","DEX"],["con","CON"],["int","INT"],["wis","WIS"],["cha","CHA"]];
-  const chips = labels.map(([k,label]) => {
+  const eb = equippedBonus();
+  const abs = { str: abilityMod(scores.str), dex: abilityMod(scores.dex), con: abilityMod(scores.con), int: abilityMod(scores.int), wis: abilityMod(scores.wis), cha: abilityMod(scores.cha) };
+  const gold = "#c9a746", goldBright = "#e0c568", parchment = "#e8dcc0", parchDim = "#a99b7c", stoneDark = "#1a1411", stoneBg = "#241d18", stonePanel = "#2c2119", green = "#7fbf7f", red = "#d67a7a";
+
+  const abLabels = [["str","STR"],["dex","DEX"],["con","CON"],["int","INT"],["wis","WIS"],["cha","CHA"]];
+  const statRows = abLabels.map(([k,label]) => {
     const score = scores[k];
-    const mod = abilityMod(score);
+    const mod = abs[k];
+    const modColor = mod > 0 ? green : mod < 0 ? red : parchDim;
     return `
-      <div style="flex:1;min-width:80px;text-align:center;padding:10px 4px;border-radius:14px;background:${C.mageSoft}">
-        <p style="font-size:10px;color:${C.mageDeep};font-weight:700;margin:0">${label}</p>
-        <p class="disp" style="font-size:17px;font-weight:700;margin:2px 0 0">${score}</p>
-        <p style="font-size:10.5px;color:${C.inkSoft};margin:0">${mod >= 0 ? "+" : ""}${mod}</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:${stonePanel};border-radius:5px;margin-bottom:4px;border:1px solid #3d3226">
+        <span style="font-size:10.5px;font-weight:700;color:${gold};letter-spacing:0.5px">${label}</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:13px;font-weight:700;color:${parchment}">${score}</span>
+          <span style="font-size:11px;font-weight:700;color:${modColor};min-width:22px;text-align:right">${mod>=0?"+":""}${mod}</span>
+        </div>
       </div>`;
   }).join("");
-  const spec = state.specialization ? SPECIALIZATIONS.find(s => s.id === state.specialization) : null;
-  const specBlock = spec ? `
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${C.border};display:flex;align-items:center;gap:10px">
-      <span style="font-size:20px">${spec.icon}</span>
-      <div>
-        <p class="disp" style="font-weight:700;font-size:13px;margin:0;color:${C.mageDeep}">${spec.name}</p>
-        <p style="font-size:10.5px;color:${C.inkSoft};margin:1px 0 0">${spec.desc}</p>
+
+  const luckB = eb.luck + familiarLuckBonus();
+  const lvlBonus = Math.floor(state.player.level/4);
+  const divinerB = state.specialization === "diviner" ? 2 : 0;
+  const totalHit = lvlBonus + luckB + abs.dex + divinerB;
+  const lvlDmg = Math.round(state.player.level*0.8);
+  const totalDmg = lvlDmg + eb.atk + abs.int;
+  const evokerNote = state.specialization === "evoker" ? ` <span style="color:${gold}">× 1.15 (Evoker)</span>` : "";
+
+  const modLine = (label, val) => val ? `<p style="font-size:10px;color:${parchDim};margin:1px 0">${label}: <span style="color:${parchment}">${val>=0?"+":""}${val}</span></p>` : "";
+
+  const breakdownPanel = `
+    <div style="margin-top:10px;background:${stonePanel};border:1px solid #3d3226;border-radius:6px;padding:10px 12px">
+      <p style="font-size:11px;font-weight:700;color:${gold};letter-spacing:0.5px;margin:0 0 6px">ATTACK ROLL MODIFIERS</p>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span style="font-size:10.5px;color:${parchDim}">To-Hit Bonus</span>
+        <span style="font-size:13px;font-weight:700;color:${parchment}">+${totalHit}</span>
       </div>
-    </div>` : "";
-  return card(`
-    <div style="padding:16px">
-      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 4px;color:${C.mageDeep}">Character Sheet</p>
-      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Grows naturally every 5 levels — boosted further by Bounty and Mythic gear.</p>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">${chips}</div>
-      <p style="font-size:10px;color:${C.inkSoft};margin:10px 0 0">DEX: to-hit · INT: spell damage · CON: Max HP · WIS: reduces boss damage taken · CHA: gold found · STR: companion damage</p>
-      ${specBlock}
-    </div>
-  `);
+      ${modLine("Level", lvlBonus)}${modLine("DEX", abs.dex)}${modLine("Gear Luck", luckB)}${modLine("Diviner", divinerB)}
+      <div style="height:1px;background:#3d3226;margin:8px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span style="font-size:10.5px;color:${parchDim}">Spell Damage Bonus</span>
+        <span style="font-size:13px;font-weight:700;color:${parchment}">+${totalDmg}${evokerNote}</span>
+      </div>
+      ${modLine("Level", lvlDmg)}${modLine("Gear ATK", eb.atk)}${modLine("INT", abs.int)}
+    </div>`;
+
+  const spec = state.specialization ? SPECIALIZATIONS.find(s => s.id === state.specialization) : null;
+  const tier = reputationTier(state.reputation||0);
+  const feats = [
+    spec ? `${spec.icon} ${spec.name}` : null,
+    `🏅 ${tier.title}`,
+  ].filter(Boolean);
+  const featsPanel = `
+    <div style="margin-top:10px;background:${stonePanel};border:1px solid #3d3226;border-radius:6px;padding:10px 12px">
+      <p style="font-size:11px;font-weight:700;color:${gold};letter-spacing:0.5px;margin:0 0 6px">TITLES & SPECIALIZATION</p>
+      ${feats.map(f => `<p style="font-size:11.5px;color:${parchment};margin:3px 0">${f}</p>`).join("")}
+      <p style="font-size:9.5px;color:${parchDim};margin:6px 0 0">DEX: to-hit · INT: spell damage · CON: Max HP · WIS: reduces boss damage · CHA: gold found · STR: companion damage</p>
+    </div>`;
+
+  const slotLabels = [["weapon","🪄"],["armor","🛡️"],["cloak","🧣"],["amulet","🔯"],["trinket","💎"],["ring1","💍"],["ring2","💍"]];
+  const gearSlots = slotLabels.map(([slotKey,icon]) => {
+    const itemId = state.equipment[slotKey];
+    const item = itemId ? findGearItem(itemId) : null;
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px">
+        <div style="width:42px;height:42px;border-radius:9999px;background:${item ? `radial-gradient(circle at 35% 30%, #4a3c28, ${stonePanel})` : stoneDark};border:2px solid ${item ? gold : "#4a3f30"};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:${item ? "0 0 6px rgba(201,167,70,.4)" : "none"}">${icon}</div>
+        <p style="font-size:8px;color:${item ? parchment : parchDim};margin:0;text-align:center;line-height:1.15;font-weight:${item?700:400}">${item ? item.name.split(" ").slice(0,2).join(" ") : "—"}</p>
+      </div>`;
+  }).join("");
+  const gearPanel = `
+    <div style="margin-top:10px;background:${stonePanel};border:1px solid #3d3226;border-radius:6px;padding:12px">
+      <p style="font-size:11px;font-weight:700;color:${gold};letter-spacing:0.5px;margin:0 0 10px">EQUIPPED GEAR</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between">${gearSlots}</div>
+    </div>`;
+
+  return `
+    <div style="background:linear-gradient(160deg, ${stoneBg}, ${stoneDark});border:3px solid #6b5330;border-radius:10px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,.35)">
+      <div style="border:1px solid ${gold};border-radius:8px;padding:14px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:52px;height:52px;border-radius:9999px;background:radial-gradient(circle at 35% 30%, #4a3c28, ${stonePanel});border:2px solid ${gold};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🪄</div>
+          <div>
+            <p class="disp" style="font-weight:700;font-size:15px;margin:0;color:${goldBright};letter-spacing:0.5px">${escapeHtml(state.player.name)}</p>
+            <p style="font-size:10.5px;color:${parchDim};margin:1px 0 0">Level ${state.player.level} Mage${spec ? ` · ${spec.name}` : ""}</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${statRows}</div>
+        ${breakdownPanel}
+        ${gearPanel}
+        ${featsPanel}
+      </div>
+    </div>`;
 }
 
 function renderParty() {
@@ -2297,20 +2660,65 @@ function renderParty() {
         <p style="font-size:10px;color:${C.inkSoft};margin:3px 0 0">Bond ${aff}${nextTier ? ` · next at ${nextTier.at}` : " · fully bonded"}</p>
         ${unlockedLines.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">${unlockedLines.map(t=>`<p style="font-size:11.5px;color:${C.inkSoft};font-style:italic;margin:0">${escapeHtml(t.line)}</p>`).join("")}</div>` : ""}
       </div>` : "";
+    const isSoel = m.id === "soel";
     const isActive = state.activeParty.includes(m.id);
-    const activeToggle = unlocked ? `
+    const activeToggle = (unlocked && !isSoel) ? `
       <button data-act="toggleActiveParty" data-arg="${m.id}" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${isActive ? m.color : C.creamDeep};color:${isActive ? "white" : C.inkSoft}">${isActive ? "⚔️ Fighting alongside you" : "Bring on Expeditions & fights"}</button>` : "";
-    const assignedGearId = state.companionGear[m.id];
-    const assignedGear = assignedGearId ? COMPANION_GEAR.find(g => g.id === assignedGearId) : null;
-    const availableGear = COMPANION_GEAR.filter(g => (state.companionGearOwned[g.id]||0) > 0);
-    const gearPicker = unlocked && (assignedGear || availableGear.length > 0) ? `
+    const equipped = state.companionEquipment[m.id] || {};
+    const gearChipRow = (unlocked && !isSoel) ? (() => {
+      const slotLabels = [["weapon","⚔️"],["armor","🛡️"],["trinket","💎"],["amulet","🔯"],["cloak","🧣"],["ring1","💍1"],["ring2","💍2"]];
+      const chips = slotLabels.map(([slotKey,icon]) => {
+        const itemId = equipped[slotKey];
+        const item = itemId ? COMPANION_GEAR.find(g => g.id === itemId) : null;
+        return `
+          <div style="min-width:64px;flex:1;padding:6px 6px;border-radius:10px;background:${item?C.mageSoft:C.creamDeep};text-align:center">
+            <p style="font-size:9px;color:${C.inkSoft};margin:0">${icon}</p>
+            <p style="font-size:9.5px;font-weight:700;color:${item?C.mageDeep:C.inkSoft};margin:2px 0 0;line-height:1.2">${item ? item.name.replace("Companion's ","").replace("Companion ","") : "Empty"}</p>
+          </div>`;
+      }).join("");
+      return `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${chips}</div>`;
+    })() : "";
+    const renderSlotPicker = (targetSlot, slotLabel, itemSlotType) => {
+      const itemSlot = itemSlotType || targetSlot;
+      const assignedId = equipped[targetSlot];
+      const assignedGear = assignedId ? COMPANION_GEAR.find(g => g.id === assignedId) : null;
+      const availableGear = COMPANION_GEAR.filter(g => g.slot === itemSlot && (state.companionGearOwned[g.id]||0) > 0);
+      if (!assignedGear && availableGear.length === 0) return "";
+      return `
+        <div style="margin-top:8px">
+          <p style="font-size:10px;color:${C.inkSoft};margin:0 0 5px">${slotLabel}: ${assignedGear ? `${assignedGear.icon} ${assignedGear.name}` : "Empty"}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${assignedGear ? `<button data-act="assignCompanionGear" data-arg="${m.id}|${targetSlot}|none" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.creamDeep};color:${C.inkSoft}">Unequip</button>` : ""}
+            ${availableGear.map(g => `<button data-act="assignCompanionGear" data-arg="${m.id}|${targetSlot}|${g.id}" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.mageSoft};color:${C.mageDeep}">${g.icon} ${g.name} (${state.companionGearOwned[g.id]})</button>`).join("")}
+          </div>
+        </div>`;
+    };
+    const gearPicker = (unlocked && !isSoel) ? `
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid ${C.border}">
-        <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 6px">${assignedGear ? `Equipped: ${assignedGear.icon} ${assignedGear.name}` : "No gear equipped"}</p>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${assignedGear ? `<button data-act="assignCompanionGear" data-arg="${m.id}|none" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.creamDeep};color:${C.inkSoft}">Unequip</button>` : ""}
-          ${availableGear.map(g => `<button data-act="assignCompanionGear" data-arg="${m.id}|${g.id}" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.mageSoft};color:${C.mageDeep}">${g.icon} ${g.name} (${state.companionGearOwned[g.id]})</button>`).join("")}
-        </div>
+        ${renderSlotPicker("weapon", "⚔️ Weapon")}
+        ${renderSlotPicker("armor", "🛡️ Armor")}
+        ${renderSlotPicker("trinket", "💎 Trinket")}
+        ${renderSlotPicker("amulet", "🔯 Amulet")}
+        ${renderSlotPicker("cloak", "🧣 Cloak")}
+        ${renderSlotPicker("ring1", "💍 Ring 1", "ring")}
+        ${renderSlotPicker("ring2", "💍 Ring 2", "ring")}
       </div>` : "";
+    const familiarBagToggle = (unlocked && isSoel) ? `
+      <button data-act="toggleFamiliarOut" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${state.familiarOut ? m.color : C.creamDeep};color:${state.familiarOut ? "white" : C.inkSoft}">${state.familiarOut ? "🐱 Out & Alert" : "🎒 Safely Bagged"}</button>` : "";
+    const familiarTrinketPicker = (unlocked && isSoel) ? (() => {
+      const assignedId = state.familiarTrinket;
+      const assignedItem = assignedId ? FAMILIAR_TRINKETS.find(t => t.id === assignedId) : null;
+      const availableItems = FAMILIAR_TRINKETS.filter(t => (state.familiarTrinketOwned[t.id]||0) > 0);
+      if (!assignedItem && availableItems.length === 0) return "";
+      return `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid ${C.border}">
+          <p style="font-size:10px;color:${C.inkSoft};margin:0 0 5px">💍 Trinket: ${assignedItem ? `${assignedItem.icon} ${assignedItem.name}` : "Empty"}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${assignedItem ? `<button data-act="assignFamiliarTrinket" data-arg="none" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.creamDeep};color:${C.inkSoft}">Unequip</button>` : ""}
+            ${availableItems.map(t => `<button data-act="assignFamiliarTrinket" data-arg="${t.id}" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.mageSoft};color:${C.mageDeep}">${t.icon} ${t.name} (${state.familiarTrinketOwned[t.id]})</button>`).join("")}
+          </div>
+        </div>`;
+    })() : "";
     return card(`
       <div style="padding:14px;opacity:${unlocked ? 1 : 0.55}">
         <div style="display:flex;align-items:center;gap:12px">
@@ -2320,11 +2728,14 @@ function renderParty() {
           <div style="flex:1">
             <p class="disp" style="font-weight:700;font-size:14px;margin:0">${m.name} <span style="font-weight:500;color:${C.inkSoft};font-size:12px">· ${m.title}</span></p>
             <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${unlocked ? m.bio : `Unlocks at Level ${m.unlockLv}`}</p>
-            ${unlocked ? `<p style="font-size:11px;color:${m.color};margin:3px 0 0;font-weight:700">${m.id === "aisyah" && state.questFlags.aisyahBonus ? "+35% Gold found (Sealed Chest bond)" : m.passive}</p>` : ""}
+            ${unlocked ? `<p style="font-size:11px;color:${m.color};margin:3px 0 0;font-weight:700">${m.id === "aisyah" && state.questFlags.aisyahBonus ? "+35% Gold found (Sealed Chest bond)" : m.passive}${isSoel && !state.familiarOut ? " (inactive while bagged)" : ""}</p>` : ""}
           </div>
         </div>
+        ${gearChipRow}
         ${activeToggle}
         ${gearPicker}
+        ${familiarBagToggle}
+        ${familiarTrinketPicker}
         ${bondBlock}
       </div>
     `);
@@ -2332,7 +2743,7 @@ function renderParty() {
   return `<div>
     ${renderCharacterSheet()}
     <div style="height:16px"></div>
-    <p style="font-size:12px;color:${C.inkSoft};margin:0 0 12px">Bring your whole unlocked party to strike alongside you in every fight, Expedition, and Raid.</p>
+    <p style="font-size:12px;color:${C.inkSoft};margin:0 0 12px">Bring your unlocked companions to strike alongside you in every fight, Expedition, and Raid. Soel's a familiar, not a fighter — he lends passive luck and trap sense instead.</p>
     ${items}
   </div>`;
 }
@@ -2550,14 +2961,24 @@ function renderQuests() {
 function renderRecipeRow(r) {
   const afford = canAfford(r);
   const isEquip = r.type === "equipment";
+  const isRing = r.slot === "ring";
   const already = isEquip && state.crafted.includes(r.id);
-  const equipped = isEquip && state.equipment[r.slot] === r.id;
+  const equipped = isEquip && !isRing && state.equipment[r.slot] === r.id;
   const needsStr = Object.entries(r.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (r.gold ? ` + ${r.gold}g` : "");
   const prereqNote = r.requiresCrafted && !state.crafted.includes(r.requiresCrafted)
     ? `<p style="font-size:10.5px;color:${C.pink};margin:2px 0 0">Requires ${RECIPES.find(x=>x.id===r.requiresCrafted).name}</p>` : "";
-  const actionBtn = isEquip && already
-    ? `<button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>`
-    : `<button data-act="craft" data-arg="${r.id}" ${afford?"":"disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${afford?C.mageDeep:C.creamDeep};color:${afford?"white":C.inkSoft}">${r.type==="refine"?"Refine":"Craft"}</button>`;
+  let actionBtn;
+  if (isEquip && already && isRing) {
+    const inRing1 = state.equipment.ring1 === r.id, inRing2 = state.equipment.ring2 === r.id;
+    actionBtn = `<div style="display:flex;gap:6px;flex-shrink:0">
+      <button data-act="equipRing" data-arg="${r.id}|ring1" ${inRing1?"disabled":""} class="disp" style="padding:6px 9px;border-radius:9999px;font-size:10px;font-weight:700;background:${inRing1?C.sageSoft:C.mageSoft};color:${inRing1?C.sage:C.mageDeep}">${inRing1?"Ring 1 ✓":"→ Ring 1"}</button>
+      <button data-act="equipRing" data-arg="${r.id}|ring2" ${inRing2?"disabled":""} class="disp" style="padding:6px 9px;border-radius:9999px;font-size:10px;font-weight:700;background:${inRing2?C.sageSoft:C.mageSoft};color:${inRing2?C.sage:C.mageDeep}">${inRing2?"Ring 2 ✓":"→ Ring 2"}</button>
+    </div>`;
+  } else if (isEquip && already) {
+    actionBtn = `<button data-act="equip" data-arg="${r.id}" ${equipped?"disabled":""} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${equipped?C.sageSoft:C.mageSoft};color:${equipped?C.sage:C.mageDeep}">${equipped?"Equipped":"Equip"}</button>`;
+  } else {
+    actionBtn = `<button data-act="craft" data-arg="${r.id}" ${afford?"":"disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${afford?C.mageDeep:C.creamDeep};color:${afford?"white":C.inkSoft}">${r.type==="refine"?"Refine":"Craft"}</button>`;
+  }
   return card(`
     <div style="padding:14px;display:flex;align-items:center;gap:12px">
       <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${r.icon}</span></div>
@@ -2593,8 +3014,9 @@ function renderBountyGear() {
 }
 
 function renderTraders() {
+  const disc = reputationDiscount();
   const matRows = MATERIALS.concat(MATERIALS_REFINED).filter(m => (state.materials[m]||0) > 0).map(m => {
-    const price = SELL_PRICES[m] || 1;
+    const price = Math.round((SELL_PRICES[m] || 1) * (1 + disc));
     return `
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
         <span style="font-size:12.5px">${m} ×${state.materials[m]}</span>
@@ -2604,7 +3026,7 @@ function renderTraders() {
 
   const potionRows = Object.entries(state.potions).filter(([,q]) => q > 0).map(([id,q]) => {
     const r = RECIPES.find(x => x.id === id);
-    const price = POTION_SELL[id] || 4;
+    const price = Math.round((POTION_SELL[id] || 4) * (1 + disc));
     return `
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
         <span style="font-size:12.5px">${r.name} ×${q}</span>
@@ -2615,7 +3037,7 @@ function renderTraders() {
   const spareEquip = state.crafted.filter(id => !Object.values(state.equipment).includes(id));
   const equipRows = spareEquip.map(id => {
     const r = RECIPES.find(x => x.id === id);
-    const price = Math.max(5, Math.round((r.gold||20) * 0.4));
+    const price = Math.round(Math.max(5, Math.round((r.gold||20) * 0.4)) * (1 + disc));
     return `
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
         <span style="font-size:12.5px">${r.name}</span>
@@ -2623,7 +3045,15 @@ function renderTraders() {
       </div>`;
   }).join("");
 
+  const tier = reputationTier(state.reputation||0);
+  const nextTier = nextReputationTier(state.reputation||0);
+  const repNote = disc > 0
+    ? `Your standing as "${tier.title}" earns you +${Math.round(disc*100)}% on every sale here.`
+    : `Build your Guild Standing (quests, chapters, expeditions) to earn better prices here.`;
+
   return `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">Guild Standing: ${tier.title} (${state.reputation||0}${nextTier ? `, next at ${nextTier.min}` : ""})</p>
+    <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 12px">${repNote}</p>
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">LLP · Materials Trader</p>
     ${card(matRows || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — LLP only buys raw and refined materials.</p></div>`)}
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">JT · Gear & Potions Trader</p>
@@ -2632,11 +3062,12 @@ function renderTraders() {
 }
 
 function renderCompanionGearSection() {
+  const slotLabels = { weapon:"⚔️ Weapon", armor:"🛡️ Armor", trinket:"💎 Trinket", amulet:"🔯 Amulet", cloak:"🧣 Cloak", ring:"💍 Ring" };
   const rows = COMPANION_GEAR.map(item => {
     const affordable = canAffordCompanionGear(item);
     const owned = state.companionGearOwned[item.id] || 0;
     const needsStr = Object.entries(item.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (item.gold ? ` + ${item.gold}g` : "");
-    const statStr = [item.dmgBonus ? `+${item.dmgBonus} dmg` : "", item.hitBonus ? `+${item.hitBonus} to-hit` : ""].filter(Boolean).join(", ");
+    const statStr = [slotLabels[item.slot] || item.slot, item.dmgBonus ? `+${item.dmgBonus} dmg` : "", item.hitBonus ? `+${item.hitBonus} to-hit` : ""].filter(Boolean).join(" · ");
     return card(`
       <div style="padding:14px;display:flex;align-items:center;gap:12px">
         <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${item.icon}</span></div>
@@ -2656,10 +3087,45 @@ function renderCompanionGearSection() {
   `;
 }
 
+function renderFamiliarTrinketSection() {
+  const rows = FAMILIAR_TRINKETS.map(item => {
+    const affordable = canAffordFamiliarTrinket(item);
+    const owned = state.familiarTrinketOwned[item.id] || 0;
+    const needsStr = Object.entries(item.needs).map(([m,q]) => `${q}× ${m}`).join(", ") + (item.gold ? ` + ${item.gold}g` : "");
+    const statStr = [item.luckBonus ? `+${item.luckBonus} Luck` : "", item.trapBonus ? `+${item.trapBonus} trap sense` : ""].filter(Boolean).join(" · ");
+    return card(`
+      <div style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${item.icon}</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">${item.name}${owned ? ` <span style="color:${C.inkSoft};font-weight:500">×${owned} owned</span>` : ""}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${statStr}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${needsStr}</p>
+        </div>
+        <button data-act="craftFamiliarTrinket" data-arg="${item.id}" ${affordable ? "" : "disabled"} class="disp" style="padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${affordable ? C.mageDeep : C.creamDeep};color:${affordable ? "white" : C.inkSoft}">Craft</button>
+      </div>
+    `);
+  }).join("<div style='height:10px'></div>");
+  return `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">Soel's Trinkets</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">One trinket slot for your familiar — craft here, assign on the Party tab.</p>
+    ${rows}
+  `;
+}
+
+function renderForgeSection() {
+  const forgeItems = RECIPES.filter(r => r.forgeTier);
+  const rows = forgeItems.map(renderRecipeRow).join("<div style='height:10px'></div>");
+  return `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">⚒️ The Forge</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Cael the Forgemaster doesn't craft from scratch — bring a finished Mythic piece and enough Legend and Echo Shards, and she'll remake it into something that didn't exist before.</p>
+    ${rows}
+  `;
+}
+
 function renderCraft() {
   const potions = RECIPES.filter(r => r.type === "potion");
   const refines = RECIPES.filter(r => r.type === "refine");
-  const equips = RECIPES.filter(r => r.type === "equipment");
+  const equips = RECIPES.filter(r => r.type === "equipment" && !r.forgeTier);
   const section = (title, list) => list.length ? `
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">${title}</p>
     ${list.map(renderRecipeRow).join("<div style='height:10px'></div>")}
@@ -2669,8 +3135,10 @@ function renderCraft() {
     ${section("Potions", potions)}
     ${section("Refining", refines)}
     ${section("Equipment", equips)}
+    ${renderForgeSection()}
     ${renderBountyGear()}
     ${renderCompanionGearSection()}
+    ${renderFamiliarTrinketSection()}
     ${renderTraders()}
   </div>`;
 }
@@ -2806,6 +3274,24 @@ function renderExpeditionModal() {
       ${exp.wave === EXPEDITION_WAVES ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px"><span style="font-size:12px;color:${C.inkSoft}">❤️ Your HP</span><span style="font-size:12px;font-weight:700;color:${C.ink}">${state.player.hp}/${maxHp()}</span></div>` : ""}
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;max-height:120px;overflow-y:auto">${logLines}</div>
       ${actionBtn}
+    </div>
+  </div>`;
+}
+
+function renderRepBonusModal() {
+  if (!ui.showRepBonus) return "";
+  const page = REP_BONUS_SCENE.pages[ui.repBonusPage];
+  const isLastPage = ui.repBonusPage >= REP_BONUS_SCENE.pages.length - 1;
+  const dots = REP_BONUS_SCENE.pages.map((_,i) => `<span style="width:6px;height:6px;border-radius:6px;background:${i===ui.repBonusPage ? C.gold : C.creamDeep}"></span>`).join("");
+  return `<div style="position:fixed;inset:0;z-index:54;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${REP_BONUS_SCENE.icon} ${REP_BONUS_SCENE.title}</p>
+        <button data-act="closeRepBonus"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:13.5px;line-height:1.6;color:${C.ink};min-height:110px">${escapeHtml(page)}</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 16px">${dots}</div>
+      <button data-act="repBonusNext" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${C.gold}, ${C.mageDeep});color:white">${isLastPage ? "Finish" : "Continue"}</button>
     </div>
   </div>`;
 }
@@ -2967,6 +3453,29 @@ function renderStoryModal() {
   </div>`;
 }
 
+function renderStrongholdModal() {
+  if (!ui.showStronghold) return "";
+  const s = currentStrongholdStage();
+  if (!s) { ui.showStronghold = false; return ""; }
+  const page = s.pages[ui.strongholdPage];
+  const isLastPage = ui.strongholdPage >= s.pages.length - 1;
+  const dots = s.pages.map((_,i) => `<span style="width:6px;height:6px;border-radius:6px;background:${i===ui.strongholdPage ? C.mageDeep : C.creamDeep}"></span>`).join("");
+  const showChoice = isLastPage && s.choice;
+  return `<div style="position:fixed;inset:0;z-index:57;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${s.icon} ${s.title}</p>
+        <button data-act="closeStronghold"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:13.5px;line-height:1.6;color:${C.ink};min-height:110px">${escapeHtml(page)}</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 16px">${dots}</div>
+      ${showChoice
+        ? `<div style="display:flex;flex-direction:column;gap:8px">${s.choice.options.map((opt,i) => `<button data-act="strongholdChoice" data-arg="${i}" class="disp" style="padding:12px;border-radius:16px;font-size:13px;font-weight:600;background:${C.mageSoft};color:${C.mageDeep};text-align:left">${opt.label}</button>`).join("")}</div>`
+        : `<button data-act="strongholdNext" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${C.mage}, ${C.mageDeep});color:white">${isLastPage ? "Finish Stage" : "Continue"}</button>`}
+    </div>
+  </div>`;
+}
+
 function renderSkirmishModal() {
   if (!ui.skirmish) return "";
   const enc = ui.skirmish;
@@ -3022,7 +3531,9 @@ function render() {
     ${renderExpeditionModal()}
     ${renderDungeonModal()}
     ${renderSpecPickerModal()}
+    ${renderRepBonusModal()}
     ${renderStoryModal()}
+    ${renderStrongholdModal()}
     ${renderSkirmishModal()}
     ${renderChestModal()}
     ${renderBackupModal()}
