@@ -238,6 +238,10 @@ const SPELLS = [
   { id:"power_word_wound", name:"Power Word: Wound", icon:"💥", mpCost:20, unlockLv:60, kind:"attack",
     autoHit:true, diceCount:10, diceSides:6, flatBonus:25, desc:"Never misses. Raw magical force, no roll required." },
   { id:"time_stop", name:"Time Stop", icon:"⌛", mpCost:26, unlockLv:70, kind:"buff", effect:"time_stop", desc:"Attack four times before time resumes. The ultimate spell." },
+  { id:"sunfire", name:"Sunfire", icon:"🌞", mpCost:22, unlockLv:80, kind:"attack",
+    autoHit:true, diceCount:12, diceSides:6, vampiric:true, desc:"Never misses. Devastating light, and it mends you a little too." },
+  { id:"wish", name:"Wish", icon:"🌠", mpCost:35, unlockLv:90, kind:"attack",
+    autoHit:true, diceCount:16, diceSides:6, flatBonus:20, fullHeal:true, desc:"Never misses. The biggest hit you have — and it costs you nothing in HP to cast it." },
 ];
 
 const ENEMIES = [
@@ -296,6 +300,38 @@ const BOSSES = [
     intro:"The Comparison Specter shows you everyone else's Daybreak, dazzling and distracting from your own.",
     hpMult:6.6, phaseLines:["Its projections flicker — other people's timelines were never the point.", "Down to a whisper. Your pace was always going to be the right one."],
     ability:{ type:"debuff", stat:"hit", amount:3, rounds:2, line:"It shows you someone else's pace, someone else's progress — just enough to make you second-guess your next move." } },
+  { id:"imposters_mask", name:"The Imposter's Mask", minLv:60,
+    intro:"The Imposter's Mask settles over everything you've built, insisting none of it was really earned.",
+    hpMult:6.8, phaseLines:["The mask slips — just enough to see what's underneath.", "It can't hold its shape much longer. Neither could the doubt it was made of."],
+    ability:{ type:"debuff", stat:"hit", amount:4, rounds:2, line:"It whispers that you got here by luck, not effort — and for a moment, your next cast wavers." } },
+  { id:"decision_fog", name:"The Decision Fog", minLv:60,
+    intro:"The Decision Fog rolls in thick, spawning a dozen equally-good options that all somehow feel like the wrong one.",
+    hpMult:7.0, phaseLines:["The fog thins — one option was always going to be fine.", "Nearly clear now. Turns out most choices weren't as heavy as they felt."],
+    ability:{ type:"summon", name:"Extra Option", icon:"❓", hpFrac:0.14, line:"Another option splits off from the fog, just to make the choosing harder." } },
+  { id:"executive_golem", name:"The Executive Function Golem", minLv:70,
+    intro:"The Executive Function Golem is built entirely of half-started plans, each one propping up the last.",
+    hpMult:7.2, phaseLines:["A few half-plans crumble off it — it's lighter now, less sure of its own shape.", "Barely holding together. Most of what made it big was never finished to begin with."],
+    ability:{ type:"heal", frac:0.08, line:"It bolts on another half-formed plan, patching itself back together with good intentions." } },
+  { id:"rumination_wraith", name:"The Rumination Wraith", minLv:70,
+    intro:"The Rumination Wraith loops the same three minutes of the day, over and over, refusing to let them go.",
+    hpMult:7.4, phaseLines:["The loop stutters — it can't quite finish replaying that moment again.", "Barely a whisper now. Some minutes just aren't worth keeping on repeat."],
+    ability:{ type:"debuff", stat:"mp", amount:7, rounds:1, line:"It drags you back through the same replayed moment — some of your Focus goes with it." } },
+  { id:"analysis_colossus", name:"The Analysis Paralysis Colossus", minLv:80,
+    intro:"The Analysis Paralysis Colossus considers every possible angle before moving, and so, apparently, must you.",
+    hpMult:7.6, phaseLines:["It hesitates mid-motion — turns out not every angle needed considering.", "Barely upright. Overthinking was always heavier than the decision itself."],
+    ability:{ type:"debuff", stat:"hit", amount:5, rounds:2, line:"It lays out every possible outcome at once, and your next cast gets lost somewhere in the options." } },
+  { id:"shouldhave_specter", name:"The Should-Have Specter", minLv:80,
+    intro:"The Should-Have Specter drags a chorus of old regrets behind it, each one demanding equal airtime.",
+    hpMult:7.8, phaseLines:["One of the old regrets finally goes quiet — it didn't need saying anymore.", "Down to a murmur. Most of what it carried was already forgiven, it just hadn't noticed."],
+    ability:{ type:"summon", name:"Old Regret", icon:"💭", hpFrac:0.15, line:"An old regret peels off from the chorus, insisting on one more turn in the spotlight." } },
+  { id:"burnout_undertow", name:"The Burnout Undertow", minLv:90,
+    intro:"The Burnout Undertow doesn't announce itself. It just quietly pulls, a little more each day, until pulling is all there is.",
+    hpMult:8.0, phaseLines:["The pull weakens — you're swimming against it now, not just holding on.", "Barely a current left. It only ever won by going unnoticed, and you've noticed."],
+    ability:{ type:"heal", frac:0.09, line:"It pulls a little more from the quiet hours, refilling itself on what you didn't rest enough to protect." } },
+  { id:"final_excuse", name:"The Final Excuse", minLv:90,
+    intro:"The Final Excuse is smaller than the others, almost reasonable-sounding. That's what makes it dangerous.",
+    hpMult:8.2, phaseLines:["It stumbles over its own reasoning — even it doesn't fully believe this one.", "Nearly out of ways to sound convincing. There's really nothing left to excuse."],
+    ability:{ type:"debuff", stat:"hit", amount:4, rounds:2, line:"\"Just this once,\" it offers, reasonable as ever — and just for a moment, it almost sounds right." } },
 ];
 function pickBossForLevel(level) {
   const bucket = level < 10 ? 1 : Math.floor(level/10) * 10;
@@ -340,6 +376,9 @@ const RECIPES = [
   { id:"emberforged_blade", type:"equipment", slot:"weapon", name:"Emberforged Blade", needs:{"Legend Shard":5,"Echo Shard":5}, gold:400, requiresCrafted:"echostaff", forgeTier:true, effect:"+40 Attack, +4 INT", bonus:{atk:40}, abilityBonus:{int:4}, icon:"🔥" },
   { id:"aegis_eternal", type:"equipment", slot:"armor", name:"Aegis Eternal", needs:{"Legend Shard":5,"Echo Shard":5}, gold:400, requiresCrafted:"everguard_aegis", forgeTier:true, effect:"+160 Max HP, +4 CON", bonus:{hp:160}, abilityBonus:{con:4}, icon:"🔱" },
   { id:"forgemasters_seal", type:"equipment", slot:"trinket", name:"The Forgemaster's Seal", needs:{"Legend Shard":6,"Echo Shard":6}, gold:500, requiresCrafted:"diadem_of_the_unwritten", forgeTier:true, effect:"+9 Luck, +4 WIS, +3 CHA — Raids cost 1 less Focus", bonus:{luck:9}, abilityBonus:{wis:4,cha:3}, icon:"⚒️" },
+  { id:"undying_ember", type:"equipment", slot:"weapon", name:"The Undying Ember", needs:{"Ascendant Core":4,"Legend Shard":4,"Echo Shard":4}, gold:650, requiresCrafted:"emberforged_blade", ascendantTier:true, effect:"+55 Attack, +5 INT", bonus:{atk:55}, abilityBonus:{int:5}, icon:"🌠" },
+  { id:"the_unbreaking", type:"equipment", slot:"armor", name:"The Unbreaking", needs:{"Ascendant Core":4,"Legend Shard":4,"Echo Shard":4}, gold:650, requiresCrafted:"aegis_eternal", ascendantTier:true, effect:"+200 Max HP, +5 CON", bonus:{hp:200}, abilityBonus:{con:5}, icon:"🌌" },
+  { id:"endless_circuit", type:"equipment", slot:"trinket", name:"The Endless Circuit", needs:{"Ascendant Core":5,"Legend Shard":5,"Echo Shard":5}, gold:750, requiresCrafted:"forgemasters_seal", ascendantTier:true, effect:"+12 Luck, +5 WIS, +4 CHA — Expeditions cost 1 less Focus", bonus:{luck:12}, abilityBonus:{wis:5,cha:4}, icon:"♾️" },
 ];
 
 const QUEST_CHAINS = [
@@ -772,6 +811,129 @@ const SNIPPETS = {
   ],
 };
 
+const COMPANION_QUESTS = {
+  joel: [
+    { id:"cq_joel_1", title:"What He Doesn't Say", icon:"🛡️", affReq:5, pages:[
+      "Joel's easy to overlook when nothing's wrong — he shows up, he waits, he doesn't make noise about it. You've started noticing how much of that is a choice, not just his nature.",
+      "You ask him, half-joking, if he ever gets tired of being the steady one. He goes quiet a beat too long before answering.",
+      "\"Sometimes,\" he admits. \"Doesn't mean I'd trade it. Just means it costs something, is all.\"",
+      "You don't have a fix for that. You just sit with him a while, which turns out to be most of what he actually wanted.",
+    ], reward:{gold:30,xp:25} },
+    { id:"cq_joel_2", title:"The Weight He Carries", icon:"🛡️", affReq:12, pages:[
+      "You catch Joel at the Watchtower, later than usual, looking at the map like it owes him an explanation.",
+      "\"Just thinking about how many times you've needed me not to fall apart,\" he says. \"Never really asked what happens if I do.\"",
+      "It's the closest he's come to admitting he needs looking after too. You tell him plainly: he doesn't have to hold it alone anymore.",
+      "He doesn't say much back. But the next morning, he lets you carry something first, for once. Small thing. Big thing.",
+    ], reward:{gold:50,xp:45} },
+    { id:"cq_joel_3", title:"Steady, Both Ways", icon:"🛡️", affReq:20, pages:[
+      "It's a quiet day, nothing urgent, and Joel brings it up anyway — the thing he's been circling for weeks.",
+      "\"I used to think my job was just holding the door,\" he says. \"Making sure you had somewhere steady to come back to.\"",
+      "\"Turns out you did the same for me. Took me a while to notice, because you never made it look like effort.\"",
+      "Neither of you says the bigger word out loud. You don't need to. It's already been true for a long time.",
+    ], reward:{gold:80,xp:70} },
+  ],
+  aisyah: [
+    { id:"cq_aisyah_1", title:"The Ledger", icon:"⚔️", affReq:5, pages:[
+      "Aisyah keeps a running tally of everything — favors, gold, who owes who a drink. You always assumed it was a bit.",
+      "Turns out it's not entirely a bit. \"Keeps things fair,\" she says, a little defensive. \"Nobody gets forgotten that way.\"",
+      "You realize, slowly, that the ledger isn't about money. It's about making sure she's never the one left holding nothing.",
+      "You tell her she doesn't need a tally with you. She waves it off, but she closes the book a little faster than usual.",
+    ], reward:{gold:35,xp:25} },
+    { id:"cq_aisyah_2", title:"What She's Building Toward", icon:"⚔️", affReq:12, pages:[
+      "Aisyah finally admits, over market noise, that she wants her own stall someday. Something that's just hers, not borrowed guild space.",
+      "\"Sounds small,\" she says, before you can react. \"It's not, though. Not to me.\"",
+      "You tell her it doesn't sound small at all. She looks briefly, uncharacteristically, like she might actually believe you.",
+      "She changes the subject fast, but she starts saving differently after that. On purpose, this time.",
+    ], reward:{gold:55,xp:45} },
+    { id:"cq_aisyah_3", title:"Little Sister, Whole Person", icon:"⚔️", affReq:20, pages:[
+      "Aisyah corners you near the Fountain, unusually serious for her. \"I need you to know something,\" she says.",
+      "\"I didn't stick around the guild because you needed a sister. I stuck around because I wanted to. Different thing.\"",
+      "It's the most sincere she's been in front of you, maybe ever, and she immediately looks like she regrets it.",
+      "\"Anyway,\" she says, already walking off. \"Don't make it weird.\" You don't. But you don't forget it either.",
+    ], reward:{gold:90,xp:75} },
+  ],
+  mezstorm: [
+    { id:"cq_mez_1", title:"The Unfinished Verse", icon:"✨", affReq:5, pages:[
+      "Mezstorm's been humming the same four bars for weeks, never finishing them. You finally ask why.",
+      "\"Finished songs have to be good,\" she says. \"Unfinished ones just have to exist.\" It's the most honest thing she's said about her own fear.",
+      "You tell her the four bars are already good. She looks genuinely startled that you meant it.",
+      "She doesn't finish the song that day. But she keeps humming it where you can hear, which feels like its own kind of progress.",
+    ], reward:{gold:30,xp:25} },
+    { id:"cq_mez_2", title:"Stage Fright, Loudly", icon:"✨", affReq:12, pages:[
+      "The guild hall wants Mezstorm to actually perform something, publicly, for once. She's been dodging it for a year.",
+      "\"What if it's not as good out loud as it is in my head,\" she admits, quieter than you've ever heard her.",
+      "You remind her that half of what she's already given you — the little verses, the hummed jokes — was never polished either. It mattered anyway.",
+      "She performs three shaky, wonderful minutes at the next Guild Day. Doesn't stick the landing. Gets an ovation regardless.",
+    ], reward:{gold:55,xp:50} },
+    { id:"cq_mez_3", title:"The Song About You", icon:"✨", affReq:20, pages:[
+      "Mezstorm finally plays you the song she's been circling all this time. It's about you, mostly. She doesn't say that part out loud.",
+      "It's not perfect. A few chords are clearly patched together last-minute. You don't care even slightly.",
+      "\"Working title's still 'San Logs Off,'\" she admits, almost shy. \"Never found anything better to call it.\"",
+      "You tell her not to change it. Some things are exactly right the way they started.",
+    ], reward:{gold:90,xp:75} },
+  ],
+  eliz: [
+    { id:"cq_eliz_1", title:"Auntie San's Flower Crowns", icon:"❤️", affReq:4, pages:[
+      "Eliz has made you approximately forty invisible flower crowns at this point. You've started keeping mental track.",
+      "\"This one's extra invisible,\" she announces solemnly, placing it with great ceremony. \"For extra bravery.\"",
+      "You wear it seriously for the rest of the day, which delights her disproportionately.",
+      "It occurs to you that being taken seriously by a five-year-old is its own strange, wonderful kind of validation.",
+    ], reward:{gold:20,xp:20} },
+    { id:"cq_eliz_2", title:"Big Feelings, Small Person", icon:"❤️", affReq:8, pages:[
+      "Eliz has a meltdown over something small — a dropped toy, probably — and you're the one who ends up sitting with her through it.",
+      "She eventually hiccups out, \"I just wanted it to be okay right away.\" You tell her that's a very reasonable thing to want.",
+      "You don't fix it fast. You just stay until it passes on its own, the way these things usually do.",
+      "Later, she gives you a very serious hug and declares you \"good at the sad parts too, not just the fun parts.\" Highest compliment available.",
+    ], reward:{gold:35,xp:30} },
+    { id:"cq_eliz_3", title:"What She'll Remember", icon:"❤️", affReq:14, pages:[
+      "You catch Eliz explaining to Senedra, with total confidence, exactly how Auntie San handles hard days. Most of it isn't accurate.",
+      "All of it is generous. She's already decided who you are, and it's someone steadier than you always feel.",
+      "You don't correct her. Some inaccuracies are worth letting a five-year-old believe.",
+      "It occurs to you that this is what she'll remember, eventually — not the details, just the shape of someone who showed up.",
+    ], reward:{gold:60,xp:55} },
+  ],
+  senedra: [
+    { id:"cq_sen_1", title:"Basically Treasure", icon:"⭐", affReq:4, pages:[
+      "Senedra's treasure maps are never accurate, but she's never once been discouraged by that fact.",
+      "\"This one's real,\" she insists, for the ninth consecutive map. You go along with it, mostly because her certainty is contagious.",
+      "You don't find treasure. You find a nice rock and a genuinely good afternoon, which she declares an even trade.",
+      "\"Told you,\" she says, unbothered by the technicality. You've stopped arguing the point.",
+    ], reward:{gold:20,xp:20} },
+    { id:"cq_sen_2", title:"Wanting to Be Taken Seriously", icon:"⭐", affReq:8, pages:[
+      "Senedra overhears someone call her maps \"cute\" and goes uncharacteristically quiet for the rest of the day.",
+      "\"I want to be an actual explorer,\" she finally says. \"Not just the kid with the funny maps.\"",
+      "You tell her real explorers were all beginners with bad maps once. She looks unconvinced, but she keeps drawing anyway.",
+      "The next map she makes is, against all odds, almost accurate. She doesn't mention it. You notice anyway.",
+    ], reward:{gold:35,xp:30} },
+    { id:"cq_sen_3", title:"The Map That Worked", icon:"⭐", affReq:14, pages:[
+      "Senedra hands you a map with genuine hesitation, none of her usual bravado. \"I actually checked this one twice,\" she admits.",
+      "It leads exactly where it says it will. She's too stunned to even celebrate properly at first.",
+      "\"See!\" she eventually manages, recovering her nerve completely. \"Told you I'd get good at this.\"",
+      "You keep that particular map. Some milestones are worth holding onto, even the small ones — especially the small ones.",
+    ], reward:{gold:60,xp:55} },
+  ],
+  zaki: [
+    { id:"cq_zaki_1", title:"Racing Everyone", icon:"🔨", affReq:4, pages:[
+      "Zaki challenges you to a race for what must be the fortieth time. He's lost every single one so far.",
+      "\"Gonna beat you eventually,\" he insists, not even winded from admitting it. His confidence is unshaken by evidence.",
+      "You let the race stay close, not obviously, just enough. He notices anyway, and calls you out on it immediately.",
+      "\"Didn't ask for a handicap,\" he says, half proud, half annoyed. You race him straight next time. He still loses. He still grins.",
+    ], reward:{gold:20,xp:20} },
+    { id:"cq_zaki_2", title:"Training in the Family's Shadow", icon:"🔨", affReq:8, pages:[
+      "Zaki admits, quieter than his usual bravado, that he's tired of being compared to Joel's steadiness and Aisyah's edge.",
+      "\"Feels like I gotta be as good as everybody just to count,\" he says. It's the most honest he's been about the pressure.",
+      "You tell him nobody's actually comparing him to anyone but himself, least of all you. He doesn't fully believe it yet.",
+      "He trains harder after that conversation anyway — not to catch up to anyone. Just because he wants to, finally, for his own reasons.",
+    ], reward:{gold:35,xp:30} },
+    { id:"cq_zaki_3", title:"His Own Name For It", icon:"🔨", affReq:14, pages:[
+      "Zaki wins a real race for the first time — not handicapped, not close, just wins — and looks almost too stunned to celebrate.",
+      "\"Didn't need it to be about beating you,\" he admits after, still catching his breath. \"Just needed it to be about me finishing something.\"",
+      "You tell him that's the whole trick, actually. He looks like he half-believes you might be onto something.",
+      "He starts training different after that — less like proving a point, more like keeping a promise to himself.",
+    ], reward:{gold:60,xp:55} },
+  ],
+};
+
 /* ================= pure helpers ================= */
 const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const hashDay = (s) => { let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
@@ -789,23 +951,38 @@ function isoWeekKey(d) {
   return `${date.getUTCFullYear()}-W${weekNo}`;
 }
 
+function effectiveChargeCap() { return CHARGE_CAP + (state.ascensionRank||0); }
+
+function nextAscensionLevel() { return 100 + (state.ascensionRank||0) * 15; }
+function canAscend() { return state.player.level >= nextAscensionLevel(); }
+function ascensionTitle(rank) { return rank <= 0 ? null : `Ascended ${rank}`; }
+function ascend() {
+  if (!canAscend()) return;
+  state.ascensionRank = (state.ascensionRank||0) + 1;
+  const rank = state.ascensionRank;
+  const leveledUp = grantReward(100 * rank, 80 * rank);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`You've Ascended — Rank ${rank}. Max Focus is now ${effectiveChargeCap()}.`);
+}
 function getCharges(s, now) {
-  if (s.charges >= CHARGE_CAP) return { charges: CHARGE_CAP, msToNext: null };
+  const cap = effectiveChargeCap();
+  if (s.charges >= cap) return { charges: cap, msToNext: null };
   const elapsed = now - s.chargeAnchor;
   const gained = Math.floor(elapsed / CHARGE_REGEN_MS);
-  const charges = Math.min(CHARGE_CAP, s.charges + gained);
-  const msToNext = charges >= CHARGE_CAP ? null : CHARGE_REGEN_MS - (elapsed % CHARGE_REGEN_MS);
+  const charges = Math.min(cap, s.charges + gained);
+  const msToNext = charges >= cap ? null : CHARGE_REGEN_MS - (elapsed % CHARGE_REGEN_MS);
   return { charges, msToNext };
 }
 function settleCharges(s, now) {
   const { charges } = getCharges(s, now);
-  const stillRegenning = charges < CHARGE_CAP;
+  const stillRegenning = charges < effectiveChargeCap();
   return { charges, chargeAnchor: stillRegenning ? now - ((now - s.chargeAnchor) % CHARGE_REGEN_MS) : s.chargeAnchor };
 }
 function spendCharge(s, now, amount) {
   const settled = settleCharges(s, now);
   if (settled.charges < amount) return null;
-  const wasFull = settled.charges >= CHARGE_CAP;
+  const wasFull = settled.charges >= effectiveChargeCap();
   return { charges: settled.charges - amount, chargeAnchor: wasFull ? now : settled.chargeAnchor };
 }
 
@@ -830,24 +1007,27 @@ function defaultState() {
     dayQuest: { date:null, claimed:false, choiceMade:null },
     storyProgress: { read:[], flags:{} },
     strongholdProgress: { read:[], flags:{} },
+    companionQuestProgress: { read:[] },
     hitListClaimed: { date:null, claimed:false },
     hitListCompletions: 0,
     activeParty: [],
     companionGearOwned: {},
     companionGear: {},
     companionEquipment: {},
+    companionProgress: {},
     familiarOut: true,
     familiarTrinket: null,
     familiarTrinketOwned: {},
     specialization: null,
     reputation: 0,
     repBonusClaimed: false,
+    ascensionRank: 0,
   };
 }
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0 };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0 };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -942,6 +1122,23 @@ function abilityScores() {
 }
 function abilityMod(score) { return Math.floor((score-10)/2); }
 
+function companionLevel(id) { return (state.companionProgress[id] && state.companionProgress[id].level) || 1; }
+function companionXp(id) { return (state.companionProgress[id] && state.companionProgress[id].xp) || 0; }
+function companionXpToNext(level) { return 20 + level*10; }
+function companionLevelBonus(id) { return Math.floor((companionLevel(id)-1) * 1.5); }
+function gainCompanionXp(id, amount) {
+  if (!state.companionProgress[id]) state.companionProgress[id] = { level:1, xp:0 };
+  const prog = state.companionProgress[id];
+  prog.xp += amount;
+  let leveledUp = false;
+  while (prog.xp >= companionXpToNext(prog.level)) {
+    prog.xp -= companionXpToNext(prog.level);
+    prog.level += 1;
+    leveledUp = true;
+  }
+  return leveledUp;
+}
+
 function maxHp() { return state.player.maxHp + equippedBonus().hp + abilityMod(abilityScores().con)*5; }
 function passiveActive(id) { const m = PARTY.find(x=>x.id===id); return m && state.player.level >= m.unlockLv; }
 function familiarActive() { return passiveActive("soel") && state.familiarOut; }
@@ -1035,6 +1232,12 @@ function currentStrongholdStage() {
 function nextLockedStrongholdStage() {
   return STRONGHOLD_STAGES.find(s => !state.strongholdProgress.read.includes(s.id) && state.player.level < s.unlockLv) || null;
 }
+function currentCompanionQuest(companionId) {
+  const quests = COMPANION_QUESTS[companionId];
+  if (!quests) return null;
+  const aff = state.affinity[companionId] || 0;
+  return quests.find(q => aff >= q.affReq && !state.companionQuestProgress.read.includes(q.id)) || null;
+}
 function todaysHitList() {
   const idx = hashDay(today() + "-hitlist") % HIT_LIST.length;
   return HIT_LIST[idx];
@@ -1095,6 +1298,7 @@ function showToast(text) {
 }
 
 function raidCost() { return state.equipment.trinket === "forgemasters_seal" ? 3 : 4; }
+function expeditionCost() { return state.equipment.trinket === "endless_circuit" ? 2 : 3; }
 function beginRaid() {
   const cost = raidCost();
   const { charges } = getCharges(state, ui.now);
@@ -1185,6 +1389,7 @@ function rollAndApplyDamage(enc, isBoss, spell) {
     encDealDamage(enc, dmg);
     enc.log.push(`${spell.name} strikes true for ${dmg} damage.`);
     if (spell.vampiric) { const heal = state.specialization === "necromancer" ? dmg : Math.round(dmg/2); state.player.hp = Math.min(maxHp(), state.player.hp + heal); enc.log.push(`You drain ${heal} HP back.`); }
+    if (spell.fullHeal) { state.player.hp = maxHp(); enc.log.push(`You're restored completely — ${maxHp()}/${maxHp()} HP.`); }
     if (spell.dot) enc.acidTick = rollDice(spell.dotDice[0], spell.dotDice[1]);
     return;
   }
@@ -1294,6 +1499,7 @@ function performSpell(enc, isBoss, spellId) {
 
 function applyPartyStrikes(enc, isBoss) {
   const strMod = abilityMod(abilityScores().str);
+  const leveledCompanions = [];
   (state.activeParty||[]).forEach(pid => {
     if (encAllDefeated(enc)) return;
     const member = PARTY.find(p => p.id === pid);
@@ -1305,19 +1511,24 @@ function applyPartyStrikes(enc, isBoss) {
       const item = equipped[sk] ? COMPANION_GEAR.find(g => g.id === equipped[sk]) : null;
       if (item) { gearHit += item.hitBonus; gearDmg += item.dmgBonus; }
     });
+    const lvlBonus = companionLevelBonus(pid);
     const roll = rollD20();
-    const hitBonus = Math.floor(state.player.level/4) + gearHit;
+    const hitBonus = Math.floor(state.player.level/4) + gearHit + Math.floor(lvlBonus/3);
     const AC = isBoss ? 12 : 9;
     const targetIdx = enc.enemies ? encRandomAliveIndex(enc) : undefined;
     const targetName = enc.enemies ? (enc.enemies[targetIdx] ? enc.enemies[targetIdx].name : member.name) : null;
+    if (gainCompanionXp(pid, 2)) leveledCompanions.push(member.name);
     if (roll === 1) { enc.log.push(`${member.name} swings and misses completely.`); return; }
     const isCrit = roll === 20;
     if (!isCrit && roll + hitBonus < AC) { enc.log.push(`${member.name}'s strike glances off.`); return; }
-    let pdmg = rollDice(1,6) + Math.round(2 + state.player.level*0.5) + strMod + gearDmg;
+    let pdmg = rollDice(1,6) + Math.round(2 + state.player.level*0.5) + strMod + gearDmg + lvlBonus;
     if (isCrit) pdmg = pdmg * 2;
     encDealDamage(enc, pdmg, targetIdx);
     enc.log.push(`${member.name} strikes ${targetName ? targetName+" " : ""}for ${pdmg}${isCrit ? " (critical!)" : ""}.`);
   });
+  if (leveledCompanions.length) {
+    setTimeout(() => showToast(`${leveledCompanions.join(", ")} leveled up!`), 350);
+  }
 }
 
 function triggerBossAbility(enc, boss) {
@@ -1440,6 +1651,9 @@ function resolveVictory() {
     drops["Legend Shard"] = (drops["Legend Shard"]||0) + (state.player.level >= 40 ? 2 : 1) + (enc.isRaid ? 2 : 0);
     if (enc.bossId === "relapse_tide" || enc.bossId === "comparison_specter") {
       drops["Echo Shard"] = (drops["Echo Shard"]||0) + 1 + (enc.isRaid ? 1 : 0);
+    }
+    if (enc.isRaid && state.player.level >= 60) {
+      drops["Ascendant Core"] = (drops["Ascendant Core"]||0) + 1;
     }
   }
   enc.resolved = true;
@@ -1951,11 +2165,12 @@ function claimDungeon() {
 }
 
 function beginExpedition() {
+  const cost = expeditionCost();
   const { charges } = getCharges(state, ui.now);
-  if (charges < 3) return;
+  if (charges < cost) return;
   const enemy = ENEMIES[Math.floor(Math.random()*ENEMIES.length)];
   const enemyMaxHp = Math.round((16 + state.player.level*5) * enemy.hpMod);
-  ui.expedition = { wave:1, cost:3, enemyName:enemy.name, enemyHp:enemyMaxHp, enemyMaxHp,
+  ui.expedition = { wave:1, cost, enemyName:enemy.name, enemyHp:enemyMaxHp, enemyMaxHp,
     log:[`Wave 1: ${enemy.intro}`], resolved:false, cumGold:0, cumXp:0, drops:{} };
   render();
 }
@@ -2156,6 +2371,33 @@ function finishChapter(ch, reward, resultText) {
   else showToast(resultText || `Chapter complete: ${ch.title}`);
 }
 
+function openCompanionQuest(companionId) {
+  const q = currentCompanionQuest(companionId);
+  if (!q) return;
+  ui.showCompanionQuest = companionId;
+  ui.companionQuestPage = 0;
+  render();
+}
+function closeCompanionQuest() { ui.showCompanionQuest = null; render(); }
+function companionQuestNext() {
+  const companionId = ui.showCompanionQuest;
+  if (!companionId) return;
+  const q = currentCompanionQuest(companionId);
+  if (!q) return;
+  if (ui.companionQuestPage < q.pages.length - 1) { ui.companionQuestPage += 1; render(); return; }
+  finishCompanionQuest(companionId, q);
+}
+function finishCompanionQuest(companionId, q) {
+  state.companionQuestProgress.read.push(q.id);
+  state.affinity[companionId] = (state.affinity[companionId]||0) + 1;
+  gainReputation(3);
+  const leveledUp = grantReward(q.reward.gold||0, q.reward.xp||0);
+  ui.showCompanionQuest = null;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${PARTY.find(p=>p.id===companionId).name}: ${q.title} complete!`);
+}
+
 function openStronghold() {
   const s = currentStrongholdStage();
   if (!s) return;
@@ -2298,7 +2540,8 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   chooseSpecialization, openSpecPicker, closeSpecPicker,
   openRepBonus, closeRepBonus, repBonusNext,
   setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
-  openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy };
+  openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
+  openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -2320,7 +2563,7 @@ function renderHeader() {
   <div style="background:linear-gradient(135deg, ${C.mageSoft}, ${C.cream});border-bottom:1px solid ${C.border};padding:24px 20px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
-        <p style="color:${C.inkSoft};font-size:12px;margin:0">${tLog.encounter} · ${charges}/${CHARGE_CAP} Focus</p>
+        <p style="color:${C.inkSoft};font-size:12px;margin:0">${tLog.encounter} · ${charges}/${effectiveChargeCap()} Focus</p>
         <h1 class="disp" style="font-weight:700;font-size:22px;color:${C.mageDeep};margin:2px 0 0">Legends: Daybreak Quest</h1>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
@@ -2366,7 +2609,7 @@ function renderHome() {
   const callCost = isBossDay ? 2 : 1;
   const ready = charges >= callCost;
 
-  const zaps = Array.from({length: CHARGE_CAP}).map((_,i) =>
+  const zaps = Array.from({length: effectiveChargeCap()}).map((_,i) =>
     `<span style="font-size:16px;${i < charges ? "" : "filter:grayscale(1) opacity(.3)"}">⚡</span>`).join("");
 
   const callCard = card(`
@@ -2380,7 +2623,7 @@ function renderHome() {
         <span>${ready ? (isBossDay ? "Face the Boss (2 Focus)" : "Cast & Answer") : "No Focus Left"}</span>
       </button>
       <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px">${zaps}</div>
-      <p style="color:${C.inkSoft};font-size:11px;margin-top:8px">${charges >= CHARGE_CAP ? "Focus full" : `Next Focus in ${fmtMs(msToNext)}`} · ${tLog.count} calls answered today</p>
+      <p style="color:${C.inkSoft};font-size:11px;margin-top:8px">${charges >= effectiveChargeCap() ? "Focus full" : `Next Focus in ${fmtMs(msToNext)}`} · ${tLog.count} calls answered today</p>
     </div>
   `);
 
@@ -2398,7 +2641,8 @@ function renderHome() {
   `);
 
   const { charges: expCharges } = getCharges(state, ui.now);
-  const expReady = expCharges >= 3;
+  const expCostVal = expeditionCost();
+  const expReady = expCharges >= expCostVal;
   const partyNames = state.activeParty.map(id => PARTY.find(p=>p.id===id)?.name).filter(Boolean).join(" & ");
   const expeditionCard = card(`
     <div style="padding:16px">
@@ -2406,7 +2650,7 @@ function renderHome() {
         <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🗺️</span></div>
         <div style="flex:1">
           <p class="disp" style="font-weight:700;font-size:13px;margin:0">Expedition</p>
-          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">3-wave dungeon run · costs 3 Focus${partyNames ? ` · with ${partyNames}` : ""}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">3-wave dungeon run · costs ${expCostVal} Focus${expCostVal<3?" (Endless Circuit)":""}${partyNames ? ` · with ${partyNames}` : ""}</p>
         </div>
         <button data-act="beginExpedition" ${expReady ? "" : "disabled"} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${expReady ? C.pink : C.creamDeep};color:${expReady ? "white" : C.inkSoft}">Begin</button>
       </div>
@@ -2451,6 +2695,17 @@ function renderHome() {
         <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Choose a school of magic — permanent, one time.</p>
       </div>
       <button data-act="openSpecPicker" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Choose</button>
+    </div>
+  `) : "";
+
+  const ascensionCard = canAscend() ? card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.gold}33, ${C.mageSoft})">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.gold}55;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🌟</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Ascension Ready${state.ascensionRank>0?` — Rank ${state.ascensionRank} → ${state.ascensionRank+1}`:""}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Permanent — nothing resets. +1 Max Focus, forever, every time.</p>
+      </div>
+      <button data-act="ascend" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.gold};color:white">Ascend</button>
     </div>
   `) : "";
 
@@ -2499,6 +2754,11 @@ function renderHome() {
       <span style="font-size:12px">🌀 Echo Shard</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials["Echo Shard"]}</span>
     </div>` : "";
 
+  const ascendantChip = (state.materials["Ascendant Core"]||0) > 0 ? `
+    <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.pink}22;border:1px solid ${C.pink}">
+      <span style="font-size:12px">🌌 Ascendant Core</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.pink}">${state.materials["Ascendant Core"]}</span>
+    </div>` : "";
+
   const satchelCard = card(`
     <div style="padding:16px">
       <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 10px;color:${C.mageDeep}">Satchel</p>
@@ -2506,6 +2766,7 @@ function renderHome() {
       ${refinedChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${refinedChips}</div>` : ""}
       ${legendChip ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${legendChip}</div>` : ""}
       ${echoChip ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${echoChip}</div>` : ""}
+      ${ascendantChip ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${ascendantChip}</div>` : ""}
       ${potionChips ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">${potionChips}</div>` : ""}
     </div>
   `);
@@ -2538,7 +2799,7 @@ function renderHome() {
 
   const wellnessCard = renderWellness();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${specCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -2672,6 +2933,7 @@ function renderCharacterSheet() {
   const feats = [
     spec ? `${spec.icon} ${spec.name}` : null,
     `🏅 ${tier.title}`,
+    (state.ascensionRank||0) > 0 ? `🌟 ${ascensionTitle(state.ascensionRank)} (Max Focus +${state.ascensionRank})` : null,
   ].filter(Boolean);
   const featsPanel = `
     <div style="margin-top:10px;background:${stonePanel};border:1px solid ${panelBorder};border-radius:6px;padding:10px 12px">
@@ -2730,9 +2992,27 @@ function renderParty() {
         ${unlockedLines.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">${unlockedLines.map(t=>`<p style="font-size:11.5px;color:${C.inkSoft};font-style:italic;margin:0">${escapeHtml(t.line)}</p>`).join("")}</div>` : ""}
       </div>` : "";
     const isSoel = m.id === "soel";
+    const cq = (!isSoel && unlocked) ? currentCompanionQuest(m.id) : null;
+    const companionQuestBtn = cq ? `
+      <button data-act="openCompanionQuest" data-arg="${m.id}" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.gold};color:white">📜 Personal Quest: ${cq.title}</button>` : "";
     const isActive = state.activeParty.includes(m.id);
     const activeToggle = (unlocked && !isSoel) ? `
       <button data-act="toggleActiveParty" data-arg="${m.id}" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${isActive ? m.color : C.creamDeep};color:${isActive ? "white" : C.inkSoft}">${isActive ? "⚔️ Fighting alongside you" : "Bring on Expeditions & fights"}</button>` : "";
+    const levelBar = (unlocked && !isSoel) ? (() => {
+      const lvl = companionLevel(m.id);
+      const xp = companionXp(m.id);
+      const toNext = companionXpToNext(lvl);
+      return `
+        <div style="margin-top:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:10.5px;font-weight:700;color:${m.color}">Lv.${lvl}</span>
+            <span style="font-size:9px;color:${C.inkSoft}">${xp}/${toNext} XP</span>
+          </div>
+          <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep}">
+            <div style="height:5px;width:${Math.min(100,(xp/toNext)*100)}%;background:${m.color}"></div>
+          </div>
+        </div>`;
+    })() : "";
     const equipped = state.companionEquipment[m.id] || {};
     const gearChipRow = (unlocked && !isSoel) ? (() => {
       const slotLabels = [["weapon","⚔️"],["armor","🛡️"],["trinket","💎"],["amulet","🔯"],["cloak","🧣"],["ring1","💍1"],["ring2","💍2"]];
@@ -2800,7 +3080,9 @@ function renderParty() {
             ${unlocked ? `<p style="font-size:11px;color:${m.color};margin:3px 0 0;font-weight:700">${m.id === "aisyah" && state.questFlags.aisyahBonus ? "+35% Gold found (Sealed Chest bond)" : m.passive}${isSoel && !state.familiarOut ? " (inactive while bagged)" : ""}</p>` : ""}
           </div>
         </div>
+        ${levelBar}
         ${gearChipRow}
+        ${companionQuestBtn}
         ${activeToggle}
         ${gearPicker}
         ${familiarBagToggle}
@@ -3184,10 +3466,15 @@ function renderFamiliarTrinketSection() {
 function renderForgeSection() {
   const forgeItems = RECIPES.filter(r => r.forgeTier);
   const rows = forgeItems.map(renderRecipeRow).join("<div style='height:10px'></div>");
+  const ascendantItems = RECIPES.filter(r => r.ascendantTier);
+  const ascendantRows = ascendantItems.map(renderRecipeRow).join("<div style='height:10px'></div>");
   return `
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">⚒️ The Forge</p>
     <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Cael the Forgemaster doesn't craft from scratch — bring a finished Mythic piece and enough Legend and Echo Shards, and she'll remake it into something that didn't exist before.</p>
     ${rows}
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">🌌 Ascendant Tier</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Cael's rarest work — she'll only attempt it with a Forge piece already in hand, and Ascendant Cores, which only settle out of the fiercest Raids at Level 60+.</p>
+    ${ascendantRows}
   `;
 }
 
@@ -3229,7 +3516,7 @@ function renderShops() {
 function renderCraft() {
   const potions = RECIPES.filter(r => r.type === "potion");
   const refines = RECIPES.filter(r => r.type === "refine");
-  const equips = RECIPES.filter(r => r.type === "equipment" && !r.forgeTier);
+  const equips = RECIPES.filter(r => r.type === "equipment" && !r.forgeTier && !r.ascendantTier);
   const section = (title, list) => list.length ? `
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">${title}</p>
     ${list.map(renderRecipeRow).join("<div style='height:10px'></div>")}
@@ -3558,6 +3845,29 @@ function renderStoryModal() {
   </div>`;
 }
 
+function renderCompanionQuestModal() {
+  if (!ui.showCompanionQuest) return "";
+  const companionId = ui.showCompanionQuest;
+  const q = currentCompanionQuest(companionId);
+  if (!q) { ui.showCompanionQuest = null; return ""; }
+  const member = PARTY.find(p => p.id === companionId);
+  const page = q.pages[ui.companionQuestPage];
+  const isLastPage = ui.companionQuestPage >= q.pages.length - 1;
+  const dots = q.pages.map((_,i) => `<span style="width:6px;height:6px;border-radius:6px;background:${i===ui.companionQuestPage ? member.color : C.creamDeep}"></span>`).join("");
+  return `<div style="position:fixed;inset:0;z-index:57;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${q.icon} ${q.title}</p>
+        <button data-act="closeCompanionQuest"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">${member.name}'s Story</p>
+      <p style="font-size:13.5px;line-height:1.6;color:${C.ink};min-height:110px">${escapeHtml(page)}</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 16px">${dots}</div>
+      <button data-act="companionQuestNext" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${member.color}, ${C.mageDeep});color:white">${isLastPage ? "Finish" : "Continue"}</button>
+    </div>
+  </div>`;
+}
+
 function renderStrongholdModal() {
   if (!ui.showStronghold) return "";
   const s = currentStrongholdStage();
@@ -3639,6 +3949,7 @@ function render() {
     ${renderRepBonusModal()}
     ${renderStoryModal()}
     ${renderStrongholdModal()}
+    ${renderCompanionQuestModal()}
     ${renderSkirmishModal()}
     ${renderChestModal()}
     ${renderBackupModal()}
