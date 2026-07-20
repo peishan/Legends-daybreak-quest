@@ -25,11 +25,17 @@
 <div id="app"></div>
 <script>
 /* ================= palette ================= */
-const C = {
+const LIGHT_THEME = {
   cream:"#FBF4E9", creamDeep:"#F3E7D3", ink:"#4A3B32", inkSoft:"#8A7566",
   mage:"#8E6FB0", mageDeep:"#6F4F92", mageSoft:"#EDE3F7", pink:"#E9A8B4",
   gold:"#D9A441", sage:"#8FA982", sageSoft:"#E6EFDF", card:"#FFFDF8", border:"#E4D4BC",
 };
+const DARK_THEME = {
+  cream:"#1E1815", creamDeep:"#241D19", ink:"#F0E6D8", inkSoft:"#B5A38E",
+  mage:"#B79ADB", mageDeep:"#8A6BB8", mageSoft:"#332944", pink:"#EFB3BE",
+  gold:"#E8B854", sage:"#9DBB8F", sageSoft:"#2A3527", card:"#2A211C", border:"#4A3D31",
+};
+let C = LIGHT_THEME;
 
 /* ================= world data ================= */
 const PARTY = [
@@ -707,6 +713,22 @@ const SELL_PRICES = {
 };
 const POTION_SELL = { health_draught:5, focus_elixir:6, greater_health_draught:10 };
 
+const MIMI_STOCK = [
+  { id:"health_draught", price:15 },
+  { id:"focus_elixir", price:18 },
+  { id:"greater_health_draught", price:35 },
+];
+const AISY_STOCK = [
+  { id:"comp_blade", price:45 },
+  { id:"comp_gauntlets", price:110 },
+  { id:"comp_charm", price:45 },
+  { id:"comp_trinket_luck", price:55 },
+  { id:"comp_ring_might", price:65 },
+  { id:"comp_ring_swift", price:65 },
+  { id:"comp_amulet_vigor", price:130 },
+  { id:"comp_cloak_shadow", price:85 },
+];
+
 const WEEKLY_TASK = { desc:"Answer 10 Calls this week", goal:10, reward:{gold:80,xp:60} };
 
 const BOUNTY_POOL = [
@@ -789,6 +811,7 @@ function spendCharge(s, now, amount) {
 
 function defaultState() {
   return {
+    theme: "light",
     player: { name:"San", level:1, xp:0, gold:15, hp:60, maxHp:60, mp:30, maxMp:30 },
     equipment: { weapon:null, armor:null, trinket:null, ring1:null, ring2:null, amulet:null, cloak:null },
     materials: {}, potions: {}, totalCheckIns:0, streak:0, lastCheckInDate:null,
@@ -845,6 +868,17 @@ function load() {
     migrateCompanionGear();
     migrateFamiliar();
   } catch (e) { state = defaultState(); }
+  applyTheme();
+}
+function applyTheme() {
+  C = state.theme === "dark" ? DARK_THEME : LIGHT_THEME;
+  const root = document.documentElement;
+  Object.entries(C).forEach(([k,v]) => root.style.setProperty(`--${k}`, v));
+}
+function toggleTheme() {
+  state.theme = state.theme === "dark" ? "light" : "dark";
+  applyTheme();
+  save(); render();
 }
 function migrateFamiliar() {
   if (state.activeParty && state.activeParty.includes("soel")) {
@@ -2025,6 +2059,27 @@ function fightSkirmish() {
   else showToast(`${enc.name} defeated! +${gold}g +${xp}xp${dropMat ? `, +1 ${dropMat}` : ""}`);
 }
 
+function buyFromMimi(id) {
+  const stock = MIMI_STOCK.find(x => x.id === id);
+  if (!stock) return;
+  const price = Math.round(stock.price * (1 - reputationDiscount()));
+  if (state.player.gold < price) return;
+  state.player.gold -= price;
+  state.potions[id] = (state.potions[id]||0) + 1;
+  save(); render();
+  showToast(`Bought ${RECIPES.find(x=>x.id===id).name} from Mimi for ${price}g.`);
+}
+function buyFromAisy(id) {
+  const stock = AISY_STOCK.find(x => x.id === id);
+  if (!stock) return;
+  const price = Math.round(stock.price * (1 - reputationDiscount()));
+  if (state.player.gold < price) return;
+  state.player.gold -= price;
+  state.companionGearOwned[id] = (state.companionGearOwned[id]||0) + 1;
+  save(); render();
+  showToast(`Bought ${COMPANION_GEAR.find(x=>x.id===id).name} from Aisy for ${price}g.`);
+}
+
 function sellMaterial(name) {
   const qty = state.materials[name] || 0;
   if (qty <= 0) return;
@@ -2032,7 +2087,7 @@ function sellMaterial(name) {
   state.materials[name] -= 1;
   state.player.gold += price;
   save(); render();
-  showToast(`Sold 1 ${name} to LLP for ${price}g.`);
+  showToast(`Sold 1 ${name} to Lewis for ${price}g.`);
 }
 
 function sellPotion(id) {
@@ -2042,7 +2097,7 @@ function sellPotion(id) {
   state.potions[id] -= 1;
   state.player.gold += price;
   save(); render();
-  showToast(`Sold 1 ${RECIPES.find(x=>x.id===id).name} to JT for ${price}g.`);
+  showToast(`Sold 1 ${RECIPES.find(x=>x.id===id).name} to Jonathan for ${price}g.`);
 }
 
 function sellEquipment(id) {
@@ -2053,7 +2108,7 @@ function sellEquipment(id) {
   state.crafted.splice(state.crafted.indexOf(id), 1);
   state.player.gold += price;
   save(); render();
-  showToast(`Sold ${r.name} to JT for ${price}g.`);
+  showToast(`Sold ${r.name} to Jonathan for ${price}g.`);
 }
 
 function usePotionInFight() {
@@ -2243,7 +2298,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   chooseSpecialization, openSpecPicker, closeSpecPicker,
   openRepBonus, closeRepBonus, repBonusNext,
   setTab, monthPrev: () => monthShift(-1), monthNext: () => monthShift(1),
-  openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter };
+  openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -2273,6 +2328,7 @@ function renderHeader() {
           <span style="font-size:18px;${state.streak>0?"":"filter:grayscale(1) opacity(.35)"}">🔥</span>
           <span class="disp" style="font-weight:700">${state.streak}</span>
         </div>
+        <button data-act="toggleTheme" aria-label="Toggle light/dark theme"><span style="font-size:18px;color:${C.inkSoft}">${state.theme === "dark" ? "☀️" : "🌙"}</span></button>
         <button data-act="openBackup" aria-label="Backup and restore"><span style="font-size:18px;color:${C.inkSoft}">⚙️</span></button>
       </div>
     </div>
@@ -2555,7 +2611,20 @@ function renderCharacterSheet() {
   const scores = abilityScores();
   const eb = equippedBonus();
   const abs = { str: abilityMod(scores.str), dex: abilityMod(scores.dex), con: abilityMod(scores.con), int: abilityMod(scores.int), wis: abilityMod(scores.wis), cha: abilityMod(scores.cha) };
-  const gold = "#c9a746", goldBright = "#e0c568", parchment = "#e8dcc0", parchDim = "#a99b7c", stoneDark = "#1a1411", stoneBg = "#241d18", stonePanel = "#2c2119", green = "#7fbf7f", red = "#d67a7a";
+  const useDarkStone = state.theme !== "dark";
+  const gold = useDarkStone ? "#c9a746" : "#A9832F";
+  const goldBright = useDarkStone ? "#e0c568" : "#8B6F1F";
+  const parchment = useDarkStone ? "#e8dcc0" : "#4A3B32";
+  const parchDim = useDarkStone ? "#a99b7c" : "#8A7566";
+  const stoneDark = useDarkStone ? "#1a1411" : "#D9C9A8";
+  const stoneBg = useDarkStone ? "#241d18" : "#EDE0C4";
+  const stonePanel = useDarkStone ? "#2c2119" : "#F3E9D6";
+  const panelBorder = useDarkStone ? "#3d3226" : "#D3C09A";
+  const green = useDarkStone ? "#7fbf7f" : "#4A8F4A";
+  const red = useDarkStone ? "#d67a7a" : "#B84040";
+  const outerBorder = useDarkStone ? "#6b5330" : "#B89A5E";
+  const portraitAccent = useDarkStone ? "#4a3c28" : "#C9B37E";
+  const emptySlotBorder = useDarkStone ? "#4a3f30" : "#C9B896";
 
   const abLabels = [["str","STR"],["dex","DEX"],["con","CON"],["int","INT"],["wis","WIS"],["cha","CHA"]];
   const statRows = abLabels.map(([k,label]) => {
@@ -2563,7 +2632,7 @@ function renderCharacterSheet() {
     const mod = abs[k];
     const modColor = mod > 0 ? green : mod < 0 ? red : parchDim;
     return `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:${stonePanel};border-radius:5px;margin-bottom:4px;border:1px solid #3d3226">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:${stonePanel};border-radius:5px;margin-bottom:4px;border:1px solid ${panelBorder}">
         <span style="font-size:10.5px;font-weight:700;color:${gold};letter-spacing:0.5px">${label}</span>
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:13px;font-weight:700;color:${parchment}">${score}</span>
@@ -2583,14 +2652,14 @@ function renderCharacterSheet() {
   const modLine = (label, val) => val ? `<p style="font-size:10px;color:${parchDim};margin:1px 0">${label}: <span style="color:${parchment}">${val>=0?"+":""}${val}</span></p>` : "";
 
   const breakdownPanel = `
-    <div style="margin-top:10px;background:${stonePanel};border:1px solid #3d3226;border-radius:6px;padding:10px 12px">
+    <div style="margin-top:10px;background:${stonePanel};border:1px solid ${panelBorder};border-radius:6px;padding:10px 12px">
       <p style="font-size:11px;font-weight:700;color:${gold};letter-spacing:0.5px;margin:0 0 6px">ATTACK ROLL MODIFIERS</p>
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
         <span style="font-size:10.5px;color:${parchDim}">To-Hit Bonus</span>
         <span style="font-size:13px;font-weight:700;color:${parchment}">+${totalHit}</span>
       </div>
       ${modLine("Level", lvlBonus)}${modLine("DEX", abs.dex)}${modLine("Gear Luck", luckB)}${modLine("Diviner", divinerB)}
-      <div style="height:1px;background:#3d3226;margin:8px 0"></div>
+      <div style="height:1px;background:${panelBorder};margin:8px 0"></div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
         <span style="font-size:10.5px;color:${parchDim}">Spell Damage Bonus</span>
         <span style="font-size:13px;font-weight:700;color:${parchment}">+${totalDmg}${evokerNote}</span>
@@ -2605,7 +2674,7 @@ function renderCharacterSheet() {
     `🏅 ${tier.title}`,
   ].filter(Boolean);
   const featsPanel = `
-    <div style="margin-top:10px;background:${stonePanel};border:1px solid #3d3226;border-radius:6px;padding:10px 12px">
+    <div style="margin-top:10px;background:${stonePanel};border:1px solid ${panelBorder};border-radius:6px;padding:10px 12px">
       <p style="font-size:11px;font-weight:700;color:${gold};letter-spacing:0.5px;margin:0 0 6px">TITLES & SPECIALIZATION</p>
       ${feats.map(f => `<p style="font-size:11.5px;color:${parchment};margin:3px 0">${f}</p>`).join("")}
       <p style="font-size:9.5px;color:${parchDim};margin:6px 0 0">DEX: to-hit · INT: spell damage · CON: Max HP · WIS: reduces boss damage · CHA: gold found · STR: companion damage</p>
@@ -2617,21 +2686,21 @@ function renderCharacterSheet() {
     const item = itemId ? findGearItem(itemId) : null;
     return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px">
-        <div style="width:42px;height:42px;border-radius:9999px;background:${item ? `radial-gradient(circle at 35% 30%, #4a3c28, ${stonePanel})` : stoneDark};border:2px solid ${item ? gold : "#4a3f30"};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:${item ? "0 0 6px rgba(201,167,70,.4)" : "none"}">${icon}</div>
+        <div style="width:42px;height:42px;border-radius:9999px;background:${item ? `radial-gradient(circle at 35% 30%, ${portraitAccent}, ${stonePanel})` : stoneDark};border:2px solid ${item ? gold : emptySlotBorder};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:${item ? "0 0 6px rgba(201,167,70,.4)" : "none"}">${icon}</div>
         <p style="font-size:8px;color:${item ? parchment : parchDim};margin:0;text-align:center;line-height:1.15;font-weight:${item?700:400}">${item ? item.name.split(" ").slice(0,2).join(" ") : "—"}</p>
       </div>`;
   }).join("");
   const gearPanel = `
-    <div style="margin-top:10px;background:${stonePanel};border:1px solid #3d3226;border-radius:6px;padding:12px">
+    <div style="margin-top:10px;background:${stonePanel};border:1px solid ${panelBorder};border-radius:6px;padding:12px">
       <p style="font-size:11px;font-weight:700;color:${gold};letter-spacing:0.5px;margin:0 0 10px">EQUIPPED GEAR</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between">${gearSlots}</div>
     </div>`;
 
   return `
-    <div style="background:linear-gradient(160deg, ${stoneBg}, ${stoneDark});border:3px solid #6b5330;border-radius:10px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,.35)">
+    <div style="background:linear-gradient(160deg, ${stoneBg}, ${stoneDark});border:3px solid ${outerBorder};border-radius:10px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,.35)">
       <div style="border:1px solid ${gold};border-radius:8px;padding:14px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-          <div style="width:52px;height:52px;border-radius:9999px;background:radial-gradient(circle at 35% 30%, #4a3c28, ${stonePanel});border:2px solid ${gold};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🪄</div>
+          <div style="width:52px;height:52px;border-radius:9999px;background:radial-gradient(circle at 35% 30%, ${portraitAccent}, ${stonePanel});border:2px solid ${gold};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🪄</div>
           <div>
             <p class="disp" style="font-weight:700;font-size:15px;margin:0;color:${goldBright};letter-spacing:0.5px">${escapeHtml(state.player.name)}</p>
             <p style="font-size:10.5px;color:${parchDim};margin:1px 0 0">Level ${state.player.level} Mage${spec ? ` · ${spec.name}` : ""}</p>
@@ -2683,13 +2752,13 @@ function renderParty() {
       const assignedId = equipped[targetSlot];
       const assignedGear = assignedId ? COMPANION_GEAR.find(g => g.id === assignedId) : null;
       const availableGear = COMPANION_GEAR.filter(g => g.slot === itemSlot && (state.companionGearOwned[g.id]||0) > 0);
-      if (!assignedGear && availableGear.length === 0) return "";
       return `
         <div style="margin-top:8px">
           <p style="font-size:10px;color:${C.inkSoft};margin:0 0 5px">${slotLabel}: ${assignedGear ? `${assignedGear.icon} ${assignedGear.name}` : "Empty"}</p>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
             ${assignedGear ? `<button data-act="assignCompanionGear" data-arg="${m.id}|${targetSlot}|none" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.creamDeep};color:${C.inkSoft}">Unequip</button>` : ""}
             ${availableGear.map(g => `<button data-act="assignCompanionGear" data-arg="${m.id}|${targetSlot}|${g.id}" class="disp" style="padding:4px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${C.mageSoft};color:${C.mageDeep}">${g.icon} ${g.name} (${state.companionGearOwned[g.id]})</button>`).join("")}
+            ${(!assignedGear && availableGear.length === 0) ? `<span style="font-size:9.5px;color:${C.inkSoft};font-style:italic">Craft gear for this slot in the Craft tab</span>` : ""}
           </div>
         </div>`;
     };
@@ -3054,10 +3123,10 @@ function renderTraders() {
   return `
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">Guild Standing: ${tier.title} (${state.reputation||0}${nextTier ? `, next at ${nextTier.min}` : ""})</p>
     <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 12px">${repNote}</p>
-    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">LLP · Materials Trader</p>
-    ${card(matRows || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — LLP only buys raw and refined materials.</p></div>`)}
-    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">JT · Gear & Potions Trader</p>
-    ${card((potionRows+equipRows) || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — JT buys potions and spare equipment.</p></div>`)}
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">Lewis · Materials Trader</p>
+    ${card(matRows || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — Lewis only buys raw and refined materials.</p></div>`)}
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">Jonathan · Gear & Potions Trader</p>
+    ${card((potionRows+equipRows) || `<div style="padding:14px"><p style="font-size:12px;color:${C.inkSoft};margin:0">Nothing to sell — Jonathan buys potions and spare equipment.</p></div>`)}
   `;
 }
 
@@ -3122,6 +3191,41 @@ function renderForgeSection() {
   `;
 }
 
+function renderShops() {
+  const disc = reputationDiscount();
+  const mimiRows = MIMI_STOCK.map(stock => {
+    const r = RECIPES.find(x => x.id === stock.id);
+    const price = Math.round(stock.price * (1 - disc));
+    const affordable = state.player.gold >= price;
+    return `
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
+        <div style="flex:1"><span style="font-size:12.5px">${r.icon} ${r.name}</span><p style="font-size:10px;color:${C.inkSoft};margin:2px 0 0">${r.effect}</p></div>
+        <button data-act="buyFromMimi" data-arg="${stock.id}" ${affordable?"":"disabled"} class="disp" style="padding:4px 10px;border-radius:9999px;background:${affordable?C.mageDeep:C.creamDeep};color:${affordable?"white":C.inkSoft};font-size:11px;font-weight:600;flex-shrink:0">Buy for ${price}g</button>
+      </div>`;
+  }).join("");
+
+  const aisyRows = AISY_STOCK.map(stock => {
+    const item = COMPANION_GEAR.find(x => x.id === stock.id);
+    const price = Math.round(stock.price * (1 - disc));
+    const affordable = state.player.gold >= price;
+    const slotLabels = { weapon:"⚔️ Weapon", armor:"🛡️ Armor", trinket:"💎 Trinket", amulet:"🔯 Amulet", cloak:"🧣 Cloak", ring:"💍 Ring" };
+    return `
+      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
+        <div style="flex:1"><span style="font-size:12.5px">${item.icon} ${item.name}</span><p style="font-size:10px;color:${C.inkSoft};margin:2px 0 0">${slotLabels[item.slot]} · ${item.dmgBonus?`+${item.dmgBonus} dmg `:""}${item.hitBonus?`+${item.hitBonus} to-hit`:""}</p></div>
+        <button data-act="buyFromAisy" data-arg="${stock.id}" ${affordable?"":"disabled"} class="disp" style="padding:4px 10px;border-radius:9999px;background:${affordable?C.mageDeep:C.creamDeep};color:${affordable?"white":C.inkSoft};font-size:11px;font-weight:600;flex-shrink:0">Buy for ${price}g</button>
+      </div>`;
+  }).join("");
+
+  return `
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">Mimi · Potion Seller</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Ready-made potions for gold — no materials needed.</p>
+    ${card(mimiRows)}
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">Aisy · Gear Exchange</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Basic companion gear for every slot, ready to buy. Her finer stock still needs Legend and Echo Shards, brought to the Craft bench yourself.</p>
+    ${card(aisyRows)}
+  `;
+}
+
 function renderCraft() {
   const potions = RECIPES.filter(r => r.type === "potion");
   const refines = RECIPES.filter(r => r.type === "refine");
@@ -3139,6 +3243,7 @@ function renderCraft() {
     ${renderBountyGear()}
     ${renderCompanionGearSection()}
     ${renderFamiliarTrinketSection()}
+    ${renderShops()}
     ${renderTraders()}
   </div>`;
 }
