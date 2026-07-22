@@ -2647,7 +2647,8 @@ function sellPotion(id) {
 function sellEquipment(id) {
   if (!state.crafted.includes(id)) return;
   if (Object.values(state.equipment).includes(id)) return;
-  const r = RECIPES.find(x => x.id === id);
+  const r = findGearItem(id);
+  if (!r) return;
   const price = Math.round(Math.max(5, Math.round((r.gold||20) * 0.4)) * (1 + reputationDiscount()));
   state.crafted.splice(state.crafted.indexOf(id), 1);
   state.player.gold += price;
@@ -4094,7 +4095,8 @@ function renderTraders() {
 
   const spareEquip = state.crafted.filter(id => !Object.values(state.equipment).includes(id));
   const equipRows = spareEquip.map(id => {
-    const r = RECIPES.find(x => x.id === id);
+    const r = findGearItem(id);
+    if (!r) return "";
     const price = Math.round(Math.max(5, Math.round((r.gold||20) * 0.4)) * (1 + disc));
     return `
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
