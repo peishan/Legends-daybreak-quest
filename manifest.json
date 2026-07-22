@@ -1,0 +1,16 @@
+{
+  "name": "Legends: Daybreak Quest",
+  "short_name": "Daybreak Quest",
+  "description": "An ADHD-friendly RPG habit and focus tracker.",
+  "start_url": "./legends-daybreak-quest.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF4E9",
+  "theme_color": "#8E6FB0",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
