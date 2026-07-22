@@ -1,6 +1,7 @@
 const CACHE_NAME = "daybreak-quest-v1";
 const URLS_TO_CACHE = [
-  "./legends-daybreak-quest.html",
+  "./",
+  "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",

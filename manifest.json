@@ -2,7 +2,7 @@
   "name": "Legends: Daybreak Quest",
   "short_name": "Daybreak Quest",
   "description": "An ADHD-friendly RPG habit and focus tracker.",
-  "start_url": "./legends-daybreak-quest.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
