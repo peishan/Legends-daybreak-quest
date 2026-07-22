@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
 <title>Legends: Daybreak Quest</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#8E6FB0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Daybreak Quest" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" href="icon-192.png" />
 <style>
   :root {
     --cream:#FBF4E9; --creamDeep:#F3E7D3; --ink:#4A3B32; --inkSoft:#8A7566;
@@ -1076,6 +1083,8 @@ function defaultState() {
     questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
     water: { date:null, count:0, goal:8 },
     diet: { date:null, checked:false, streak:0, lastDate:null },
+    dailyReminders: { date:null, morningWater:false, fedSoel:false, sleptEarly:false },
+    focusSession: null,
     vigilTier: 0,
     questFlags: { chestFound:false, chestChoice:null, aisyahBonus:false },
     lastRest: 0, skirmishCount: 0,
@@ -1257,6 +1266,7 @@ function ensureDaily() {
   if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
   if (!state.water || state.water.date !== t) state.water = { date:t, count:0, goal:(state.water && state.water.goal) || 8 };
   if (!state.diet || state.diet.date !== t) state.diet = { date:t, checked:false, streak: state.diet ? state.diet.streak : 0, lastDate: state.diet ? state.diet.lastDate : null };
+  if (!state.dailyReminders || state.dailyReminders.date !== t) state.dailyReminders = { date:t, morningWater:false, fedSoel:false, sleptEarly:false };
   if (!state.dayQuest || state.dayQuest.date !== t) state.dayQuest = { date:t, claimed:false, choiceMade:null };
   if (!state.hitListClaimed || state.hitListClaimed.date !== t) state.hitListClaimed = { date:t, claimed:false };
   if (!state.dailyLog.enemyKillsToday) state.dailyLog.enemyKillsToday = {};
@@ -2678,6 +2688,60 @@ function markDietClean() {
   else showToast(`Clean diet day logged. Streak: ${state.diet.streak} 🔥`);
 }
 
+const REMINDER_LABELS = {
+  morningWater: { icon:"💧", label:"Morning Water", desc:"A mouthful, right when you wake up." },
+  fedSoel: { icon:"🐱", label:"Feed Soel", desc:"He's not subtle about reminding you either." },
+  sleptEarly: { icon:"🌙", label:"Sleep Early", desc:"Lights out before midnight." },
+};
+function toggleReminder(key) {
+  ensureDaily();
+  if (!REMINDER_LABELS[key]) return;
+  const turningOn = !state.dailyReminders[key];
+  state.dailyReminders[key] = turningOn;
+  if (turningOn) {
+    const leveledUp = grantReward(5, 4);
+    save(); render();
+    if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+    else showToast(`${REMINDER_LABELS[key].icon} ${REMINDER_LABELS[key].label} logged. +5g +4xp`);
+  } else {
+    save(); render();
+  }
+}
+
+const FOCUS_DURATIONS = [5, 10, 15, 20];
+function startFocusMode(minutes) {
+  const dur = parseInt(minutes, 10);
+  if (!FOCUS_DURATIONS.includes(dur) || state.focusSession) return;
+  state.focusSession = { startedAt: Date.now(), durationMin: dur };
+  save(); render();
+}
+function cancelFocusMode() {
+  state.focusSession = null;
+  save(); render();
+}
+function focusRemainingMs() {
+  if (!state.focusSession) return 0;
+  const totalMs = state.focusSession.durationMin * 60000;
+  const elapsed = Date.now() - state.focusSession.startedAt;
+  return Math.max(0, totalMs - elapsed);
+}
+function claimFocusReward() {
+  if (!state.focusSession || focusRemainingMs() > 0) return;
+  const dur = state.focusSession.durationMin;
+  const gold = dur * 2, xp = dur * 2;
+  state.focusSession = null;
+  const leveledUp = grantReward(gold, xp);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`Focus session complete! +${gold}g +${xp}xp`);
+}
+function fmtMMSS(ms) {
+  const totalSec = Math.max(0, Math.ceil(ms/1000));
+  const m = Math.floor(totalSec/60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2,"0")}`;
+}
+
 function vigilGoal() { return 15 + (state.vigilTier||0) * 10; }
 function claimVigil() {
   if (state.totalCheckIns < vigilGoal()) return;
@@ -2737,6 +2801,51 @@ function renderBackupMsg() {
   if (el) el.textContent = ui.importMsg;
 }
 
+function exportSaveFile() {
+  try {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `daybreak-quest-save-${today()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    ui.importMsg = "Save file downloaded!";
+    renderBackupMsg();
+    setTimeout(() => { ui.importMsg = ""; renderBackupMsg(); }, 3000);
+  } catch (e) {
+    ui.importMsg = "Couldn't download a file here — try the copy/paste backup below instead.";
+    renderBackupMsg();
+  }
+}
+function triggerImportFile() {
+  const input = document.getElementById("importFileInput");
+  if (input) input.click();
+}
+function handleImportFile(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed || typeof parsed !== "object" || !parsed.player) throw new Error("bad shape");
+      state = mergeDefaults(defaultState(), parsed);
+      save();
+      ui.importMsg = "Save file imported!";
+      renderBackupMsg();
+      setTimeout(() => { ui.showBackup = false; render(); }, 1000);
+    } catch (err) {
+      ui.importMsg = "That file didn't look like a valid save.";
+      renderBackupMsg();
+    }
+  };
+  reader.readAsText(file);
+  fileInput.value = "";
+}
+
 /* ================= action dispatch ================= */
 const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, equipRing, usePotion, claimQuest,
   claimChainStep, claimTask, claimWeeklyTask, drinkWater, markDietClean, claimVigil, chestChoice,
@@ -2755,7 +2864,9 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
   claimIdleReward, claimWeeklyGuildReward,
-  pickupSideQuest, turninSideQuest };
+  pickupSideQuest, turninSideQuest,
+  toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
+  exportSaveFile, triggerImportFile };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -2763,6 +2874,9 @@ document.getElementById("app").addEventListener("click", (e) => {
   const act = el.getAttribute("data-act");
   const arg = el.getAttribute("data-arg");
   if (ACTIONS[act]) ACTIONS[act](arg);
+});
+document.getElementById("app").addEventListener("change", (e) => {
+  if (e.target && e.target.id === "importFileInput") handleImportFile(e.target);
 });
 
 /* ================= render ================= */
@@ -2932,6 +3046,45 @@ function renderHome() {
     </div>
   `);
 
+  const focusModeCard = (() => {
+    if (state.focusSession) {
+      const remaining = focusRemainingMs();
+      const done = remaining <= 0;
+      const totalMs = state.focusSession.durationMin * 60000;
+      const pct = Math.min(100, ((totalMs - remaining) / totalMs) * 100);
+      return card(`
+        <div style="padding:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">⏳</span></div>
+            <div style="flex:1">
+              <p class="disp" style="font-weight:700;font-size:13px;margin:0">Focus Mode</p>
+              <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${done ? "Time's up!" : `${fmtMMSS(remaining)} left · ${state.focusSession.durationMin} min session`}</p>
+            </div>
+          </div>
+          <div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
+            <div style="height:6px;width:${pct}%;background:${done ? C.sage : C.pink};transition:width 1s linear"></div>
+          </div>
+          ${done
+            ? `<button data-act="claimFocusReward" class="disp" style="width:100%;padding:10px;border-radius:16px;font-weight:600;background:${C.sage};color:white">Claim Reward</button>`
+            : `<button data-act="cancelFocusMode" class="disp" style="width:100%;padding:8px;border-radius:16px;font-weight:600;background:${C.creamDeep};color:${C.inkSoft};font-size:12px">Cancel Session</button>`}
+        </div>
+      `);
+    }
+    const durationButtons = FOCUS_DURATIONS.map(d => `<button data-act="startFocusMode" data-arg="${d}" class="disp" style="flex:1;padding:8px;border-radius:12px;font-size:12px;font-weight:700;background:${C.mageSoft};color:${C.mageDeep}">${d}m</button>`).join("");
+    return card(`
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">⏳</span></div>
+          <div style="flex:1">
+            <p class="disp" style="font-weight:700;font-size:13px;margin:0">Focus Mode</p>
+            <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Pick a length and get something done.</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">${durationButtons}</div>
+      </div>
+    `);
+  })();
+
   const idleCard = idleRewardAvailable() ? (() => {
     const { minutes, gold, xp, materialCount } = idleRewardPreview();
     return card(`
@@ -3072,7 +3225,7 @@ function renderHome() {
 
   const wellnessCard = renderWellness();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -3082,6 +3235,17 @@ function renderWellness() {
     `<span style="font-size:16px">${i < state.water.count ? "💧" : "🌫️"}</span>`).join("");
   const waterDone = state.water.count >= wGoal;
   const dietDone = state.diet.checked;
+  const reminderRows = Object.entries(REMINDER_LABELS).map(([key,info]) => {
+    const done = state.dailyReminders[key];
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">${info.icon}</span>
+          <div><p style="font-size:12.5px;margin:0">${info.label}</p><p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${info.desc}</p></div>
+        </div>
+        <button data-act="toggleReminder" data-arg="${key}" class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${done ? C.sageSoft : C.mageSoft};color:${done ? C.sage : C.mageDeep}">${done ? "✔️ Done" : "Mark Done"}</button>
+      </div>`;
+  }).join("");
   return card(`
     <div style="padding:16px">
       <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 10px;color:${C.mageDeep}">Wellness</p>
@@ -3099,6 +3263,10 @@ function renderWellness() {
           <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${state.diet.streak > 0 ? `🔥 ${state.diet.streak} day streak` : "Stayed on track today?"}</p>
         </div>
         <button data-act="markDietClean" ${dietDone ? "disabled" : ""} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${dietDone ? C.sageSoft : C.sage};color:${dietDone ? C.sage : "white"}">${dietDone ? "✔️ Logged" : "Mark Clean"}</button>
+      </div>
+      <div style="border-top:1px solid ${C.border};padding-top:6px;margin-top:4px">
+        <p style="font-size:12.5px;font-weight:700;color:${C.mageDeep};margin:6px 0 0">Daily Reminders</p>
+        ${reminderRows}
       </div>
     </div>
   `);
@@ -4139,13 +4307,18 @@ function renderBackupModal() {
         <p class="disp" style="font-weight:700;font-size:15px;margin:0">Backup & Restore</p>
         <button data-act="closeBackup"><span style="color:${C.inkSoft}">✖</span></button>
       </div>
-      <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Copy this whenever you update the game, and keep it somewhere safe (like Notes). If progress ever resets, paste it back in below.</p>
-      <textarea readonly onfocus="this.select()" style="width:100%;height:70px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.inkSoft}">${backupText}</textarea>
-      <button data-act="copyBackup" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.mageSoft};color:${C.mageDeep};font-weight:600;font-size:13px"><span>📋</span><span>Copy Backup</span></button>
+      <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Download a save file whenever you update the game, and keep it somewhere safe (like Files or Drive).</p>
+      <div style="display:flex;gap:8px">
+        <button data-act="exportSaveFile" class="disp" style="flex:1;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;background:${C.mageDeep};color:white;font-weight:600;font-size:13px"><span>⬇️</span><span>Export Save</span></button>
+        <button data-act="triggerImportFile" class="disp" style="flex:1;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;background:${C.gold};color:white;font-weight:600;font-size:13px"><span>⬆️</span><span>Import Save</span></button>
+      </div>
+      <input type="file" id="importFileInput" accept="application/json,.json" style="display:none" />
       <div style="border-top:1px solid ${C.border};margin-top:16px;padding-top:16px">
-        <p style="font-size:12px;color:${C.inkSoft};margin:0 0 8px">Restore from a backup:</p>
-        <textarea id="importTextarea" placeholder="Paste your saved backup text here…" style="width:100%;height:70px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.ink}"></textarea>
-        <button data-act="restoreBackup" class="disp" style="width:100%;padding:10px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.gold};color:white;font-weight:600;font-size:13px"><span>📥</span><span>Restore</span></button>
+        <p style="font-size:11px;color:${C.inkSoft};margin:0 0 8px">Or copy/paste as text:</p>
+        <textarea readonly onfocus="this.select()" style="width:100%;height:60px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.inkSoft}">${backupText}</textarea>
+        <button data-act="copyBackup" class="disp" style="width:100%;padding:8px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.mageSoft};color:${C.mageDeep};font-weight:600;font-size:12px"><span>📋</span><span>Copy Backup Text</span></button>
+        <textarea id="importTextarea" placeholder="Paste backup text here…" style="width:100%;height:60px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.ink};margin-top:8px"></textarea>
+        <button data-act="restoreBackup" class="disp" style="width:100%;padding:8px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.creamDeep};color:${C.inkSoft};font-weight:600;font-size:12px"><span>📥</span><span>Restore from Text</span></button>
       </div>
       <p id="backupMsg" style="font-size:12px;color:${C.mageDeep};margin-top:10px;text-align:center">${escapeHtml(ui.importMsg)}</p>
     </div>
@@ -4344,6 +4517,12 @@ function render() {
 load();
 render();
 setInterval(() => { ui.now = Date.now(); if (!ui.showBackup) render(); }, 20000);
+
+if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
