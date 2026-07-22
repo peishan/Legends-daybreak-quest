@@ -30,6 +30,7 @@
   @keyframes fxFloatBig { 0%{opacity:0;transform:translate(-50%,4px) scale(.6) rotate(-4deg)} 18%{opacity:1;transform:translate(-50%,-10px) scale(1.3) rotate(2deg)} 75%{opacity:1;transform:translate(-50%,-30px) scale(1.1) rotate(0)} 100%{opacity:0;transform:translate(-50%,-44px) scale(1)} }
   @keyframes fxShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(3px)} }
   @keyframes fxFlash { 0%{filter:brightness(1)} 25%{filter:brightness(1.7)} 100%{filter:brightness(1)} }
+  @keyframes tavernGlitter { 0%,100%{box-shadow:0 0 0 rgba(232,91,91,0)} 50%{box-shadow:0 0 10px rgba(232,91,91,.65)} }
   .fx-shake { animation: fxShake .4s ease-in-out; }
   .fx-flash { animation: fxFlash .35s ease-out; }
 </style>
@@ -69,6 +70,35 @@ const CHARGE_REGEN_MS = 90 * 60 * 1000;
 const LOCATION_COOLDOWN_MS = 8 * 60 * 1000;
 const LANDMARK_COOLDOWN_MS = 5 * 60 * 1000;
 const REST_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+
+const TAVERN_CARB_LIMIT = 20;
+const TAVERN_MENU = [
+  { id:"tv_fish", name:"Grilled Fish", icon:"🐟", carbs:0 },
+  { id:"tv_eggs", name:"Spiced Eggs", icon:"🥚", carbs:1 },
+  { id:"tv_cheese", name:"Aged Cheese Wheel", icon:"🧀", carbs:1 },
+  { id:"tv_bacon", name:"Crispy Bacon Strips", icon:"🥓", carbs:1 },
+  { id:"tv_broth", name:"Bone Broth", icon:"🍲", carbs:2 },
+  { id:"tv_skewer", name:"Roasted Meat Skewer", icon:"🍗", carbs:2 },
+  { id:"tv_greens", name:"Roasted Greens", icon:"🥬", carbs:4 },
+  { id:"tv_ale", name:"Frothy Ale", icon:"🍺", carbs:20 },
+  { id:"tv_bread", name:"Fresh Baked Bread", icon:"🍞", carbs:25 },
+  { id:"tv_stew", name:"Barley Stew", icon:"🍜", carbs:28 },
+  { id:"tv_mead", name:"Honeyed Mead", icon:"🍯", carbs:30 },
+  { id:"tv_rice", name:"Rice Pilaf", icon:"🍚", carbs:32 },
+  { id:"tv_tart", name:"Berry Tart", icon:"🥧", carbs:35 },
+  { id:"tv_cake", name:"Honey Cake", icon:"🍰", carbs:40 },
+];
+
+const HUNTING_MONSTERS = [
+  { id:"h_wraithling", name:"Wraithling", icon:"👻", hpMod:0.7, tier:"Common", intro:"A Wraithling flickers at the edge of the clearing, small but persistent." },
+  { id:"h_gnat", name:"Notification Gnat", icon:"🪰", hpMod:0.6, tier:"Common", intro:"A Notification Gnat buzzes an erratic, irritating loop around your head." },
+  { id:"h_sprite", name:"Feed Sprite", icon:"🦋", hpMod:0.85, tier:"Common", intro:"A Feed Sprite darts between the trees, quick and hard to pin down." },
+  { id:"h_wisp", name:"Doubt Wisp", icon:"💭", hpMod:1.0, tier:"Uncommon", intro:"A Doubt Wisp drifts low, murmuring half-finished worries." },
+  { id:"h_slime", name:"Idle Slime", icon:"🫧", hpMod:0.9, tier:"Uncommon", intro:"An Idle Slime oozes forward, sluggish but surprisingly resilient." },
+  { id:"h_wraith", name:"Scroll Wraith", icon:"📜", hpMod:1.2, tier:"Rare", intro:"A Scroll Wraith unspools from a torn page, feeding on wasted minutes." },
+  { id:"h_serpent", name:"Feed Serpent", icon:"🐍", hpMod:1.35, tier:"Rare", intro:"A Feed Serpent coils tight, hungry for your attention." },
+  { id:"h_specter", name:"Doubt Specter", icon:"🌫️", hpMod:1.5, tier:"Elite", intro:"A Doubt Specter looms, insisting you should just check one more thing." },
+];
 
 const WANDERING_MONSTERS = [
   { name:"Wraithling", icon:"👻" },
@@ -521,9 +551,9 @@ const DAY_QUESTS = [
     complete:"She hums the finished line back to you. It's about you, a little.",
     reward:{gold:12,xp:12} },
   { id:"dq_senedra_map", title:"Senedra's Supply Run", giver:"senedra", icon:"⭐",
-    intro:'"I\'m restocking my kit before my shift and running short on time. Check two spots for supplies?"',
+    intro:'"I\'ve got deliveries stacked up and no time to make two trips. Check two spots for me?"',
     type:"fetch", track:"locationsToday", goal:2,
-    complete:'"Efficient," she says, already sorting through what you found. "I could use you on a real call."',
+    complete:'"Efficient," she says, already sorting through what you found. "Wish everyone moved this fast."',
     reward:{gold:14,xp:10} },
   { id:"dq_aisyah_debt", title:"Aisyah's Market Debt", giver:"aisyah", icon:"⚔️",
     intro:'"Ugh, I owe the fruit stall 15 gold. Spot me? I\'m good for it."',
@@ -637,7 +667,7 @@ const STORY_CHAPTERS = [
   { id:"ch13", title:"Glass and Reflection", icon:"🏜️", unlockLv:35,
     pages:[
       "The Glass Desert catches the light strangely — every dune throws back a warped, glinting version of whoever's standing on it.",
-      "Senedra studies her own reflection longer than usual, the way she probably checks a patient twice before she trusts the first read.",
+      "Senedra studies her own reflection longer than usual, the way she probably double-checks an address before a long delivery.",
       "You catch your own reflection in a shard — tired, but recognizably yourself. Not the flattering kind of tired. The honest kind.",
       "It occurs to you that most of this map has been some version of that: not flattering, just honest, and somehow still worth showing up for.",
     ], reward:{gold:30,xp:26} },
@@ -854,6 +884,52 @@ const BOUNTY_POOL = [
   { id:"b_explore3", icon:"🧭", desc:"Visit 3 different locations today", goal:3, calc: () => questValue("locationsToday"), reward:{gold:12,xp:0} },
 ];
 
+const BOND_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+const BOND_ACTIVITIES = {
+  joel: { label:"Go on a Date", icon:"💛", lines:[
+    "You and Joel slip away for a quiet dinner, just the two of you, no guild business allowed.",
+    "He takes you somewhere new this time — nothing fancy, just good, and entirely his idea for once.",
+    "Halfway through the evening he just reaches for your hand, no reason needed.",
+    "You end up talking for hours about nothing important. It's the best kind of evening.",
+  ]},
+  aisyah: { label:"Hang Out", icon:"🛍️", lines:[
+    "You and Aisyah wander the market with no actual shopping list, which is somehow the whole point.",
+    "She talks your ear off about her latest scheme. You let her. It's kind of the best part of your week.",
+    "You end up splitting a ridiculous snack neither of you needed, arguing about nothing in particular.",
+    "She drags you to look at a stall \"just for fun,\" then somehow talks the vendor down anyway.",
+  ]},
+  mezstorm: { label:"Watch Her Play", icon:"🎵", lines:[
+    "You sit in on one of Mezstorm's practice sessions, no audience pressure, just her and the half-finished songs.",
+    "She plays you something new, still rough at the edges. You tell her it's good. You mean it.",
+    "Halfway through a song she stops, laughs at herself, and starts over. You wouldn't want it any other way.",
+    "She hands you a spare instrument and insists you \"just try,\" badly, together.",
+  ]},
+  eliz: { label:"Spend Time Together", icon:"❤️", lines:[
+    "You sit with Eliz while she sorts something into careful little piles, content just to be nearby.",
+    "She shows you her latest project in careful, precise detail. You listen to all of it.",
+    "Neither of you says much. It's the comfortable kind of quiet.",
+    "She teaches you the exact right way to do something very specific. You take it seriously, because she does.",
+  ]},
+  senedra: { label:"Catch Up", icon:"⭐", lines:[
+    "You catch Senedra between shifts for once, and she actually sits still long enough to talk.",
+    "She tells you about a delivery she made against every odd today, trying to play it down. You don't let her.",
+    "It's a short visit — she's always got somewhere to be — but she makes the most of it.",
+    "She checks in on you the way she checks on everyone, quick and thorough and quietly caring.",
+  ]},
+  zaki: { label:"Grab Coffee", icon:"🔨", lines:[
+    "You meet Zaki at the cafe he co-owns. He insists on comping your matcha. He always does.",
+    "He pitches you two new ideas before your drink even arrives. You love that about him.",
+    "For once he's not hustling — just talking, easy and unhurried, which suits him too.",
+    "He asks how you're actually doing, and means it, underneath all the usual charm.",
+  ]},
+  soel: { label:"Pet Him", icon:"🐱", lines:[
+    "Soel demands attention with a pointed stare, then melts the second you actually pet him.",
+    "He headbutts your hand until you get the message, then settles in like he planned this all along.",
+    "A slow, deliberate blink. In cat, that's practically a declaration of love.",
+    "He purrs like it's a personal favor to you, then immediately falls asleep mid-pet.",
+  ]},
+};
+
 const SNIPPETS = {
   joel: [
     { at:3, line:'"Didn\'t even have to ask — knew you\'d show up."' },
@@ -971,10 +1047,10 @@ const COMPANION_QUESTS = {
   ],
   senedra: [
     { id:"cq_sen_1", title:"Fast Hands", icon:"⭐", affReq:4, pages:[
-      "Senedra moves through a crisis the way most people move through a grocery list — quick, unbothered, already three steps ahead.",
-      "\"Comes with the job,\" she says, when you mention it. \"You don't get to panic first and think second. Not in my line of work.\"",
-      "You watch her patch up a scraped-up guild recruit in under a minute, calm the whole time, already asking the next question before the first answer's finished.",
-      "It's a specific kind of competence — the kind you only get from doing the hard version of calm, over and over, until it's just how you're built.",
+      "Senedra moves through a delivery run the way most people move through a grocery list — quick, unbothered, already three steps ahead.",
+      "\"Comes with the job,\" she says, when you mention it. \"Miss one deadline and the whole week backs up. You learn to move or you don't last.\"",
+      "You watch her resort an entire delivery queue in under a minute, calm the whole time, already planning the next route before she's finished the first.",
+      "It's a specific kind of competence — the kind you only get from doing the hard version of reliable, over and over, until it's just how you're built.",
     ], reward:{gold:20,xp:20} },
     { id:"cq_sen_2", title:"Since She Was Young", icon:"⭐", affReq:8, pages:[
       "Senedra doesn't talk about it much, but it comes up sideways: she's been taking care of herself, and often everyone around her, since she was a lot younger than she should have needed to be.",
@@ -1079,10 +1155,12 @@ function defaultState() {
     activeSideQuests: [],
     completedSideQuests: [],
     sideQuestKillProgress: {},
+    huntingKills: {},
+    bondCooldowns: {},
     weeklyGuildClaimed: { week:null, claimed:false },
     questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
     water: { date:null, count:0, goal:8 },
-    diet: { date:null, checked:false, streak:0, lastDate:null },
+    tavern: { date:null, carbsToday:0, log:[], streak:0, lastGoodDate:null },
     dailyReminders: { date:null, morningWater:false, fedSoel:false, sleptEarly:false },
     focusSession: null,
     vigilTier: 0,
@@ -1111,7 +1189,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -1265,7 +1343,23 @@ function ensureDaily() {
   if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0, enemyKillsToday:{} };
   if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
   if (!state.water || state.water.date !== t) state.water = { date:t, count:0, goal:(state.water && state.water.goal) || 8 };
-  if (!state.diet || state.diet.date !== t) state.diet = { date:t, checked:false, streak: state.diet ? state.diet.streak : 0, lastDate: state.diet ? state.diet.lastDate : null };
+  if (!state.tavern || state.tavern.date !== t) {
+    const prevDate = state.tavern ? state.tavern.date : null;
+    const prevCarbs = state.tavern ? state.tavern.carbsToday : 0;
+    let streak = state.tavern ? state.tavern.streak : 0;
+    let lastGoodDate = state.tavern ? state.tavern.lastGoodDate : null;
+    if (prevDate) {
+      const wasGood = prevCarbs <= TAVERN_CARB_LIMIT;
+      if (wasGood) {
+        const wasConsecutive = lastGoodDate && (new Date(prevDate) - new Date(lastGoodDate))/86400000 === 1;
+        streak = (wasConsecutive || !lastGoodDate) ? streak + 1 : 1;
+        lastGoodDate = prevDate;
+      } else {
+        streak = 0;
+      }
+    }
+    state.tavern = { date:t, carbsToday:0, log:[], streak, lastGoodDate };
+  }
   if (!state.dailyReminders || state.dailyReminders.date !== t) state.dailyReminders = { date:t, morningWater:false, fedSoel:false, sleptEarly:false };
   if (!state.dayQuest || state.dayQuest.date !== t) state.dayQuest = { date:t, claimed:false, choiceMade:null };
   if (!state.hitListClaimed || state.hitListClaimed.date !== t) state.hitListClaimed = { date:t, claimed:false };
@@ -1305,6 +1399,7 @@ function nextReputationTier(rep) {
 function reputationDiscount() { return Math.min(0.25, (state.reputation||0) * 0.0025); }
 function trackKill(name) {
   state.dailyLog.enemyKillsToday[name] = (state.dailyLog.enemyKillsToday[name]||0) + 1;
+  state.huntingKills[name] = (state.huntingKills[name]||0) + 1;
   (state.activeSideQuests||[]).forEach(qid => {
     const sq = SIDE_QUESTS.find(q => q.id === qid);
     if (sq && sq.type === "kill" && sq.target === name) {
@@ -1518,6 +1613,20 @@ function beginCall() {
     const introLines = count === 1 ? [chosen[0].intro] : [`${count} enemies close in around you.`, ...chosen.map(e => e.intro)];
     ui.encounter = { isBoss:false, cost, enemies, targetIndex:0, log: introLines, resolved:false };
   }
+  render();
+}
+
+function openHuntingGrounds() { ui.showHuntingGrounds = true; render(); }
+function closeHuntingGrounds() { ui.showHuntingGrounds = false; render(); }
+function beginHunt(monsterId) {
+  const monster = HUNTING_MONSTERS.find(m => m.id === monsterId);
+  if (!monster) return;
+  const { charges } = getCharges(state, ui.now);
+  const cost = 1;
+  if (charges < cost) return;
+  const enemyMaxHp = Math.round((20 + state.player.level*5.5) * monster.hpMod);
+  ui.encounter = { isBoss:false, isHunt:true, cost, enemies:[{ name:monster.name, hp:enemyMaxHp, maxHp:enemyMaxHp }], targetIndex:0, log:[monster.intro], resolved:false };
+  ui.showHuntingGrounds = false;
   render();
 }
 
@@ -2673,19 +2782,18 @@ function drinkWater() {
   showToast(`+1 cup logged. (${state.water.count}/${state.water.goal})`);
 }
 
-function markDietClean() {
+function orderTavernItem(itemId) {
   ensureDaily();
-  if (state.diet.checked) return;
-  const t = today();
-  const prev = state.diet.lastDate;
-  const wasYesterday = prev && (new Date(t) - new Date(prev))/86400000 === 1;
-  state.diet.streak = wasYesterday ? state.diet.streak + 1 : 1;
-  state.diet.lastDate = t;
-  state.diet.checked = true;
-  const leveledUp = grantReward(6, 6);
+  const item = TAVERN_MENU.find(i => i.id === itemId);
+  if (!item) return;
+  const wouldExceed = (state.tavern.carbsToday + item.carbs) > TAVERN_CARB_LIMIT;
+  state.tavern.carbsToday += item.carbs;
+  state.tavern.log.push({ id: item.id, name: item.name, icon: item.icon, carbs: item.carbs, overBudget: wouldExceed });
+  const leveledUp = grantReward(2, 2);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
-  else showToast(`Clean diet day logged. Streak: ${state.diet.streak} 🔥`);
+  else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${state.tavern.carbsToday}g today.`);
+  else showToast(`${item.icon} ${item.name} logged. ${state.tavern.carbsToday}/${TAVERN_CARB_LIMIT}g today.`);
 }
 
 const REMINDER_LABELS = {
@@ -2709,6 +2817,21 @@ function toggleReminder(key) {
 }
 
 const FOCUS_DURATIONS = [5, 10, 15, 20];
+function bondWithCompanion(companionId) {
+  const member = PARTY.find(p => p.id === companionId);
+  const activity = BOND_ACTIVITIES[companionId];
+  if (!member || !activity || state.player.level < member.unlockLv) return;
+  const last = state.bondCooldowns[companionId] || 0;
+  if (ui.now - last < BOND_COOLDOWN_MS) return;
+  state.bondCooldowns[companionId] = ui.now;
+  state.affinity[companionId] = (state.affinity[companionId]||0) + 2;
+  const line = activity.lines[Math.floor(Math.random()*activity.lines.length)];
+  const leveledUp = grantReward(4, 4);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${activity.icon} ${line}`);
+}
+
 function startFocusMode(minutes) {
   const dur = parseInt(minutes, 10);
   if (!FOCUS_DURATIONS.includes(dur) || state.focusSession) return;
@@ -2848,7 +2971,7 @@ function handleImportFile(fileInput) {
 
 /* ================= action dispatch ================= */
 const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, equipRing, usePotion, claimQuest,
-  claimChainStep, claimTask, claimWeeklyTask, drinkWater, markDietClean, claimVigil, chestChoice,
+  claimChainStep, claimTask, claimWeeklyTask, drinkWater, orderTavernItem, claimVigil, chestChoice,
   restNow, fightSkirmish, claimDayQuest, chooseDayQuest, sellMaterial, sellPotion, sellEquipment, usePotionInFight,
   openStory, closeStory, storyNext, storyChoice, claimHitList, trainingAttack,
   openStronghold, closeStronghold, strongholdNext, strongholdChoice,
@@ -2866,7 +2989,9 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   claimIdleReward, claimWeeklyGuildReward,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
-  exportSaveFile, triggerImportFile };
+  exportSaveFile, triggerImportFile,
+  openHuntingGrounds, closeHuntingGrounds, beginHunt,
+  bondWithCompanion };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -3154,6 +3279,19 @@ function renderHome() {
     </div>
   `);
 
+  const { charges: huntCharges } = getCharges(state, ui.now);
+  const huntReady = huntCharges >= 1;
+  const huntingCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🏹</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Hunting Grounds</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Choose your target · costs 1 Focus · real fight, not a popup</p>
+      </div>
+      <button data-act="openHuntingGrounds" ${huntReady?"":"disabled"} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${huntReady ? C.pink : C.creamDeep};color:${huntReady ? "white" : C.inkSoft}">Hunt</button>
+    </div>
+  `);
+
   const materialChips = MATERIALS.map(m => `
     <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.creamDeep}">
       <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]||0}</span>
@@ -3224,8 +3362,9 @@ function renderHome() {
   `) : "";
 
   const wellnessCard = renderWellness();
+  const tavernCard = renderTavern();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${wellnessCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -3234,7 +3373,6 @@ function renderWellness() {
   const drops = Array.from({length: wGoal}).map((_,i) =>
     `<span style="font-size:16px">${i < state.water.count ? "💧" : "🌫️"}</span>`).join("");
   const waterDone = state.water.count >= wGoal;
-  const dietDone = state.diet.checked;
   const reminderRows = Object.entries(REMINDER_LABELS).map(([key,info]) => {
     const done = state.dailyReminders[key];
     return `
@@ -3257,17 +3395,49 @@ function renderWellness() {
         <button data-act="drinkWater" ${waterDone ? "disabled" : ""} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${waterDone ? C.sageSoft : C.mage};color:${waterDone ? C.sage : "white"}">${waterDone ? "Done" : "+1 Cup"}</button>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;margin-bottom:14px">${drops}</div>
-      <div style="border-top:1px solid ${C.border};padding-top:12px;display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <p style="font-size:12.5px;margin:0">Clean Diet Day</p>
-          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${state.diet.streak > 0 ? `🔥 ${state.diet.streak} day streak` : "Stayed on track today?"}</p>
-        </div>
-        <button data-act="markDietClean" ${dietDone ? "disabled" : ""} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${dietDone ? C.sageSoft : C.sage};color:${dietDone ? C.sage : "white"}">${dietDone ? "✔️ Logged" : "Mark Clean"}</button>
-      </div>
       <div style="border-top:1px solid ${C.border};padding-top:6px;margin-top:4px">
         <p style="font-size:12.5px;font-weight:700;color:${C.mageDeep};margin:6px 0 0">Daily Reminders</p>
         ${reminderRows}
       </div>
+    </div>
+  `);
+}
+
+function renderTavern() {
+  ensureDaily();
+  const carbs = state.tavern.carbsToday;
+  const overBudget = carbs > TAVERN_CARB_LIMIT;
+  const pct = Math.min(100, (carbs / TAVERN_CARB_LIMIT) * 100);
+  const barColor = overBudget ? "#E85B5B" : (pct > 75 ? C.gold : C.sage);
+  const menuRows = TAVERN_MENU.map(item => {
+    const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
+    return `
+      <button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:${wouldExceed ? "rgba(232,91,91,0.12)" : C.creamDeep};border:1px solid ${wouldExceed ? "#E85B5B" : "transparent"};${wouldExceed ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
+        <span style="font-size:18px">${item.icon}</span>
+        <span style="font-size:9.5px;font-weight:700;color:${C.ink};text-align:center;line-height:1.15">${item.name}</span>
+        <span style="font-size:9px;color:${wouldExceed ? "#E85B5B" : C.inkSoft};font-weight:${wouldExceed?700:400}">${item.carbs}g</span>
+      </button>`;
+  }).join("");
+  const logRows = state.tavern.log.slice().reverse().map(entry => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
+      <span style="font-size:14px">${entry.icon}</span>
+      <span style="font-size:11px;color:${entry.overBudget ? "#E85B5B" : C.ink};flex:1;font-weight:${entry.overBudget?700:400}">${entry.name}</span>
+      <span style="font-size:10.5px;color:${entry.overBudget ? "#E85B5B" : C.inkSoft};font-weight:${entry.overBudget?700:400}">${entry.carbs}g</span>
+    </div>`).join("");
+  return card(`
+    <div style="padding:16px">
+      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 4px;color:${C.mageDeep}">🍺 The Tavern</p>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${TAVERN_CARB_LIMIT}g today. ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:11px;color:${C.inkSoft}">Today's carbs</span>
+        <span style="font-size:12px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${TAVERN_CARB_LIMIT}g</span>
+      </div>
+      <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:14px;${overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
+        <div style="height:8px;width:${pct}%;background:${barColor}"></div>
+      </div>
+      <p style="font-size:11px;font-weight:700;color:${C.mageDeep};margin:0 0 8px">Order something</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:${state.tavern.log.length?12:0}px">${menuRows}</div>
+      ${state.tavern.log.length ? `<div style="border-top:1px solid ${C.border};padding-top:8px">${logRows}</div>` : ""}
     </div>
   `);
 }
@@ -3438,6 +3608,50 @@ function renderCharacterSheet() {
         ${featsPanel}
       </div>
     </div>`;
+}
+
+function renderBond() {
+  const cards = PARTY.map(m => {
+    const unlocked = state.player.level >= m.unlockLv;
+    const activity = BOND_ACTIVITIES[m.id];
+    const aff = state.affinity[m.id] || 0;
+    const tiers = SNIPPETS[m.id] || [];
+    const nextTier = tiers.find(t => aff < t.at);
+    if (!unlocked) {
+      return card(`
+        <div style="padding:14px;display:flex;align-items:center;gap:12px;opacity:0.55">
+          <div style="width:42px;height:42px;border-radius:9999px;background:${C.creamDeep};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🔒</span></div>
+          <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">${m.name}</p><p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Unlocks at Level ${m.unlockLv}</p></div>
+        </div>
+      `);
+    }
+    const last = state.bondCooldowns[m.id] || 0;
+    const remaining = BOND_COOLDOWN_MS - (ui.now - last);
+    const ready = remaining <= 0;
+    return card(`
+      <div style="padding:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:9999px;background:${m.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">${m.icon}</div>
+          <div style="flex:1">
+            <p class="disp" style="font-weight:700;font-size:13px;margin:0">${m.name}</p>
+            <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${activity.icon} ${activity.label}${ready ? "" : ` · ${fmtMs(remaining)}`}</p>
+          </div>
+          <button data-act="bondWithCompanion" data-arg="${m.id}" ${ready?"":"disabled"} class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${ready ? m.color : C.creamDeep};color:${ready ? "white" : C.inkSoft}">${ready ? activity.label : "Resting"}</button>
+        </div>
+        <div style="margin-top:10px">
+          <div style="height:5px;border-radius:9999px;overflow:hidden;background:${C.creamDeep}">
+            <div style="height:5px;background:${m.color};width:${nextTier ? Math.min(100,(aff/nextTier.at)*100) : 100}%"></div>
+          </div>
+          <p style="font-size:10px;color:${C.inkSoft};margin:3px 0 0">Bond ${aff}${nextTier ? ` · next at ${nextTier.at}` : " · fully bonded"}</p>
+        </div>
+      </div>
+    `);
+  }).join("<div style='height:10px'></div>");
+  return `<div>
+    <p class="disp" style="font-weight:700;font-size:14px;color:${C.mageDeep};margin:0 0 4px">💞 Bond</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 14px">Spend deliberate time with someone — resets every few hours, separate for each person.</p>
+    ${cards}
+  </div>`;
 }
 
 function renderParty() {
@@ -4457,6 +4671,38 @@ function renderZoneDetailModal() {
   </div>`;
 }
 
+function renderHuntingGroundsModal() {
+  if (!ui.showHuntingGrounds) return "";
+  const { charges } = getCharges(state, ui.now);
+  const canHunt = charges >= 1;
+  const tierColor = { Common:C.inkSoft, Uncommon:C.sage, Rare:C.mage, Elite:C.gold };
+  const rows = HUNTING_MONSTERS.map(m => {
+    const kills = state.huntingKills[m.name] || 0;
+    return `
+      <button data-act="beginHunt" data-arg="${m.id}" ${canHunt?"":"disabled"} class="disp" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:${C.creamDeep};margin-bottom:8px;text-align:left;opacity:${canHunt?1:0.5}">
+        <span style="font-size:26px">${m.icon}</span>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">${m.name}</p>
+          <p style="font-size:10px;margin:2px 0 0;color:${tierColor[m.tier]};font-weight:700">${m.tier}</p>
+        </div>
+        <div style="text-align:right">
+          <p style="font-size:10px;color:${C.inkSoft};margin:0">Slain</p>
+          <p class="disp" style="font-size:14px;font-weight:700;color:${C.mageDeep};margin:0">${kills}</p>
+        </div>
+      </button>`;
+  }).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">🏹 Hunting Grounds</p>
+        <button data-act="closeHuntingGrounds"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 14px">${canHunt ? "Pick a target. Costs 1 Focus, real combat, no random popups." : "Not enough Focus to hunt right now."}</p>
+      ${rows}
+    </div>
+  </div>`;
+}
+
 function renderChestModal() {
   if (!ui.showChest) return "";
   return `<div style="position:fixed;inset:0;z-index:55;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
@@ -4470,7 +4716,7 @@ function renderChestModal() {
 }
 
 function renderNav() {
-  const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
+  const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["bond","💞","Bond"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
   const items = tabs.map(([id,icon,label]) => `
     <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;flex:1;color:${ui.tab===id ? C.mageDeep : C.inkSoft}">
       <span style="font-size:18px">${icon}</span>
@@ -4483,6 +4729,7 @@ function renderContent() {
   if (ui.tab === "home") return renderHome();
   if (ui.tab === "explore") return renderExplore();
   if (ui.tab === "party") return renderParty();
+  if (ui.tab === "bond") return renderBond();
   if (ui.tab === "quests") return renderQuests();
   if (ui.tab === "craft") return renderCraft();
   if (ui.tab === "calendar") return renderCalendar();
@@ -4505,6 +4752,7 @@ function render() {
     ${renderCompanionQuestModal()}
     ${renderSkirmishModal()}
     ${renderChestModal()}
+    ${renderHuntingGroundsModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
