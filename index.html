@@ -1428,6 +1428,9 @@ function defaultState() {
     focusSessionsCompleted: 0,
     waterGoalHits: 0,
     weeklyGuildClaimed: { week:null, claimed:false },
+    weeklyRecapSeen: { week:null },
+    tavernFavorites: [],
+    soelPlay: { date:null, count:0 },
     questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
     water: { date:null, count:0, goal:8 },
     tavern: { date:null, carbsToday:0, fatToday:0, proteinToday:0, log:[], streak:0, lastGoodDate:null },
@@ -1694,6 +1697,7 @@ function ensureDaily() {
     state.tavern = { date:t, carbsToday:0, fatToday:0, proteinToday:0, log:[], streak, lastGoodDate };
   }
   if (!state.dailyReminders || state.dailyReminders.date !== t) state.dailyReminders = { date:t, morningWater:false, fedSoel:false, sleptEarly:false };
+  if (!state.soelPlay || state.soelPlay.date !== t) state.soelPlay = { date:t, count:0 };
   if (!state.dayQuest || state.dayQuest.date !== t) state.dayQuest = { date:t, claimed:false, choiceMade:null };
   if (!state.hitListClaimed || state.hitListClaimed.date !== t) state.hitListClaimed = { date:t, claimed:false };
   if (!state.dailyLog.enemyKillsToday) state.dailyLog.enemyKillsToday = {};
@@ -1827,6 +1831,16 @@ function claimWeeklyGuildReward() {
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else showToast(`Weekly Guild Reward claimed! +${gold}g +${xp}xp`);
+}
+
+function weeklyRecapAvailable() {
+  const wk = isoWeekKey(new Date());
+  if (state.weeklyRecapSeen && state.weeklyRecapSeen.week === wk) return false;
+  return insightsSummary(7).daysLogged > 0;
+}
+function dismissWeeklyRecap() {
+  state.weeklyRecapSeen = { week: isoWeekKey(new Date()) };
+  save(); render();
 }
 
 function currentChapter() {
@@ -2617,6 +2631,26 @@ function toggleFamiliarOut() {
   save(); render();
   showToast(state.familiarOut ? "Soel hops out, alert and unbothered." : "Soel tucks himself into the bag, safe and unimpressed.");
 }
+
+const SOEL_PLAY_LINES = [
+  "Soel swats at your hand, misses on purpose, then does it again.",
+  "He flops dramatically onto his side, demanding belly access he will absolutely regret.",
+  "A brief, chaotic zoomie across the room. Gone as fast as it started.",
+  "He bats a small object off a nearby surface, maintaining eye contact the whole time.",
+  "Soel headbutts your hand, hard, then acts like nothing happened.",
+  "He chases a patch of light for a few seconds before losing all interest.",
+];
+const SOEL_PLAY_CAP = 5;
+function playWithSoel() {
+  if (!passiveActive("soel")) return;
+  ensureDaily();
+  if (state.soelPlay.count >= SOEL_PLAY_CAP) return;
+  state.soelPlay.count += 1;
+  const line = SOEL_PLAY_LINES[Math.floor(Math.random()*SOEL_PLAY_LINES.length)];
+  state.player.gold += 1;
+  save(); render();
+  showToast(`🐾 ${line}`);
+}
 function canAffordFamiliarTrinket(item) {
   const goldOk = (item.gold||0) <= state.player.gold;
   const matsOk = Object.entries(item.needs).every(([m,q]) => (state.materials[m]||0) >= q);
@@ -3129,6 +3163,7 @@ function orderTavernItem(itemId) {
   state.tavern.fatToday = Math.round((state.tavern.fatToday + item.fat) * 10) / 10;
   state.tavern.proteinToday = Math.round((state.tavern.proteinToday + item.protein) * 10) / 10;
   state.tavern.log.push({ id: item.id, name: item.name, icon: item.emoji, carbs: item.carbs, fat: item.fat, protein: item.protein, overBudget: wouldExceed });
+  state.tavernFavorites = [itemId, ...state.tavernFavorites.filter(id => id !== itemId)].slice(0, 8);
   const leveledUp = grantReward(2, 2);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
@@ -3383,13 +3418,14 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimWeeklyGuildReward,
+  claimIdleReward, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
   openHuntingGrounds, closeHuntingGrounds, beginHunt,
   openTavern, closeTavern,
   openInsights, closeInsights,
+  playWithSoel,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -3638,6 +3674,28 @@ function renderHome() {
     `);
   })() : "";
 
+  const weeklyRecapCard = weeklyRecapAvailable() ? (() => {
+    const s = insightsSummary(7);
+    return card(`
+      <div style="padding:16px;background:linear-gradient(135deg, ${C.sageSoft}, ${C.cream})">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:42px;height:42px;border-radius:12px;background:${C.sage}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">📊</span></div>
+          <div style="flex:1">
+            <p class="disp" style="font-weight:700;font-size:13px;margin:0">Your Week in Review</p>
+            <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${s.daysLogged} days logged</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+          <span style="font-size:10.5px;padding:4px 10px;border-radius:9999px;background:${C.card}">💧 ${s.waterHitDays}/${s.daysLogged} water</span>
+          <span style="font-size:10.5px;padding:4px 10px;border-radius:9999px;background:${C.card}">🍺 ${s.carbsOkDays}/${s.daysLogged} carbs</span>
+          <span style="font-size:10.5px;padding:4px 10px;border-radius:9999px;background:${C.card}">🌙 ${s.sleptEarlyDays}/${s.daysLogged} sleep</span>
+          <span style="font-size:10.5px;padding:4px 10px;border-radius:9999px;background:${C.card}">⏳ ${s.totalFocusSessions} focus</span>
+        </div>
+        <button data-act="dismissWeeklyRecap" class="disp" style="width:100%;padding:8px;border-radius:16px;font-size:11.5px;font-weight:700;background:${C.sage};color:white">Nice, thanks</button>
+      </div>
+    `);
+  })() : "";
+
   const specCard = (state.player.level >= 15 && !state.specialization) ? card(`
     <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.mageSoft}, ${C.cream})">
       <div style="width:42px;height:42px;border-radius:12px;background:${C.mage}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">📖</span></div>
@@ -3778,7 +3836,7 @@ function renderHome() {
   const wellnessCard = renderWellness();
   const tavernCard = renderTavern();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -3856,6 +3914,20 @@ function renderTavern() {
 function renderTavernModal() {
   if (!ui.showTavern) return "";
   const carbs = state.tavern.carbsToday;
+  const favRow = state.tavernFavorites.length ? (() => {
+    const chips = state.tavernFavorites.map(id => {
+      const item = TAVERN_FOODS.find(f => f.id === id);
+      if (!item) return "";
+      const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
+      return `<button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px;border-radius:12px;background:${wouldExceed?"rgba(232,91,91,0.12)":C.mageSoft};flex-shrink:0;min-width:64px">
+        <span style="font-size:16px">${item.emoji}</span>
+        <span style="font-size:9px;font-weight:700;color:${C.mageDeep};text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">${escapeHtml(item.name)}</span>
+      </button>`;
+    }).join("");
+    return `
+      <p class="disp" style="font-weight:700;font-size:11px;color:${C.mageDeep};margin:0 0 6px">⭐ Recently Logged</p>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid ${C.border}">${chips}</div>`;
+  })() : "";
   let currentCat = null;
   const rows = TAVERN_FOODS.map(item => {
     const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
@@ -3879,6 +3951,7 @@ function renderTavernModal() {
         <p class="disp" style="font-weight:700;font-size:15px;margin:0">🍺 The Tavern</p>
         <button data-act="closeTavern"><span style="color:${C.inkSoft}">✖</span></button>
       </div>
+      ${favRow}
       <input type="text" placeholder="Search foods…" oninput="filterTavernFoods(this.value)" style="width:100%;padding:10px 14px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:13px;margin-bottom:4px" />
       ${rows}
     </div>
@@ -4174,7 +4247,8 @@ function renderParty() {
         ${renderSlotPicker("ring2", "💍 Ring 2", "ring")}
       </div>` : "";
     const familiarBagToggle = (unlocked && isSoel) ? `
-      <button data-act="toggleFamiliarOut" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${state.familiarOut ? m.color : C.creamDeep};color:${state.familiarOut ? "white" : C.inkSoft}">${state.familiarOut ? "🐱 Out & Alert" : "🎒 Safely Bagged"}</button>` : "";
+      <button data-act="toggleFamiliarOut" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${state.familiarOut ? m.color : C.creamDeep};color:${state.familiarOut ? "white" : C.inkSoft}">${state.familiarOut ? "🐱 Out & Alert" : "🎒 Safely Bagged"}</button>
+      <button data-act="playWithSoel" ${state.soelPlay.count>=SOEL_PLAY_CAP?"disabled":""} class="disp" style="margin-top:10px;margin-left:8px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${state.soelPlay.count>=SOEL_PLAY_CAP?C.creamDeep:C.pink};color:${state.soelPlay.count>=SOEL_PLAY_CAP?C.inkSoft:"white"}">🐾 Play (${state.soelPlay.count}/${SOEL_PLAY_CAP})</button>` : "";
     const familiarTrinketPicker = (unlocked && isSoel) ? (() => {
       const assignedId = state.familiarTrinket;
       const assignedItem = assignedId ? FAMILIAR_TRINKETS.find(t => t.id === assignedId) : null;
