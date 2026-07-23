@@ -72,21 +72,259 @@ const LANDMARK_COOLDOWN_MS = 5 * 60 * 1000;
 const REST_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 
 const TAVERN_CARB_LIMIT = 20;
-const TAVERN_MENU = [
-  { id:"tv_fish", name:"Grilled Fish", icon:"🐟", carbs:0 },
-  { id:"tv_eggs", name:"Spiced Eggs", icon:"🥚", carbs:1 },
-  { id:"tv_cheese", name:"Aged Cheese Wheel", icon:"🧀", carbs:1 },
-  { id:"tv_bacon", name:"Crispy Bacon Strips", icon:"🥓", carbs:1 },
-  { id:"tv_broth", name:"Bone Broth", icon:"🍲", carbs:2 },
-  { id:"tv_skewer", name:"Roasted Meat Skewer", icon:"🍗", carbs:2 },
-  { id:"tv_greens", name:"Roasted Greens", icon:"🥬", carbs:4 },
-  { id:"tv_ale", name:"Frothy Ale", icon:"🍺", carbs:20 },
-  { id:"tv_bread", name:"Fresh Baked Bread", icon:"🍞", carbs:25 },
-  { id:"tv_stew", name:"Barley Stew", icon:"🍜", carbs:28 },
-  { id:"tv_mead", name:"Honeyed Mead", icon:"🍯", carbs:30 },
-  { id:"tv_rice", name:"Rice Pilaf", icon:"🍚", carbs:32 },
-  { id:"tv_tart", name:"Berry Tart", icon:"🥧", carbs:35 },
-  { id:"tv_cake", name:"Honey Cake", icon:"🍰", carbs:40 },
+const TAVERN_FOODS = [
+  { id:"f0", name:"1 Egg", cat:"🥚 Egg & Dairy", fat:5.0, protein:6.0, carbs:0.4, emoji:"🥚" },
+  { id:"f1", name:"3 Eggs", cat:"🥚 Egg & Dairy", fat:15.0, protein:18.0, carbs:1.2, emoji:"🥚" },
+  { id:"f2", name:"Butter (10ml pkt)", cat:"🥚 Egg & Dairy", fat:8.0, protein:0.0, carbs:0.0, emoji:"🧈" },
+  { id:"f3", name:"Butter (30ml)", cat:"🥚 Egg & Dairy", fat:25.0, protein:0.0, carbs:0.0, emoji:"🧈" },
+  { id:"f4", name:"Cheddar Cheese (30g)", cat:"🥚 Egg & Dairy", fat:9.0, protein:7.0, carbs:0.2, emoji:"🧀" },
+  { id:"f5", name:"Cream Cheese (30g)", cat:"🥚 Egg & Dairy", fat:10.0, protein:2.0, carbs:0.8, emoji:"🧀" },
+  { id:"f6", name:"Tatua Cream (dash ~15ml)", cat:"🥚 Egg & Dairy", fat:6.0, protein:0.4, carbs:0.5, emoji:"🫙" },
+  { id:"f7", name:"Sahara Greek Yogurt (100g)", cat:"🥚 Egg & Dairy", fat:10.0, protein:6.0, carbs:4.0, emoji:"🍦" },
+  { id:"f8", name:"Chobani Greek Yogurt (100g)", cat:"🥚 Egg & Dairy", fat:3.0, protein:10.0, carbs:4.0, emoji:"🍦" },
+  { id:"f9", name:"Chicken Drumstick (skin on)", cat:"🍗 Poultry", fat:8.0, protein:22.0, carbs:0.0, emoji:"🍗" },
+  { id:"f10", name:"Chicken Thigh (skin on, 100g)", cat:"🍗 Poultry", fat:13.0, protein:21.0, carbs:0.0, emoji:"🍗" },
+  { id:"f11", name:"Chicken Breast (skinless, 100g)", cat:"🍗 Poultry", fat:3.0, protein:31.0, carbs:0.0, emoji:"🍗" },
+  { id:"f12", name:"Chicken Wing (1 piece)", cat:"🍗 Poultry", fat:7.0, protein:9.0, carbs:0.0, emoji:"🍗" },
+  { id:"f13", name:"Chicken Feet (100g)", cat:"🍗 Poultry", fat:15.0, protein:19.0, carbs:0.2, emoji:"🍗" },
+  { id:"f14", name:"Chicken Liver (100g)", cat:"🍗 Poultry", fat:5.0, protein:25.0, carbs:1.0, emoji:"🍗" },
+  { id:"f15", name:"Whole Chicken 'Isi' (mixed cuts, 100g)", cat:"🍗 Poultry", fat:10.0, protein:24.0, carbs:0.0, emoji:"🍗" },
+  { id:"f16", name:"Pork Belly (100g)", cat:"🥓 Pork", fat:35.0, protein:17.0, carbs:0.0, emoji:"🥓" },
+  { id:"f17", name:"Sio Bak / Roast Pork (100g)", cat:"🥓 Pork", fat:30.0, protein:18.0, carbs:0.5, emoji:"🥓" },
+  { id:"f18", name:"Char Siew (2 slices)", cat:"🥓 Pork", fat:8.0, protein:12.0, carbs:4.0, emoji:"🥓" },
+  { id:"f19", name:"Pig Trotters / Lor (100g)", cat:"🥓 Pork", fat:20.0, protein:20.0, carbs:1.0, emoji:"🥓" },
+  { id:"f20", name:"Lup Cheong / Chinese Sausage (1pc)", cat:"🥓 Pork", fat:11.0, protein:6.0, carbs:3.0, emoji:"🌭" },
+  { id:"f21", name:"Bacon (2 rashers, grilled)", cat:"🥓 Pork", fat:8.0, protein:10.0, carbs:0.2, emoji:"🥓" },
+  { id:"f22", name:"Bacon (4 rashers, grilled)", cat:"🥓 Pork", fat:16.0, protein:20.0, carbs:0.4, emoji:"🥓" },
+  { id:"f23", name:"Pork Loin (lean, 100g)", cat:"🥓 Pork", fat:7.0, protein:26.0, carbs:0.0, emoji:"🥩" },
+  { id:"f24", name:"Minced Pork (100g)", cat:"🥓 Pork", fat:21.0, protein:17.0, carbs:0.0, emoji:"🥩" },
+  { id:"f25", name:"Tenggiri / Mackerel (100g)", cat:"🐟 Seafood & Fish", fat:12.0, protein:24.0, carbs:0.0, emoji:"🐟" },
+  { id:"f26", name:"Ikan Bilis / Anchovies, Pusu (20g)", cat:"🐟 Seafood & Fish", fat:2.0, protein:9.0, carbs:0.0, emoji:"🐟" },
+  { id:"f27", name:"Sardines, ½ Can in Olive Oil", cat:"🐟 Seafood & Fish", fat:9.0, protein:12.0, carbs:0.0, emoji:"🐟" },
+  { id:"f28", name:"Ikan Kembung / Round Scad (100g)", cat:"🐟 Seafood & Fish", fat:8.0, protein:22.0, carbs:0.0, emoji:"🐟" },
+  { id:"f29", name:"Salmon (100g)", cat:"🐟 Seafood & Fish", fat:13.0, protein:22.0, carbs:0.0, emoji:"🐟" },
+  { id:"f30", name:"Prawns / Udang (100g, no breading)", cat:"🐟 Seafood & Fish", fat:1.0, protein:24.0, carbs:0.5, emoji:"🦐" },
+  { id:"f31", name:"Squid / Sotong (100g)", cat:"🐟 Seafood & Fish", fat:1.5, protein:18.0, carbs:3.0, emoji:"🦑" },
+  { id:"f32", name:"Crab Meat (100g)", cat:"🐟 Seafood & Fish", fat:1.0, protein:19.0, carbs:0.0, emoji:"🦀" },
+  { id:"f33", name:"Catfish / Ikan Keli (100g)", cat:"🐟 Seafood & Fish", fat:7.0, protein:18.0, carbs:0.0, emoji:"🐟" },
+  { id:"f34", name:"Pomfret / Ikan Bawal (100g)", cat:"🐟 Seafood & Fish", fat:5.0, protein:20.0, carbs:0.0, emoji:"🐟" },
+  { id:"f35", name:"Tilapia (100g)", cat:"🐟 Seafood & Fish", fat:2.0, protein:20.0, carbs:0.0, emoji:"🐟" },
+  { id:"f36", name:"Tempeh (50g)", cat:"🟫 Plant Protein", fat:4.0, protein:10.0, carbs:4.0, emoji:"🟫" },
+  { id:"f37", name:"Tofu / Tau Kwa (100g)", cat:"🟫 Plant Protein", fat:5.0, protein:10.0, carbs:1.5, emoji:"⬜" },
+  { id:"f38", name:"Edamame (100g)", cat:"🟫 Plant Protein", fat:5.0, protein:11.0, carbs:5.0, emoji:"🫛" },
+  { id:"f39", name:"Ham (2 slices)", cat:"🟫 Plant Protein", fat:3.0, protein:8.0, carbs:0.5, emoji:"🥓" },
+  { id:"f40", name:"Bok Choy / Greens (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:1.5, carbs:1.5, emoji:"🥬" },
+  { id:"f41", name:"Okra / Lady's Finger (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:2.0, carbs:4.0, emoji:"🌿" },
+  { id:"f42", name:"Broccoli (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.4, protein:3.0, carbs:4.0, emoji:"🥦" },
+  { id:"f43", name:"Bitter Gourd / Peria (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:1.0, carbs:3.0, emoji:"🥒" },
+  { id:"f44", name:"Chayote / Labu Siam (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.1, protein:0.8, carbs:3.5, emoji:"🥒" },
+  { id:"f45", name:"Brinjal / Eggplant (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:1.0, carbs:4.0, emoji:"🍆" },
+  { id:"f46", name:"Cauliflower (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.3, protein:2.0, carbs:3.0, emoji:"🥦" },
+  { id:"f47", name:"Cabbage (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.1, protein:1.0, carbs:4.0, emoji:"🥬" },
+  { id:"f48", name:"Cucumber (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.1, protein:0.7, carbs:2.5, emoji:"🥒" },
+  { id:"f49", name:"Tomato (1 medium)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:1.0, carbs:3.5, emoji:"🍅" },
+  { id:"f50", name:"Spinach (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.4, protein:2.9, carbs:1.4, emoji:"🥬" },
+  { id:"f51", name:"Kailan / Chinese Broccoli (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.3, protein:2.5, carbs:2.0, emoji:"🥬" },
+  { id:"f52", name:"Bean Sprouts (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:3.0, carbs:3.0, emoji:"🌱" },
+  { id:"f53", name:"Capsicum / Bell Pepper (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.3, protein:1.0, carbs:4.5, emoji:"🫑" },
+  { id:"f54", name:"Mixed Veg (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.3, protein:2.0, carbs:5.0, emoji:"🥗" },
+  { id:"f55", name:"Pumpkin (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.0, carbs:6.0, emoji:"🎃" },
+  { id:"f56", name:"Pumpkin (1 cup, ~245g)", cat:"⚠️ Higher-Carb Veg", fat:0.3, protein:2.5, carbs:14.5, emoji:"🎃" },
+  { id:"f57", name:"Carrot (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.2, protein:0.9, carbs:8.0, emoji:"🥕" },
+  { id:"f58", name:"Peas (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.4, protein:5.0, carbs:11.0, emoji:"🟢" },
+  { id:"f59", name:"Corn (100g)", cat:"⚠️ Higher-Carb Veg", fat:1.2, protein:3.3, carbs:19.0, emoji:"🌽" },
+  { id:"f60", name:"Potato (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:2.0, carbs:17.0, emoji:"🥔" },
+  { id:"f61", name:"½ Potato (~75g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.5, carbs:13.0, emoji:"🥔" },
+  { id:"f62", name:"Sweet Potato (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.6, carbs:17.0, emoji:"🍠" },
+  { id:"f63", name:"Beetroot (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.2, protein:1.6, carbs:8.0, emoji:"🟣" },
+  { id:"f64", name:"Konjac Dry Rice, cooked (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.3, protein:1.5, carbs:13.7, emoji:"🍚" },
+  { id:"f65", name:"Konjac Dry Rice, cooked (½ cup ~80g)", cat:"⚠️ Higher-Carb Veg", fat:0.2, protein:1.2, carbs:11.0, emoji:"🍚" },
+  { id:"f66", name:"Mung Beans, boiled (1 cup)", cat:"⚠️ Higher-Carb Veg", fat:0.8, protein:14.0, carbs:32.0, emoji:"🫘" },
+  { id:"f67", name:"Mung Beans, boiled (½ cup)", cat:"⚠️ Higher-Carb Veg", fat:0.4, protein:7.0, carbs:16.0, emoji:"🫘" },
+  { id:"f68", name:"Black Beans, boiled (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.5, protein:8.9, carbs:14.0, emoji:"🫘" },
+  { id:"f69", name:"Chickpeas / Garbanzo, boiled (100g)", cat:"⚠️ Higher-Carb Veg", fat:2.6, protein:8.9, carbs:18.0, emoji:"🫘" },
+  { id:"f70", name:"Lentils, boiled (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.4, protein:9.0, carbs:14.0, emoji:"🫘" },
+  { id:"f71", name:"Kidney Beans, boiled (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.5, protein:8.7, carbs:14.0, emoji:"🫘" },
+  { id:"f72", name:"Soya Beans, boiled (100g)", cat:"⚠️ Higher-Carb Veg", fat:9.0, protein:17.0, carbs:6.0, emoji:"🫘" },
+  { id:"f73", name:"Edamame, shelled (100g)", cat:"⚠️ Higher-Carb Veg", fat:5.0, protein:11.0, carbs:5.0, emoji:"🫛" },
+  { id:"f74", name:"Long Beans / Kacang Panjang (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.1, protein:1.8, carbs:3.5, emoji:"🌿" },
+  { id:"f75", name:"Winged Beans / Kacang Botol (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:1.0, protein:6.0, carbs:3.0, emoji:"🌿" },
+  { id:"f76", name:"Sweet Corn Kernels (½ cup)", cat:"⚠️ Higher-Carb Veg", fat:0.6, protein:1.7, carbs:10.0, emoji:"🌽" },
+  { id:"f77", name:"Button Mushroom (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.3, protein:3.0, carbs:2.5, emoji:"🍄" },
+  { id:"f78", name:"Shiitake Mushroom (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.5, protein:2.2, carbs:6.8, emoji:"🍄" },
+  { id:"f79", name:"Enoki Mushroom (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.3, protein:2.7, carbs:6.0, emoji:"🍄" },
+  { id:"f80", name:"Oyster Mushroom (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.3, protein:3.3, carbs:3.5, emoji:"🍄" },
+  { id:"f81", name:"King Oyster Mushroom (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.4, protein:2.5, carbs:4.0, emoji:"🍄" },
+  { id:"f82", name:"Hei'mu'er Black Fungus (50g, dried→soaked)", cat:"🍄 Mushrooms & Fungus", fat:0.1, protein:1.0, carbs:3.0, emoji:"🍄" },
+  { id:"f83", name:"White Fungus / Snow Fungus (50g)", cat:"🍄 Mushrooms & Fungus", fat:0.1, protein:0.5, carbs:4.0, emoji:"🍄" },
+  { id:"f84", name:"Portobello Mushroom (1 large cap ~100g)", cat:"🍄 Mushrooms & Fungus", fat:0.4, protein:3.1, carbs:3.5, emoji:"🍄" },
+  { id:"f85", name:"Straw Mushroom / Cendawan Jerami (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.3, protein:3.5, carbs:3.0, emoji:"🍄" },
+  { id:"f86", name:"Abalone Mushroom (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.4, protein:3.0, carbs:4.0, emoji:"🍄" },
+  { id:"f87", name:"Shimeji Mushroom, brown (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.5, protein:3.0, carbs:4.5, emoji:"🍄" },
+  { id:"f88", name:"Shimeji Mushroom, white (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.4, protein:2.7, carbs:4.0, emoji:"🍄" },
+  { id:"f89", name:"Maitake / Hen of the Woods (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.2, protein:1.9, carbs:4.4, emoji:"🍄" },
+  { id:"f90", name:"Dried Shiitake, rehydrated (50g)", cat:"🍄 Mushrooms & Fungus", fat:0.3, protein:1.5, carbs:5.0, emoji:"🍄" },
+  { id:"f91", name:"Canned Mushrooms, drained (100g)", cat:"🍄 Mushrooms & Fungus", fat:0.2, protein:2.0, carbs:2.5, emoji:"🍄" },
+  { id:"f92", name:"Mixed Mushrooms stir-fried (100g)", cat:"🍄 Mushrooms & Fungus", fat:3.0, protein:3.0, carbs:3.5, emoji:"🍄" },
+  { id:"f93", name:"Coconut Oil, Virgin (1 tbsp)", cat:"🫒 Fats & Extras", fat:14.0, protein:0.0, carbs:0.0, emoji:"🥥" },
+  { id:"f94", name:"Coconut Oil, Refined (1 tbsp)", cat:"🫒 Fats & Extras", fat:14.0, protein:0.0, carbs:0.0, emoji:"🥥" },
+  { id:"f95", name:"MCT Oil / Fractionated Coconut (1 tbsp)", cat:"🫒 Fats & Extras", fat:14.0, protein:0.0, carbs:0.0, emoji:"🥥" },
+  { id:"f96", name:"Coconut Cream (2 tbsp)", cat:"🫒 Fats & Extras", fat:9.0, protein:0.9, carbs:1.6, emoji:"🥥" },
+  { id:"f97", name:"Coconut Milk, full fat (100ml)", cat:"🫒 Fats & Extras", fat:15.0, protein:1.5, carbs:2.8, emoji:"🥥" },
+  { id:"f98", name:"Olive Oil (1 tbsp)", cat:"🫒 Fats & Extras", fat:14.0, protein:0.0, carbs:0.0, emoji:"🫒" },
+  { id:"f99", name:"Lemon juice (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.1, carbs:1.3, emoji:"🍋" },
+  { id:"f100", name:"Lemon (½ whole, squeezed)", cat:"🧄 Aromatics & Condiments", fat:0.1, protein:0.3, carbs:2.5, emoji:"🍋" },
+  { id:"f101", name:"Lemon zest (1 tsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.1, carbs:0.5, emoji:"🍋" },
+  { id:"f102", name:"Ginger, fresh (1 tsp grated)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.1, carbs:0.8, emoji:"🫚" },
+  { id:"f103", name:"Ginger, fresh (1 thumb slice)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.2, carbs:1.5, emoji:"🫚" },
+  { id:"f104", name:"Spring Onions / Scallions (1 stalk)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.2, carbs:0.7, emoji:"🌿" },
+  { id:"f105", name:"Spring Onions (handful, ~30g)", cat:"🧄 Aromatics & Condiments", fat:0.1, protein:0.5, carbs:2.0, emoji:"🌿" },
+  { id:"f106", name:"Chives (1 tbsp chopped)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.1, carbs:0.1, emoji:"🌿" },
+  { id:"f107", name:"Garlic (1 clove)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.2, carbs:1.0, emoji:"🧄" },
+  { id:"f108", name:"Onion (¼ medium)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.3, carbs:2.5, emoji:"🧅" },
+  { id:"f109", name:"Chilli / Cili (1 whole)", cat:"🧄 Aromatics & Condiments", fat:0.1, protein:0.3, carbs:1.0, emoji:"🌶️" },
+  { id:"f110", name:"Soy Sauce (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:1.0, carbs:1.0, emoji:"🫙" },
+  { id:"f111", name:"Fish Sauce (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.9, carbs:0.7, emoji:"🫙" },
+  { id:"f112", name:"Oyster Sauce (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.5, carbs:4.0, emoji:"🫙" },
+  { id:"f113", name:"Sambal Belacan (1 tsp)", cat:"🧄 Aromatics & Condiments", fat:0.5, protein:0.3, carbs:1.0, emoji:"🌶️" },
+  { id:"f114", name:"Vinegar (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.0, carbs:0.1, emoji:"🫙" },
+  { id:"f115", name:"A.K. Sea Salt (pinch)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.0, carbs:0.0, emoji:"🧂" },
+  { id:"f116", name:"Black Pepper (1 tsp)", cat:"🧄 Aromatics & Condiments", fat:0.1, protein:0.2, carbs:1.4, emoji:"🫙" },
+  { id:"f117", name:"Turmeric powder (1 tsp)", cat:"🧄 Aromatics & Condiments", fat:0.2, protein:0.3, carbs:1.4, emoji:"🟡" },
+  { id:"f118", name:"Coriander / Cilantro, fresh (1 tbsp)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.1, carbs:0.1, emoji:"🌿" },
+  { id:"f119", name:"Lemongrass / Serai (1 stalk)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.2, carbs:2.5, emoji:"🌿" },
+  { id:"f120", name:"Pandan Leaf (2-3 leaves)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.1, carbs:0.5, emoji:"🌿" },
+  { id:"f121", name:"Kaffir Lime Leaf (2 leaves)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.1, carbs:0.3, emoji:"🍃" },
+  { id:"f122", name:"Curry Leaf / Daun Kari (small handful)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.3, carbs:1.0, emoji:"🍃" },
+  { id:"f123", name:"Basil, fresh (1 tbsp)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.2, carbs:0.1, emoji:"🌿" },
+  { id:"f124", name:"Mint / Daun Pudina (small handful)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.2, carbs:0.5, emoji:"🌿" },
+  { id:"f125", name:"Bay Leaf / Daun Salam (2 leaves)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.1, carbs:0.5, emoji:"🍃" },
+  { id:"f126", name:"Dill, fresh (1 tbsp)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.1, carbs:0.1, emoji:"🌿" },
+  { id:"f127", name:"Rosemary, fresh (1 sprig)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.1, carbs:0.3, emoji:"🌿" },
+  { id:"f128", name:"Thyme, fresh (1 tsp)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.1, carbs:0.2, emoji:"🌿" },
+  { id:"f129", name:"Galangal / Lengkuas (1 slice)", cat:"🌿 Herbs & Spices", fat:0.0, protein:0.1, carbs:1.0, emoji:"🫚" },
+  { id:"f130", name:"Cumin / Jintan Putih (1 tsp)", cat:"🌿 Herbs & Spices", fat:0.5, protein:0.4, carbs:0.9, emoji:"🟤" },
+  { id:"f131", name:"Coriander Seed / Jintan Manis (1 tsp)", cat:"🌿 Herbs & Spices", fat:0.3, protein:0.3, carbs:1.0, emoji:"🟤" },
+  { id:"f132", name:"Cardamom (2 pods)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.1, carbs:1.0, emoji:"🟢" },
+  { id:"f133", name:"Cinnamon (1 tsp ground)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.1, carbs:2.0, emoji:"🟤" },
+  { id:"f134", name:"Star Anise (1 piece)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.1, carbs:1.0, emoji:"⭐" },
+  { id:"f135", name:"Cloves (3-4 whole)", cat:"🌿 Herbs & Spices", fat:0.3, protein:0.1, carbs:1.4, emoji:"🟤" },
+  { id:"f136", name:"Chilli Powder (1 tsp)", cat:"🌿 Herbs & Spices", fat:0.3, protein:0.4, carbs:1.3, emoji:"🌶️" },
+  { id:"f137", name:"Paprika (1 tsp)", cat:"🌿 Herbs & Spices", fat:0.3, protein:0.4, carbs:1.2, emoji:"🔴" },
+  { id:"f138", name:"Belacan / Shrimp Paste (1 tsp)", cat:"🌿 Herbs & Spices", fat:0.5, protein:2.0, carbs:0.5, emoji:"🟤" },
+  { id:"f139", name:"Five Spice Powder (¼ tsp)", cat:"🌿 Herbs & Spices", fat:0.1, protein:0.1, carbs:0.8, emoji:"🟤" },
+  { id:"f140", name:"Sesame Seeds (1 tsp)", cat:"🌿 Herbs & Spices", fat:1.5, protein:0.6, carbs:0.7, emoji:"🟡" },
+  { id:"f141", name:"Sesame Oil (1 tsp)", cat:"🌿 Herbs & Spices", fat:4.5, protein:0.0, carbs:0.0, emoji:"🟡" },
+  { id:"f142", name:"Mayonnaise, full fat (1 tbsp)", cat:"🥗 Dressings & Sauces", fat:10.0, protein:0.1, carbs:0.1, emoji:"🫙" },
+  { id:"f143", name:"Mayonnaise, full fat (2 tbsp)", cat:"🥗 Dressings & Sauces", fat:20.0, protein:0.2, carbs:0.2, emoji:"🫙" },
+  { id:"f144", name:"Japanese Kewpie Mayo (1 tbsp)", cat:"🥗 Dressings & Sauces", fat:9.0, protein:0.3, carbs:0.5, emoji:"🫙" },
+  { id:"f145", name:"Caesar Dressing (2 tbsp)", cat:"🥗 Dressings & Sauces", fat:16.0, protein:1.0, carbs:1.0, emoji:"🥗" },
+  { id:"f146", name:"Ranch Dressing (2 tbsp)", cat:"🥗 Dressings & Sauces", fat:14.0, protein:0.4, carbs:1.5, emoji:"🥗" },
+  { id:"f147", name:"Olive Oil & Lemon Dressing (1 tbsp)", cat:"🥗 Dressings & Sauces", fat:14.0, protein:0.0, carbs:0.5, emoji:"🫒" },
+  { id:"f148", name:"Sesame Ginger Dressing (2 tbsp)", cat:"🥗 Dressings & Sauces", fat:7.0, protein:0.5, carbs:4.0, emoji:"🥗" },
+  { id:"f149", name:"Balsamic Vinegar (1 tbsp)", cat:"🥗 Dressings & Sauces", fat:0.0, protein:0.1, carbs:2.7, emoji:"🫙" },
+  { id:"f150", name:"Apple Cider Vinegar (1 tbsp)", cat:"🥗 Dressings & Sauces", fat:0.0, protein:0.0, carbs:0.1, emoji:"🫙" },
+  { id:"f151", name:"Thousand Island Dressing (2 tbsp)", cat:"🥗 Dressings & Sauces", fat:11.0, protein:0.3, carbs:5.0, emoji:"🥗" },
+  { id:"f152", name:"Sour Cream (2 tbsp)", cat:"🥗 Dressings & Sauces", fat:5.0, protein:0.6, carbs:1.0, emoji:"🫙" },
+  { id:"f153", name:"Tahini / Sesame Paste (1 tbsp)", cat:"🥗 Dressings & Sauces", fat:8.0, protein:2.6, carbs:1.5, emoji:"🫙" },
+  { id:"f154", name:"Lakanto Creamy PB (1 tbsp ~16g)", cat:"🥜 Nut Butters", fat:6.3, protein:3.6, carbs:1.7, emoji:"🥜" },
+  { id:"f155", name:"Lakanto Creamy PB (2 tbsp ~32g)", cat:"🥜 Nut Butters", fat:12.6, protein:7.2, carbs:3.4, emoji:"🥜" },
+  { id:"f156", name:"Generic Peanut Butter, natural (1 tbsp)", cat:"🥜 Nut Butters", fat:8.0, protein:3.5, carbs:3.0, emoji:"🥜" },
+  { id:"f157", name:"Generic Peanut Butter, natural (2 tbsp)", cat:"🥜 Nut Butters", fat:16.0, protein:7.0, carbs:6.0, emoji:"🥜" },
+  { id:"f158", name:"Almond Butter (1 tbsp)", cat:"🥜 Nut Butters", fat:9.0, protein:2.4, carbs:1.5, emoji:"🥜" },
+  { id:"f159", name:"Lakanto Creamy PB (1 tbsp ~16g)", cat:"🥜 Nut Butters", fat:6.3, protein:3.6, carbs:4.9, emoji:"🥜" },
+  { id:"f160", name:"Lakanto Creamy PB (2 tbsp ~32g)", cat:"🥜 Nut Butters", fat:12.5, protein:7.2, carbs:9.8, emoji:"🥜" },
+  { id:"f161", name:"Generic Peanut Butter (1 tbsp ~16g)", cat:"🥜 Nut Butters", fat:8.0, protein:3.5, carbs:3.5, emoji:"🥜" },
+  { id:"f162", name:"Generic Peanut Butter (2 tbsp ~32g)", cat:"🥜 Nut Butters", fat:16.0, protein:7.0, carbs:7.0, emoji:"🥜" },
+  { id:"f163", name:"Almond Butter (1 tbsp)", cat:"🥜 Nut Butters", fat:9.0, protein:2.4, carbs:1.5, emoji:"🥜" },
+  { id:"f164", name:"Lakanto Creamy Peanut Butter (1 tbsp ~16g)", cat:"🥜 Nut Butters", fat:6.3, protein:3.6, carbs:2.0, emoji:"🥜" },
+  { id:"f165", name:"Lakanto Creamy Peanut Butter (2 tbsp ~32g)", cat:"🥜 Nut Butters", fat:12.6, protein:7.2, carbs:4.0, emoji:"🥜" },
+  { id:"f166", name:"Generic Peanut Butter, natural (1 tbsp)", cat:"🥜 Nut Butters", fat:8.0, protein:3.5, carbs:3.0, emoji:"🥜" },
+  { id:"f167", name:"Generic Peanut Butter, natural (2 tbsp)", cat:"🥜 Nut Butters", fat:16.0, protein:7.0, carbs:6.0, emoji:"🥜" },
+  { id:"f168", name:"Almond Butter (1 tbsp)", cat:"🥜 Nut Butters", fat:9.0, protein:3.4, carbs:1.5, emoji:"🥜" },
+  { id:"f169", name:"Lemon Tea, unsweetened (1 cup)", cat:"☕ Drinks", fat:0.0, protein:0.0, carbs:1.5, emoji:"🍋" },
+  { id:"f170", name:"Lemon Tea, sweetened (1 cup)", cat:"☕ Drinks", fat:0.0, protein:0.0, carbs:18.0, emoji:"🍋" },
+  { id:"f171", name:"Lemon Water (1 glass)", cat:"☕ Drinks", fat:0.0, protein:0.0, carbs:1.5, emoji:"🍋" },
+  { id:"f172", name:"Black Tea, plain (1 cup)", cat:"☕ Drinks", fat:0.0, protein:0.0, carbs:0.5, emoji:"🍵" },
+  { id:"f173", name:"Green Tea, plain (1 cup)", cat:"☕ Drinks", fat:0.0, protein:0.0, carbs:0.3, emoji:"🍵" },
+  { id:"f174", name:"Cowhead Butter Pkt (10g)", cat:"🫒 Fats & Extras", fat:8.0, protein:0.0, carbs:0.0, emoji:"🧈" },
+  { id:"f175", name:"Golden Churn Butter Pkt", cat:"🫒 Fats & Extras", fat:8.0, protein:0.0, carbs:0.0, emoji:"🧈" },
+  { id:"f176", name:"Nescafé (plain)", cat:"🫒 Fats & Extras", fat:0.0, protein:0.5, carbs:1.0, emoji:"☕" },
+  { id:"f177", name:"APC / Jersey Coffee", cat:"🫒 Fats & Extras", fat:2.0, protein:1.0, carbs:2.0, emoji:"☕" },
+  { id:"f178", name:"Ayam Penyet (no rice)", cat:"🍱 Common Meals", fat:20.0, protein:35.0, carbs:8.0, emoji:"🍛" },
+  { id:"f179", name:"Chicken Rendang (no rice)", cat:"🍱 Common Meals", fat:18.0, protein:28.0, carbs:5.0, emoji:"🍛" },
+  { id:"f180", name:"Chicken Masala (no sauce, 100g)", cat:"🍱 Common Meals", fat:8.0, protein:25.0, carbs:4.0, emoji:"🍛" },
+  { id:"f181", name:"Lelapan (no rice, full)", cat:"🍱 Common Meals", fat:25.0, protein:35.0, carbs:6.0, emoji:"🍱" },
+  { id:"f182", name:"Salty Chicken Soup (bowl)", cat:"🍱 Common Meals", fat:15.0, protein:35.0, carbs:3.0, emoji:"🥣" },
+  { id:"f183", name:"1 Poppadom", cat:"🍱 Common Meals", fat:3.0, protein:2.0, carbs:8.0, emoji:"🫓" },
+  { id:"f184", name:"Foo Yung Egg / Fu Rong Dan (1 omelette)", cat:"🍱 Common Meals", fat:18.0, protein:14.0, carbs:3.0, emoji:"🍳" },
+  { id:"f185", name:"Foo Yung Egg with veg & meat filling", cat:"🍱 Common Meals", fat:20.0, protein:18.0, carbs:4.0, emoji:"🍳" },
+  { id:"f186", name:"Yong Chap / Yong Tau Fu, broth (5 pcs, no rice)", cat:"🍱 Common Meals", fat:6.0, protein:18.0, carbs:5.0, emoji:"🐟" },
+  { id:"f187", name:"Yong Chap stuffed brinjal (2 pcs)", cat:"🍱 Common Meals", fat:4.0, protein:8.0, carbs:3.0, emoji:"🍆" },
+  { id:"f188", name:"Yong Chap stuffed bitter gourd (2 pcs)", cat:"🍱 Common Meals", fat:4.0, protein:8.0, carbs:3.0, emoji:"🥒" },
+  { id:"f189", name:"Yong Chap stuffed tofu (2 pcs)", cat:"🍱 Common Meals", fat:6.0, protein:10.0, carbs:2.0, emoji:"⬜" },
+  { id:"f190", name:"Carrot Cake / Lobakau (3 pcs, no sauce)", cat:"🍱 Common Meals", fat:8.0, protein:3.0, carbs:18.0, emoji:"🟫" },
+  { id:"f191", name:"Carrot Cake / Lobakau (3 pcs, with egg)", cat:"🍱 Common Meals", fat:13.0, protein:9.0, carbs:18.0, emoji:"🟫" },
+  { id:"f192", name:"Pork Intestine Soup (1 bowl)", cat:"🍱 Common Meals", fat:12.0, protein:22.0, carbs:2.0, emoji:"🥣" },
+  { id:"f193", name:"Taiwanese Pork Chop (1 piece, no rice)", cat:"🍱 Common Meals", fat:18.0, protein:28.0, carbs:5.0, emoji:"🥩" },
+  { id:"f194", name:"Breaded Roast Pork, Chinese style (100g)", cat:"🍱 Common Meals", fat:22.0, protein:18.0, carbs:8.0, emoji:"🥓" },
+  { id:"f195", name:"Adobo, Pork (no rice, 100g)", cat:"🍱 Common Meals", fat:18.0, protein:22.0, carbs:2.0, emoji:"🍛" },
+  { id:"f196", name:"Adobo, Chicken (no rice, 100g)", cat:"🍱 Common Meals", fat:10.0, protein:25.0, carbs:2.0, emoji:"🍛" },
+  { id:"f197", name:"Tinola, Chicken (1 bowl, no rice)", cat:"🍱 Common Meals", fat:8.0, protein:24.0, carbs:4.0, emoji:"🥣" },
+  { id:"f198", name:"Pinakbet (1 serving, no rice)", cat:"🍱 Common Meals", fat:8.0, protein:8.0, carbs:8.0, emoji:"🥗" },
+  { id:"f199", name:"Paksiw na Isda / Fish in Vinegar (1 serving)", cat:"🍱 Common Meals", fat:6.0, protein:20.0, carbs:2.0, emoji:"🐟" },
+  { id:"f200", name:"Nilaga, Pork (1 bowl, no rice)", cat:"🍱 Common Meals", fat:14.0, protein:24.0, carbs:4.0, emoji:"🥣" },
+  { id:"f201", name:"Kare-Kare (no rice, no bagoong, 1 serving)", cat:"🍱 Common Meals", fat:20.0, protein:22.0, carbs:6.0, emoji:"🍲" },
+  { id:"f202", name:"Gong Cha Milk Tea, no sugar + powdered milk (M)", cat:"☕ Drinks", fat:3.0, protein:1.5, carbs:8.0, emoji:"🧋" },
+  { id:"f203", name:"Teh O Kosong (plain black tea, no sugar)", cat:"☕ Drinks", fat:0.0, protein:0.0, carbs:0.5, emoji:"🍵" },
+  { id:"f204", name:"Teh C Kosong (black tea + evap milk, no sugar)", cat:"☕ Drinks", fat:1.5, protein:1.0, carbs:2.5, emoji:"🍵" },
+  { id:"f205", name:"Whipping Cream, aerosol (2 tbsp ~15g)", cat:"🫒 Fats & Extras", fat:5.0, protein:0.3, carbs:0.8, emoji:"🫙" },
+  { id:"f206", name:"Tom Yum Soup, 1 bowl (no noodles)", cat:"🍜 Thai Dishes", fat:4.0, protein:18.0, carbs:4.0, emoji:"🍲" },
+  { id:"f207", name:"Tom Kha Gai, 1 bowl (coconut chicken soup)", cat:"🍜 Thai Dishes", fat:18.0, protein:20.0, carbs:5.0, emoji:"🍲" },
+  { id:"f208", name:"Green Curry, chicken (no rice, 1 serving)", cat:"🍜 Thai Dishes", fat:20.0, protein:22.0, carbs:7.0, emoji:"🍛" },
+  { id:"f209", name:"Red Curry, chicken (no rice, 1 serving)", cat:"🍜 Thai Dishes", fat:18.0, protein:22.0, carbs:8.0, emoji:"🍛" },
+  { id:"f210", name:"Massaman Curry (no rice, 1 serving)", cat:"🍜 Thai Dishes", fat:22.0, protein:20.0, carbs:12.0, emoji:"🍛" },
+  { id:"f211", name:"Larb Gai / Thai Chicken Salad (1 serving)", cat:"🍜 Thai Dishes", fat:8.0, protein:25.0, carbs:5.0, emoji:"🥗" },
+  { id:"f212", name:"Gai Yang / Thai Grilled Chicken (1 piece)", cat:"🍜 Thai Dishes", fat:12.0, protein:28.0, carbs:2.0, emoji:"🍗" },
+  { id:"f213", name:"Thai Basil Stir Fry, no rice (1 serving)", cat:"🍜 Thai Dishes", fat:10.0, protein:22.0, carbs:5.0, emoji:"🌿" },
+  { id:"f214", name:"Turmeric Chicken / Ayam Kunyit (1 serving)", cat:"🍜 Thai Dishes", fat:14.0, protein:28.0, carbs:3.0, emoji:"🟡" },
+  { id:"f215", name:"Satay, chicken (4 skewers, no sauce)", cat:"🍜 Thai Dishes", fat:8.0, protein:22.0, carbs:1.0, emoji:"🍢" },
+  { id:"f216", name:"Satay, chicken (4 skewers + peanut sauce)", cat:"🍜 Thai Dishes", fat:14.0, protein:22.0, carbs:8.0, emoji:"🍢" },
+  { id:"f217", name:"Ambuyat (1 serving sago, no sides)", cat:"🇧🇳 Bruneian / Malay", fat:0.2, protein:0.3, carbs:28.0, emoji:"⚠️" },
+  { id:"f218", name:"Ikan Bakar / BBQ Fish (1 fillet)", cat:"🇧🇳 Bruneian / Malay", fat:8.0, protein:28.0, carbs:2.0, emoji:"🐟" },
+  { id:"f219", name:"Nasi Lemak — rice & sambal only (skip rice)", cat:"🇧🇳 Bruneian / Malay", fat:12.0, protein:8.0, carbs:4.0, emoji:"⚠️" },
+  { id:"f220", name:"Nasi Lemak sides only (egg, ikan bilis, sambal)", cat:"🇧🇳 Bruneian / Malay", fat:10.0, protein:10.0, carbs:3.0, emoji:"🍳" },
+  { id:"f221", name:"Chicken Curry, Malay style (no rice)", cat:"🇧🇳 Bruneian / Malay", fat:18.0, protein:26.0, carbs:6.0, emoji:"🍛" },
+  { id:"f222", name:"Fish Curry, Malay style (no rice)", cat:"🇧🇳 Bruneian / Malay", fat:12.0, protein:24.0, carbs:5.0, emoji:"🐟" },
+  { id:"f223", name:"Sayur Lodeh (mixed veg in coconut milk)", cat:"🇧🇳 Bruneian / Malay", fat:10.0, protein:4.0, carbs:8.0, emoji:"🥥" },
+  { id:"f224", name:"Gulai Ikan / Fish in Coconut Curry (no rice)", cat:"🇧🇳 Bruneian / Malay", fat:14.0, protein:22.0, carbs:6.0, emoji:"🐟" },
+  { id:"f225", name:"Sambal Goreng (1 serving, no rice)", cat:"🇧🇳 Bruneian / Malay", fat:12.0, protein:14.0, carbs:5.0, emoji:"🌶️" },
+  { id:"f226", name:"Roti Canai (1 piece, no curry dip)", cat:"🇧🇳 Bruneian / Malay", fat:8.0, protein:4.0, carbs:24.0, emoji:"⚠️" },
+  { id:"f227", name:"Laksa, soup only (no noodles)", cat:"🇧🇳 Bruneian / Malay", fat:14.0, protein:18.0, carbs:6.0, emoji:"🍲" },
+  { id:"f228", name:"Sup Ayam / Clear Chicken Soup (1 bowl)", cat:"🇧🇳 Bruneian / Malay", fat:6.0, protein:24.0, carbs:3.0, emoji:"🥣" },
+  { id:"f229", name:"Sup Tulang / Bone Broth Soup (1 bowl)", cat:"🇧🇳 Bruneian / Malay", fat:8.0, protein:18.0, carbs:2.0, emoji:"🥣" },
+  { id:"f230", name:"Pari Bakar / Grilled Stingray (1 serving)", cat:"🇧🇳 Bruneian / Malay", fat:6.0, protein:22.0, carbs:2.0, emoji:"🐟" },
+  { id:"f231", name:"Begedil / Potato Fritters (1 piece)", cat:"🇧🇳 Bruneian / Malay", fat:5.0, protein:2.0, carbs:10.0, emoji:"⚠️" },
+  { id:"f232", name:"Gado-Gado (no lontong, light peanut sauce)", cat:"🇮🇩 Indonesian", fat:12.0, protein:10.0, carbs:10.0, emoji:"🥗" },
+  { id:"f233", name:"Bakso Soup / Meatball Soup (no noodles)", cat:"🇮🇩 Indonesian", fat:8.0, protein:18.0, carbs:4.0, emoji:"🥣" },
+  { id:"f234", name:"Opor Ayam / Chicken in Coconut Milk (no rice)", cat:"🇮🇩 Indonesian", fat:20.0, protein:26.0, carbs:5.0, emoji:"🍛" },
+  { id:"f235", name:"Rendang, Chicken (no rice, 100g)", cat:"🇮🇩 Indonesian", fat:18.0, protein:28.0, carbs:5.0, emoji:"🍛" },
+  { id:"f236", name:"Soto Ayam / Chicken Soup (no rice)", cat:"🇮🇩 Indonesian", fat:8.0, protein:22.0, carbs:4.0, emoji:"🥣" },
+  { id:"f237", name:"Cap Cai / Chinese-Indo Stir Fry Veg (no rice)", cat:"🇮🇩 Indonesian", fat:6.0, protein:8.0, carbs:8.0, emoji:"🥗" },
+  { id:"f238", name:"Peanut Sauce / Satay Sauce (2 tbsp)", cat:"🧄 Aromatics & Condiments", fat:8.0, protein:3.0, carbs:5.0, emoji:"🥜" },
+  { id:"f239", name:"Nam Prik / Thai Chilli Sauce (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.5, protein:0.5, carbs:3.0, emoji:"🌶️" },
+  { id:"f240", name:"Kecap Manis / Sweet Soy Sauce (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.5, carbs:8.0, emoji:"🫙" },
+  { id:"f241", name:"Tamarind Paste (1 tsp)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.2, carbs:2.0, emoji:"🟤" },
+  { id:"f242", name:"Coconut Aminos (1 tbsp, soy sauce sub)", cat:"🧄 Aromatics & Condiments", fat:0.0, protein:0.5, carbs:1.0, emoji:"🫙" },
+  { id:"f243", name:"Shrimp Paste / Cincalok (1 tsp)", cat:"🧄 Aromatics & Condiments", fat:0.3, protein:1.5, carbs:0.3, emoji:"🟤" },
+  { id:"f244", name:"Tempoyak / Fermented Durian (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:1.0, protein:0.5, carbs:3.0, emoji:"🟡" },
+  { id:"f245", name:"Cacah Dipping Sauce (2 tbsp)", cat:"🧄 Aromatics & Condiments", fat:1.0, protein:1.0, carbs:3.0, emoji:"🫙" },
+  { id:"f246", name:"Sambal Oelek (1 tbsp)", cat:"🧄 Aromatics & Condiments", fat:0.5, protein:0.3, carbs:2.0, emoji:"🌶️" },
+  { id:"f247", name:"Hoisin Sauce (1 tbsp) ⚠️ high sugar", cat:"🧄 Aromatics & Condiments", fat:0.5, protein:0.5, carbs:7.0, emoji:"🫙" },
+  { id:"f248", name:"Sinigang, 1 bowl (pork, no rice)", cat:"🍱 Common Meals", fat:12.0, protein:22.0, carbs:8.0, emoji:"🥣" },
+  { id:"f249", name:"Sinigang, 1 bowl (fish/seafood, no rice)", cat:"🍱 Common Meals", fat:5.0, protein:20.0, carbs:7.0, emoji:"🥣" },
+  { id:"f250", name:"Sinigang, 1 bowl (with kangkong & veg)", cat:"🍱 Common Meals", fat:10.0, protein:20.0, carbs:10.0, emoji:"🥣" },
+  { id:"f251", name:"Breaded Prawns (light, Chinese-style, 6pc)", cat:"🍱 Common Meals", fat:8.0, protein:20.0, carbs:8.0, emoji:"🍤" },
 ];
 
 const HUNTING_MONSTERS = [
@@ -98,7 +336,10 @@ const HUNTING_MONSTERS = [
   { id:"h_wraith", name:"Scroll Wraith", icon:"📜", hpMod:1.2, tier:"Rare", intro:"A Scroll Wraith unspools from a torn page, feeding on wasted minutes." },
   { id:"h_serpent", name:"Feed Serpent", icon:"🐍", hpMod:1.35, tier:"Rare", intro:"A Feed Serpent coils tight, hungry for your attention." },
   { id:"h_specter", name:"Doubt Specter", icon:"🌫️", hpMod:1.5, tier:"Elite", intro:"A Doubt Specter looms, insisting you should just check one more thing." },
+  { id:"h_imp", name:"Notification Imp", icon:"📳", hpMod:0.85, tier:"Uncommon", intro:"A Notification Imp buzzes at the edge of your vision, all noise, no substance." },
 ];
+
+const MONSTER_CODEX = HUNTING_MONSTERS.map(m => ({ name:m.name, icon:m.icon, tier:m.tier, intro:m.intro }));
 
 const WANDERING_MONSTERS = [
   { name:"Wraithling", icon:"👻" },
@@ -930,6 +1171,27 @@ const BOND_ACTIVITIES = {
   ]},
 };
 
+const ACHIEVEMENTS = [
+  { id:"ach_level10", title:"Getting Started", icon:"🌱", desc:"Reach Level 10", check: () => state.player.level >= 10, reward:{gold:20,xp:0} },
+  { id:"ach_level50", title:"Halfway There", icon:"⭐", desc:"Reach Level 50", check: () => state.player.level >= 50, reward:{gold:60,xp:0} },
+  { id:"ach_ascend1", title:"Ascended", icon:"🌟", desc:"Reach Ascension Rank 1", check: () => (state.ascensionRank||0) >= 1, reward:{gold:100,xp:0} },
+  { id:"ach_ascend5", title:"Beyond Ascension", icon:"🌠", desc:"Reach Ascension Rank 5", check: () => (state.ascensionRank||0) >= 5, reward:{gold:300,xp:0} },
+  { id:"ach_century", title:"Century Club", icon:"🪄", desc:"Answer 100 Calls", check: () => state.totalCheckIns >= 100, reward:{gold:50,xp:40} },
+  { id:"ach_bossslayer", title:"Boss Slayer", icon:"💀", desc:"Defeat 10 bosses", check: () => (state.bossesDefeated||0) >= 10, reward:{gold:60,xp:50} },
+  { id:"ach_everyshadow", title:"Every Shadow", icon:"👑", desc:"Defeat every unique boss at least once", check: () => BOSSES.every(b => (state.bossesKilled[b.id]||0) > 0), reward:{gold:150,xp:120} },
+  { id:"ach_raidvet", title:"Raid Veteran", icon:"🛡️", desc:"Complete 10 Raids", check: () => (state.raidsCompleted||0) >= 10, reward:{gold:70,xp:60} },
+  { id:"ach_forge", title:"Forge-Touched", icon:"⚒️", desc:"Craft a Forge-tier item", check: () => RECIPES.some(r => r.forgeTier && state.crafted.includes(r.id)), reward:{gold:80,xp:60} },
+  { id:"ach_ascendant", title:"Ascendant", icon:"🌌", desc:"Craft an Ascendant-tier item", check: () => RECIPES.some(r => r.ascendantTier && state.crafted.includes(r.id)), reward:{gold:150,xp:100} },
+  { id:"ach_traveler", title:"World Traveler", icon:"🗺️", desc:"Visit all 26 zones", check: () => LOCATIONS.every(l => !!state.locations[l.id]), reward:{gold:100,xp:80} },
+  { id:"ach_corners", title:"Every Corner", icon:"🔍", desc:"Discover all landmarks", check: () => LOCATIONS.every(l => (l.landmarks||[]).every(lm => !!state.landmarkVisits[lm.id])), reward:{gold:120,xp:100} },
+  { id:"ach_family", title:"Found Family", icon:"💞", desc:"Max bond with all 6 companions", check: () => PARTY.filter(p=>p.id!=="soel").every(p => { const tiers = SNIPPETS[p.id]||[]; return tiers.length && (state.affinity[p.id]||0) >= tiers[tiers.length-1].at; }), reward:{gold:100,xp:80} },
+  { id:"ach_stories", title:"Every Story Told", icon:"📖", desc:"Complete every companion questline", check: () => Object.values(COMPANION_QUESTS).flat().every(q => state.companionQuestProgress.read.includes(q.id)), reward:{gold:150,xp:120} },
+  { id:"ach_guildlegend", title:"Guild Legend", icon:"🏅", desc:"Reach the top Guild Standing tier", check: () => (state.reputation||0) >= REPUTATION_TIERS[REPUTATION_TIERS.length-1].min, reward:{gold:100,xp:0} },
+  { id:"ach_errands", title:"Errand Runner", icon:"🗒️", desc:"Complete every Side Quest", check: () => SIDE_QUESTS.every(q => state.completedSideQuests.includes(q.id)), reward:{gold:100,xp:80} },
+  { id:"ach_hunter", title:"The Hunt Never Ends", icon:"🏹", desc:"Defeat every huntable monster type", check: () => MONSTER_CODEX.every(m => (state.huntingKills[m.name]||0) > 0), reward:{gold:60,xp:50} },
+  { id:"ach_ketostreak", title:"Keto Streak", icon:"🍺", desc:"Hit a 7-day Tavern streak", check: () => (state.tavern.streak||0) >= 7, reward:{gold:50,xp:40} },
+];
+
 const SNIPPETS = {
   joel: [
     { at:3, line:'"Didn\'t even have to ask — knew you\'d show up."' },
@@ -1157,10 +1419,17 @@ function defaultState() {
     sideQuestKillProgress: {},
     huntingKills: {},
     bondCooldowns: {},
+    achievementsClaimed: [],
+    bossesKilled: {},
+    raidsCompleted: 0,
+    dungeonsCompleted: 0,
+    expeditionsCompleted: 0,
+    focusSessionsCompleted: 0,
+    waterGoalHits: 0,
     weeklyGuildClaimed: { week:null, claimed:false },
     questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
     water: { date:null, count:0, goal:8 },
-    tavern: { date:null, carbsToday:0, log:[], streak:0, lastGoodDate:null },
+    tavern: { date:null, carbsToday:0, fatToday:0, proteinToday:0, log:[], streak:0, lastGoodDate:null },
     dailyReminders: { date:null, morningWater:false, fedSoel:false, sleptEarly:false },
     focusSession: null,
     vigilTier: 0,
@@ -1189,27 +1458,70 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
   if (saved && typeof saved === "object") {
     Object.keys(saved).forEach(k => {
-      const defVal = def[k], savedVal = saved[k];
-      const bothPlainObjects = defVal && typeof defVal === "object" && !Array.isArray(defVal)
-        && savedVal && typeof savedVal === "object" && !Array.isArray(savedVal);
-      result[k] = bothPlainObjects ? { ...defVal, ...savedVal } : savedVal;
+      try {
+        const defVal = def[k], savedVal = saved[k];
+        const bothPlainObjects = defVal && typeof defVal === "object" && !Array.isArray(defVal)
+          && savedVal && typeof savedVal === "object" && !Array.isArray(savedVal);
+        result[k] = bothPlainObjects ? { ...defVal, ...savedVal } : savedVal;
+      } catch (e) {
+        // Leave this one key at its default value rather than letting it take down the whole load.
+      }
     });
   }
   return result;
 }
-function load() {
+function tryReadSave(key) {
   try {
-    const raw = localStorage.getItem("legends-save");
-    state = raw ? mergeDefaults(defaultState(), JSON.parse(raw)) : defaultState();
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : null;
+  } catch (e) { return null; }
+}
+let lastLoadRecovery = null;
+function load() {
+  let rawPrimaryExists = false;
+  try { rawPrimaryExists = localStorage.getItem("legends-save") !== null; } catch (e) {}
+  let primary = tryReadSave("legends-save");
+  let source = "primary";
+
+  if (rawPrimaryExists && !primary) {
+    primary = tryReadSave("legends-save-backup");
+    source = primary ? "backup" : "none";
+  }
+
+  try {
+    state = mergeDefaults(defaultState(), primary || {});
     migrateCompanionGear();
     migrateFamiliar();
-  } catch (e) { state = defaultState(); }
+  } catch (e) {
+    if (source !== "backup") {
+      const backup = tryReadSave("legends-save-backup");
+      try {
+        state = mergeDefaults(defaultState(), backup || {});
+        migrateCompanionGear();
+        migrateFamiliar();
+        source = backup ? "backup" : "none";
+      } catch (e2) {
+        state = defaultState();
+        source = "none";
+      }
+    } else {
+      state = defaultState();
+      source = "none";
+    }
+  }
+
+  if (source === "backup") lastLoadRecovery = "backup";
+  else if (source === "none" && rawPrimaryExists) lastLoadRecovery = "default";
+  else lastLoadRecovery = null;
+
   applyTheme();
 }
 function applyTheme() {
@@ -1244,7 +1556,11 @@ function migrateCompanionGear() {
   state.companionGear = {};
 }
 function save() {
-  try { localStorage.setItem("legends-save", JSON.stringify(state)); } catch (e) {}
+  try {
+    const prior = localStorage.getItem("legends-save");
+    if (prior) localStorage.setItem("legends-save-backup", prior);
+    localStorage.setItem("legends-save", JSON.stringify(state));
+  } catch (e) {}
 }
 
 /* ================= derived helpers ================= */
@@ -1358,7 +1674,7 @@ function ensureDaily() {
         streak = 0;
       }
     }
-    state.tavern = { date:t, carbsToday:0, log:[], streak, lastGoodDate };
+    state.tavern = { date:t, carbsToday:0, fatToday:0, proteinToday:0, log:[], streak, lastGoodDate };
   }
   if (!state.dailyReminders || state.dailyReminders.date !== t) state.dailyReminders = { date:t, morningWater:false, fedSoel:false, sleptEarly:false };
   if (!state.dayQuest || state.dayQuest.date !== t) state.dayQuest = { date:t, claimed:false, choiceMade:null };
@@ -1982,7 +2298,7 @@ function claimCall() {
 
   const dayEntry = { count: tLog.count + 1, encounter: tLog.encounter, bossDone: tLog.bossDone || (wasBoss && !enc.isRaid) };
   const newGuildDays = tLog.encounter === "Guild Day" && tLog.count === 0 ? state.guildDays + 1 : state.guildDays;
-  if (wasBoss) state.bossesDefeated = (state.bossesDefeated||0) + 1;
+  if (wasBoss) { state.bossesDefeated = (state.bossesDefeated||0) + 1; state.bossesKilled[enc.bossId] = (state.bossesKilled[enc.bossId]||0) + 1; if (enc.isRaid) state.raidsCompleted = (state.raidsCompleted||0) + 1; }
   else if (enc.enemies) enc.enemies.forEach(e => trackKill(e.name));
   else trackKill(enc.enemyName);
 
@@ -2486,6 +2802,7 @@ function claimDungeon() {
   ensureDaily();
   Object.entries(dg.cumDrops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; state.dailyLog.materialsGathered += q; });
   gainReputation(6);
+  state.dungeonsCompleted = (state.dungeonsCompleted||0) + 1;
   const leveledUp = grantReward(dg.cumGold, dg.cumXp);
   ui.dungeon = null;
   save(); render();
@@ -2566,6 +2883,7 @@ function claimExpedition() {
   ensureDaily();
   Object.entries(exp.drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; state.dailyLog.materialsGathered += q; });
   gainReputation(5);
+  state.expeditionsCompleted = (state.expeditionsCompleted||0) + 1;
   const leveledUp = grantReward(exp.cumGold, exp.cumXp);
   ui.expedition = null;
   save(); render();
@@ -2773,6 +3091,7 @@ function drinkWater() {
   if (state.water.count >= state.water.goal) return;
   state.water.count += 1;
   if (state.water.count === state.water.goal) {
+    state.waterGoalHits = (state.waterGoalHits||0) + 1;
     const leveledUp = grantReward(5, 5);
     save(); render();
     if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
@@ -2785,16 +3104,34 @@ function drinkWater() {
 
 function orderTavernItem(itemId) {
   ensureDaily();
-  const item = TAVERN_MENU.find(i => i.id === itemId);
+  const item = TAVERN_FOODS.find(i => i.id === itemId);
   if (!item) return;
   const wouldExceed = (state.tavern.carbsToday + item.carbs) > TAVERN_CARB_LIMIT;
-  state.tavern.carbsToday += item.carbs;
-  state.tavern.log.push({ id: item.id, name: item.name, icon: item.icon, carbs: item.carbs, overBudget: wouldExceed });
+  state.tavern.carbsToday = Math.round((state.tavern.carbsToday + item.carbs) * 10) / 10;
+  state.tavern.fatToday = Math.round((state.tavern.fatToday + item.fat) * 10) / 10;
+  state.tavern.proteinToday = Math.round((state.tavern.proteinToday + item.protein) * 10) / 10;
+  state.tavern.log.push({ id: item.id, name: item.name, icon: item.emoji, carbs: item.carbs, fat: item.fat, protein: item.protein, overBudget: wouldExceed });
   const leveledUp = grantReward(2, 2);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
-  else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${state.tavern.carbsToday}g today.`);
-  else showToast(`${item.icon} ${item.name} logged. ${state.tavern.carbsToday}/${TAVERN_CARB_LIMIT}g today.`);
+  else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${state.tavern.carbsToday}g carbs today.`);
+  else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${TAVERN_CARB_LIMIT}g carbs today.`);
+}
+
+function openTavern() { ui.showTavern = true; render(); }
+function closeTavern() { ui.showTavern = false; render(); }
+function filterTavernFoods(query) {
+  const q = query.toLowerCase();
+  const rows = document.querySelectorAll("[data-food-row]");
+  const visibleCats = new Set();
+  rows.forEach(el => {
+    const match = el.getAttribute("data-searchtext").includes(q);
+    el.style.display = match ? "" : "none";
+    if (match) visibleCats.add(el.getAttribute("data-cat"));
+  });
+  document.querySelectorAll("[data-cat-header]").forEach(el => {
+    el.style.display = visibleCats.has(el.getAttribute("data-cat-header")) ? "" : "none";
+  });
 }
 
 const REMINDER_LABELS = {
@@ -2831,6 +3168,20 @@ function bondWithCompanion(companionId) {
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else showToast(`${activity.icon} ${line}`);
+}
+
+function openBestiary() { ui.showBestiary = true; render(); }
+function closeBestiary() { ui.showBestiary = false; render(); }
+function openAchievements() { ui.showAchievements = true; render(); }
+function closeAchievements() { ui.showAchievements = false; render(); }
+function claimAchievement(id) {
+  const ach = ACHIEVEMENTS.find(a => a.id === id);
+  if (!ach || state.achievementsClaimed.includes(id) || !ach.check()) return;
+  state.achievementsClaimed.push(id);
+  const leveledUp = grantReward(ach.reward.gold||0, ach.reward.xp||0);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`🏆 Achievement unlocked: ${ach.title}!`);
 }
 
 function startFocusMode(minutes) {
@@ -2992,7 +3343,9 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
   openHuntingGrounds, closeHuntingGrounds, beginHunt,
-  bondWithCompanion };
+  openTavern, closeTavern,
+  bondWithCompanion,
+  openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -3293,6 +3646,17 @@ function renderHome() {
     </div>
   `);
 
+  const codexCard = card(`
+    <div style="padding:16px;display:flex;gap:10px">
+      <button data-act="openBestiary" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:14px;background:${C.mageSoft};color:${C.mageDeep}">
+        <span style="font-size:20px">📖</span><span style="font-size:11.5px;font-weight:700">Bestiary</span>
+      </button>
+      <button data-act="openAchievements" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:14px;background:${C.gold}22;color:${C.mageDeep}">
+        <span style="font-size:20px">🏆</span><span style="font-size:11.5px;font-weight:700">Achievements</span>
+      </button>
+    </div>
+  `);
+
   const materialChips = MATERIALS.map(m => `
     <div style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:9999px;background:${C.creamDeep}">
       <span style="font-size:12px">${m}</span><span class="disp" style="font-size:12px;font-weight:700;color:${C.mageDeep}">${state.materials[m]||0}</span>
@@ -3365,7 +3729,7 @@ function renderHome() {
   const wellnessCard = renderWellness();
   const tavernCard = renderTavern();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -3410,37 +3774,66 @@ function renderTavern() {
   const overBudget = carbs > TAVERN_CARB_LIMIT;
   const pct = Math.min(100, (carbs / TAVERN_CARB_LIMIT) * 100);
   const barColor = overBudget ? "#E85B5B" : (pct > 75 ? C.gold : C.sage);
-  const menuRows = TAVERN_MENU.map(item => {
-    const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
-    return `
-      <button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:${wouldExceed ? "rgba(232,91,91,0.12)" : C.creamDeep};border:1px solid ${wouldExceed ? "#E85B5B" : "transparent"};${wouldExceed ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
-        <span style="font-size:18px">${item.icon}</span>
-        <span style="font-size:9.5px;font-weight:700;color:${C.ink};text-align:center;line-height:1.15">${item.name}</span>
-        <span style="font-size:9px;color:${wouldExceed ? "#E85B5B" : C.inkSoft};font-weight:${wouldExceed?700:400}">${item.carbs}g</span>
-      </button>`;
-  }).join("");
-  const logRows = state.tavern.log.slice().reverse().map(entry => `
+  const logRows = state.tavern.log.slice().reverse().slice(0, 5).map(entry => `
     <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
       <span style="font-size:14px">${entry.icon}</span>
       <span style="font-size:11px;color:${entry.overBudget ? "#E85B5B" : C.ink};flex:1;font-weight:${entry.overBudget?700:400}">${entry.name}</span>
-      <span style="font-size:10.5px;color:${entry.overBudget ? "#E85B5B" : C.inkSoft};font-weight:${entry.overBudget?700:400}">${entry.carbs}g</span>
+      <span style="font-size:10px;color:${C.inkSoft}">F${entry.fat} P${entry.protein} C${entry.carbs}</span>
     </div>`).join("");
   return card(`
     <div style="padding:16px">
-      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 4px;color:${C.mageDeep}">🍺 The Tavern</p>
-      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${TAVERN_CARB_LIMIT}g today. ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:11px;color:${C.inkSoft}">Today's carbs</span>
-        <span style="font-size:12px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${TAVERN_CARB_LIMIT}g</span>
+        <p class="disp" style="font-weight:700;font-size:14px;margin:0;color:${C.mageDeep}">🍺 The Tavern</p>
+        <button data-act="openTavern" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Log a Meal</button>
       </div>
-      <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:14px;${overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${TAVERN_CARB_LIMIT}g today. ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+        <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Fat</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:#D9A441">${state.tavern.fatToday}g</p></div>
+        <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Protein</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${C.sage}">${state.tavern.proteinToday}g</p></div>
+        <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Carbs</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${overBudget?"#E85B5B":C.ink}">${carbs}g</p></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:11px;color:${C.inkSoft}">Carb budget</span>
+        <span style="font-size:11px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${TAVERN_CARB_LIMIT}g</span>
+      </div>
+      <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};${state.tavern.log.length?"margin-bottom:12px":""};${overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
         <div style="height:8px;width:${pct}%;background:${barColor}"></div>
       </div>
-      <p style="font-size:11px;font-weight:700;color:${C.mageDeep};margin:0 0 8px">Order something</p>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:${state.tavern.log.length?12:0}px">${menuRows}</div>
       ${state.tavern.log.length ? `<div style="border-top:1px solid ${C.border};padding-top:8px">${logRows}</div>` : ""}
     </div>
   `);
+}
+
+function renderTavernModal() {
+  if (!ui.showTavern) return "";
+  const carbs = state.tavern.carbsToday;
+  let currentCat = null;
+  const rows = TAVERN_FOODS.map(item => {
+    const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
+    const header = item.cat !== currentCat ? (() => {
+      currentCat = item.cat;
+      return `<p data-cat-header="${escapeHtml(item.cat)}" class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:14px 0 6px">${item.cat}</p>`;
+    })() : "";
+    return `${header}
+      <div data-food-row data-cat="${escapeHtml(item.cat)}" data-searchtext="${escapeHtml(item.name.toLowerCase())}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${wouldExceed?"rgba(232,91,91,0.1)":C.creamDeep};border-radius:12px;margin-bottom:6px">
+        <span style="font-size:18px">${item.emoji}</span>
+        <div style="flex:1">
+          <p style="font-size:12px;font-weight:600;margin:0;color:${C.ink}">${escapeHtml(item.name)}</p>
+          <p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">F ${item.fat}g · P ${item.protein}g · <span style="color:${wouldExceed?"#E85B5B":C.inkSoft};font-weight:${wouldExceed?700:400}">C ${item.carbs}g</span></p>
+        </div>
+        <button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Log</button>
+      </div>`;
+  }).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:88vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">🍺 The Tavern</p>
+        <button data-act="closeTavern"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <input type="text" placeholder="Search foods…" oninput="filterTavernFoods(this.value)" style="width:100%;padding:10px 14px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:13px;margin-bottom:4px" />
+      ${rows}
+    </div>
+  </div>`;
 }
 
 function renderExplore() {
@@ -4705,6 +5098,90 @@ function renderHuntingGroundsModal() {
   </div>`;
 }
 
+function renderBestiaryModal() {
+  if (!ui.showBestiary) return "";
+  const monsterRows = MONSTER_CODEX.map(m => {
+    const kills = state.huntingKills[m.name] || 0;
+    const discovered = kills > 0;
+    const tierColor = { Common:C.inkSoft, Uncommon:C.sage, Rare:C.mage, Elite:C.gold };
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px;opacity:${discovered?1:0.55}">
+        <span style="font-size:24px;filter:${discovered?"none":"grayscale(1)"}">${discovered ? m.icon : "❓"}</span>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:12.5px;margin:0">${discovered ? m.name : "???"}</p>
+          <p style="font-size:10px;margin:2px 0 0;color:${discovered?tierColor[m.tier]:C.inkSoft};font-weight:700">${discovered ? m.tier : "Undiscovered"}</p>
+          ${discovered ? `<p style="font-size:10.5px;color:${C.inkSoft};margin:3px 0 0;font-style:italic">${m.intro}</p>` : ""}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <p style="font-size:10px;color:${C.inkSoft};margin:0">Slain</p>
+          <p class="disp" style="font-size:15px;font-weight:700;color:${C.mageDeep};margin:0">${kills}</p>
+        </div>
+      </div>`;
+  }).join("");
+  const bossRows = BOSSES.map(b => {
+    const kills = state.bossesKilled[b.id] || 0;
+    const discovered = kills > 0;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px;opacity:${discovered?1:0.55}">
+        <span style="font-size:24px;filter:${discovered?"none":"grayscale(1)"}">${discovered ? "💀" : "❓"}</span>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:12.5px;margin:0">${discovered ? b.name : "???"}</p>
+          <p style="font-size:10px;margin:2px 0 0;color:${C.mage};font-weight:700">Level ${b.minLv}+</p>
+          ${discovered ? `<p style="font-size:10.5px;color:${C.inkSoft};margin:3px 0 0;font-style:italic">${b.intro}</p>` : ""}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <p style="font-size:10px;color:${C.inkSoft};margin:0">Slain</p>
+          <p class="disp" style="font-size:15px;font-weight:700;color:${C.mageDeep};margin:0">${kills}</p>
+        </div>
+      </div>`;
+  }).join("");
+  const monstersFound = MONSTER_CODEX.filter(m => (state.huntingKills[m.name]||0) > 0).length;
+  const bossesFound = BOSSES.filter(b => (state.bossesKilled[b.id]||0) > 0).length;
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">📖 Bestiary</p>
+        <button data-act="closeBestiary"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 14px">${monstersFound}/${MONSTER_CODEX.length} monsters · ${bossesFound}/${BOSSES.length} bosses discovered</p>
+      <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:0 0 8px">Monsters</p>
+      ${monsterRows}
+      <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:16px 0 8px">Bosses</p>
+      ${bossRows}
+    </div>
+  </div>`;
+}
+
+function renderAchievementsModal() {
+  if (!ui.showAchievements) return "";
+  const rows = ACHIEVEMENTS.map(ach => {
+    const claimed = state.achievementsClaimed.includes(ach.id);
+    const done = ach.check();
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:${claimed?C.sageSoft:C.creamDeep};border-radius:14px;margin-bottom:8px;opacity:${done||claimed?1:0.6}">
+        <span style="font-size:24px">${claimed ? "🏆" : ach.icon}</span>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:12.5px;margin:0">${ach.title}</p>
+          <p style="font-size:10.5px;color:${C.inkSoft};margin:2px 0 0">${ach.desc}</p>
+        </div>
+        ${claimed
+          ? `<span style="font-size:10.5px;font-weight:700;color:${C.sage};flex-shrink:0">✔️ Done</span>`
+          : `<button data-act="claimAchievement" data-arg="${ach.id}" ${done?"":"disabled"} class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${done?C.gold:C.card};color:${done?"white":C.inkSoft}">${done?"Claim":"Locked"}</button>`}
+      </div>`;
+  }).join("");
+  const claimedCount = state.achievementsClaimed.length;
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">🏆 Achievements</p>
+        <button data-act="closeAchievements"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 14px">${claimedCount}/${ACHIEVEMENTS.length} unlocked</p>
+      ${rows}
+    </div>
+  </div>`;
+}
+
 function renderChestModal() {
   if (!ui.showChest) return "";
   return `<div style="position:fixed;inset:0;z-index:55;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
@@ -4755,6 +5232,9 @@ function render() {
     ${renderSkirmishModal()}
     ${renderChestModal()}
     ${renderHuntingGroundsModal()}
+    ${renderBestiaryModal()}
+    ${renderTavernModal()}
+    ${renderAchievementsModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
@@ -4766,6 +5246,11 @@ function render() {
 /* ================= init ================= */
 load();
 render();
+if (lastLoadRecovery === "backup") {
+  setTimeout(() => showToast("Recovered your save from a backup — everything should be here except your very last session."), 500);
+} else if (lastLoadRecovery === "default") {
+  setTimeout(() => showToast("Couldn't recover your save this time — starting fresh. Sorry about that."), 500);
+}
 setInterval(() => { ui.now = Date.now(); if (!ui.showBackup) render(); }, 20000);
 
 if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
