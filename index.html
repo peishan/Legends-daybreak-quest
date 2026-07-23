@@ -71,7 +71,6 @@ const LOCATION_COOLDOWN_MS = 8 * 60 * 1000;
 const LANDMARK_COOLDOWN_MS = 5 * 60 * 1000;
 const REST_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 
-const TAVERN_CARB_LIMIT = 20;
 const TAVERN_FOODS = [
   { id:"f0", name:"1 Egg", cat:"🥚 Egg & Dairy", fat:5.0, protein:6.0, carbs:0.4, emoji:"🥚" },
   { id:"f1", name:"3 Eggs", cat:"🥚 Egg & Dairy", fat:15.0, protein:18.0, carbs:1.2, emoji:"🥚" },
@@ -1445,6 +1444,7 @@ function defaultState() {
     sideQuestKillProgress: {},
     huntingKills: {},
     bondCooldowns: {},
+    settings: { carbLimit: 30, notificationsEnabled: false },
     wellnessLog: {},
     achievementsClaimed: [],
     bossesKilled: {},
@@ -1491,7 +1491,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -1698,7 +1698,7 @@ function ensureDaily() {
       carbs: state.tavern ? state.tavern.carbsToday : 0,
       fat: state.tavern ? state.tavern.fatToday : 0,
       protein: state.tavern ? state.tavern.proteinToday : 0,
-      carbsOk: state.tavern ? state.tavern.carbsToday <= TAVERN_CARB_LIMIT : null,
+      carbsOk: state.tavern ? state.tavern.carbsToday <= state.settings.carbLimit : null,
       sleptEarly: state.dailyReminders ? !!state.dailyReminders.sleptEarly : false,
       morningWater: state.dailyReminders ? !!state.dailyReminders.morningWater : false,
       fedSoel: state.dailyReminders ? !!state.dailyReminders.fedSoel : false,
@@ -1714,7 +1714,7 @@ function ensureDaily() {
     let streak = state.tavern ? state.tavern.streak : 0;
     let lastGoodDate = state.tavern ? state.tavern.lastGoodDate : null;
     if (prevDate) {
-      const wasGood = prevCarbs <= TAVERN_CARB_LIMIT;
+      const wasGood = prevCarbs <= state.settings.carbLimit;
       if (wasGood) {
         const wasConsecutive = lastGoodDate && (new Date(prevDate) - new Date(lastGoodDate))/86400000 === 1;
         streak = (wasConsecutive || !lastGoodDate) ? streak + 1 : 1;
@@ -3195,7 +3195,7 @@ function orderTavernItem(itemId) {
   ensureDaily();
   const item = TAVERN_FOODS.find(i => i.id === itemId);
   if (!item) return;
-  const wouldExceed = (state.tavern.carbsToday + item.carbs) > TAVERN_CARB_LIMIT;
+  const wouldExceed = (state.tavern.carbsToday + item.carbs) > state.settings.carbLimit;
   state.tavern.carbsToday = Math.round((state.tavern.carbsToday + item.carbs) * 10) / 10;
   state.tavern.fatToday = Math.round((state.tavern.fatToday + item.fat) * 10) / 10;
   state.tavern.proteinToday = Math.round((state.tavern.proteinToday + item.protein) * 10) / 10;
@@ -3205,7 +3205,7 @@ function orderTavernItem(itemId) {
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${state.tavern.carbsToday}g carbs today.`);
-  else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${TAVERN_CARB_LIMIT}g carbs today.`);
+  else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${state.settings.carbLimit}g carbs today.`);
 }
 
 function openTavern() { ui.showTavern = true; render(); }
@@ -3299,14 +3299,27 @@ function claimAchievement(id) {
   else showToast(`🏆 Achievement unlocked: ${ach.title}!`);
 }
 
+let focusNotifyTimeout = null;
+function scheduleFocusNotification() {
+  clearTimeout(focusNotifyTimeout);
+  if (!state.settings.notificationsEnabled || !state.focusSession) return;
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const remaining = focusRemainingMs();
+  if (remaining <= 0) return;
+  focusNotifyTimeout = setTimeout(() => {
+    try { new Notification("Focus session complete!", { body: "Nice work — come back and claim your reward.", icon: "icon-192.png" }); } catch (e) {}
+  }, remaining);
+}
 function startFocusMode(minutes) {
   const dur = parseInt(minutes, 10);
   if (!FOCUS_DURATIONS.includes(dur) || state.focusSession) return;
   state.focusSession = { startedAt: Date.now(), durationMin: dur };
   save(); render();
+  scheduleFocusNotification();
 }
 function cancelFocusMode() {
   state.focusSession = null;
+  clearTimeout(focusNotifyTimeout);
   save(); render();
 }
 function focusRemainingMs() {
@@ -3321,11 +3334,42 @@ function claimFocusReward() {
   const dur = state.focusSession.durationMin;
   const gold = dur * 2, xp = dur * 2;
   state.focusSession = null;
+  clearTimeout(focusNotifyTimeout);
   state.dailyLog.focusSessionsToday = (state.dailyLog.focusSessionsToday||0) + 1;
   const leveledUp = grantReward(gold, xp);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else showToast(`Focus session complete! +${gold}g +${xp}xp`);
+}
+
+function requestNotificationPermission() {
+  if (typeof Notification === "undefined") { showToast("Notifications aren't supported in this browser."); return; }
+  Notification.requestPermission().then(perm => {
+    state.settings.notificationsEnabled = perm === "granted";
+    save(); render();
+    scheduleFocusNotification();
+    showToast(perm === "granted" ? "Notifications enabled — your Focus timer will ping you when it's done." : "Notifications weren't allowed. You can change this in your browser's site settings.");
+  }).catch(() => showToast("Couldn't request notification permission here."));
+}
+function disableNotifications() {
+  state.settings.notificationsEnabled = false;
+  clearTimeout(focusNotifyTimeout);
+  save(); render();
+}
+function openSettings() { ui.showSettings = true; render(); }
+function closeSettings() { ui.showSettings = false; render(); }
+function setCarbLimit(value) {
+  const v = parseInt(value, 10);
+  if (!v || v < 5 || v > 150) return;
+  state.settings.carbLimit = v;
+  save(); render();
+}
+function setWaterGoal(value) {
+  const v = parseInt(value, 10);
+  if (!v || v < 1 || v > 20) return;
+  ensureDaily();
+  state.water.goal = v;
+  save(); render();
 }
 function fmtMMSS(ms) {
   const totalSec = Math.max(0, Math.ceil(ms/1000));
@@ -3472,6 +3516,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openTavern, closeTavern,
   openInsights, closeInsights,
   playWithSoel, giftCompanion,
+  openSettings, closeSettings, setCarbLimit, setWaterGoal, requestNotificationPermission, disableNotifications,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -3539,6 +3584,7 @@ function renderHeader() {
         </div>
         ${(state.graceTokens||0) > 0 ? `<div style="display:flex;align-items:center;gap:3px;color:${C.mage}" title="Grace Tokens — auto-protect your streak if you miss a day"><span style="font-size:16px">🛡️</span><span class="disp" style="font-weight:700;font-size:13px">${state.graceTokens}</span></div>` : ""}
         <button data-act="toggleTheme" aria-label="Toggle light/dark theme"><span style="font-size:18px;color:${C.inkSoft}">${state.theme === "dark" ? "☀️" : "🌙"}</span></button>
+        <button data-act="openSettings" aria-label="Settings"><span style="font-size:18px;color:${C.inkSoft}">🎛️</span></button>
         <button data-act="openBackup" aria-label="Backup and restore"><span style="font-size:18px;color:${C.inkSoft}">⚙️</span></button>
       </div>
     </div>
@@ -3925,8 +3971,8 @@ function renderWellness() {
 function renderTavern() {
   ensureDaily();
   const carbs = state.tavern.carbsToday;
-  const overBudget = carbs > TAVERN_CARB_LIMIT;
-  const pct = Math.min(100, (carbs / TAVERN_CARB_LIMIT) * 100);
+  const overBudget = carbs > state.settings.carbLimit;
+  const pct = Math.min(100, (carbs / state.settings.carbLimit) * 100);
   const barColor = overBudget ? "#E85B5B" : (pct > 75 ? C.gold : C.sage);
   const logRows = state.tavern.log.slice().reverse().slice(0, 5).map(entry => `
     <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
@@ -3940,7 +3986,7 @@ function renderTavern() {
         <p class="disp" style="font-weight:700;font-size:14px;margin:0;color:${C.mageDeep}">🍺 The Tavern</p>
         <button data-act="openTavern" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Log a Meal</button>
       </div>
-      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${TAVERN_CARB_LIMIT}g today. ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${state.settings.carbLimit}g today. ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Fat</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:#D9A441">${state.tavern.fatToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Protein</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${C.sage}">${state.tavern.proteinToday}g</p></div>
@@ -3948,7 +3994,7 @@ function renderTavern() {
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <span style="font-size:11px;color:${C.inkSoft}">Carb budget</span>
-        <span style="font-size:11px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${TAVERN_CARB_LIMIT}g</span>
+        <span style="font-size:11px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${state.settings.carbLimit}g</span>
       </div>
       <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};${state.tavern.log.length?"margin-bottom:12px":""};${overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
         <div style="height:8px;width:${pct}%;background:${barColor}"></div>
@@ -3965,7 +4011,7 @@ function renderTavernModal() {
     const chips = state.tavernFavorites.map(id => {
       const item = TAVERN_FOODS.find(f => f.id === id);
       if (!item) return "";
-      const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
+      const wouldExceed = (carbs + item.carbs) > state.settings.carbLimit;
       return `<button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px;border-radius:12px;background:${wouldExceed?"rgba(232,91,91,0.12)":C.mageSoft};flex-shrink:0;min-width:64px">
         <span style="font-size:16px">${item.emoji}</span>
         <span style="font-size:9px;font-weight:700;color:${C.mageDeep};text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">${escapeHtml(item.name)}</span>
@@ -3977,7 +4023,7 @@ function renderTavernModal() {
   })() : "";
   let currentCat = null;
   const rows = TAVERN_FOODS.map(item => {
-    const wouldExceed = (carbs + item.carbs) > TAVERN_CARB_LIMIT;
+    const wouldExceed = (carbs + item.carbs) > state.settings.carbLimit;
     const header = item.cat !== currentCat ? (() => {
       currentCat = item.cat;
       return `<p data-cat-header="${escapeHtml(item.cat)}" class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:14px 0 6px">${item.cat}</p>`;
@@ -5283,6 +5329,43 @@ function renderHuntingGroundsModal() {
   </div>`;
 }
 
+function renderSettingsModal() {
+  if (!ui.showSettings) return "";
+  const carbPresets = [20, 25, 30, 40, 50];
+  const carbButtons = carbPresets.map(v => `<button data-act="setCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.carbLimit===v?C.mageDeep:C.creamDeep};color:${state.settings.carbLimit===v?"white":C.ink}">${v}g</button>`).join("");
+  const waterPresets = [6, 8, 10, 12];
+  const waterButtons = waterPresets.map(v => `<button data-act="setWaterGoal" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.water.goal===v?C.mage:C.creamDeep};color:${state.water.goal===v?"white":C.ink}">${v} cups</button>`).join("");
+  const notifSupported = typeof Notification !== "undefined";
+  const notifGranted = notifSupported && Notification.permission === "granted";
+  const notifStatus = !notifSupported ? "Not supported in this browser"
+    : notifGranted && state.settings.notificationsEnabled ? "Enabled — Focus timer will ping you"
+    : notifGranted ? "Permission granted, but turned off here"
+    : Notification.permission === "denied" ? "Blocked — check your browser's site settings to allow"
+    : "Not enabled yet";
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">🎛️ Settings</p>
+        <button data-act="closeSettings"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Tavern Carb Limit</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.settings.carbLimit}g/day.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${carbButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Water Goal</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.water.goal} cups/day.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${waterButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Notifications</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">${notifStatus}. Only covers your Focus timer finishing — this app can't reliably notify you after it's fully closed.</p>
+      ${state.settings.notificationsEnabled && notifGranted
+        ? `<button data-act="disableNotifications" class="disp" style="width:100%;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${C.creamDeep};color:${C.inkSoft}">Turn Off</button>`
+        : `<button data-act="requestNotificationPermission" class="disp" style="width:100%;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${C.mageDeep};color:white" ${notifSupported?"":"disabled"}>Enable Notifications</button>`}
+    </div>
+  </div>`;
+}
+
 function renderInsightsModal() {
   if (!ui.showInsights) return "";
   const w7 = insightsSummary(7);
@@ -5459,6 +5542,7 @@ function render() {
     ${renderHuntingGroundsModal()}
     ${renderBestiaryModal()}
     ${renderInsightsModal()}
+    ${renderSettingsModal()}
     ${renderTavernModal()}
     ${renderAchievementsModal()}
     ${renderZoneDetailModal()}
@@ -5472,6 +5556,7 @@ function render() {
 /* ================= init ================= */
 load();
 render();
+scheduleFocusNotification();
 if (lastLoadRecovery === "backup") {
   setTimeout(() => showToast("Recovered your save from a backup — everything should be here except your very last session."), 500);
 } else if (lastLoadRecovery === "default") {
