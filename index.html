@@ -1419,6 +1419,7 @@ function defaultState() {
     sideQuestKillProgress: {},
     huntingKills: {},
     bondCooldowns: {},
+    wellnessLog: {},
     achievementsClaimed: [],
     bossesKilled: {},
     raidsCompleted: 0,
@@ -1458,7 +1459,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -1656,7 +1657,23 @@ function canAfford(recipe) {
 }
 function ensureDaily() {
   const t = today();
-  if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0, enemyKillsToday:{} };
+  if (state.water && state.water.date && state.water.date !== t) {
+    const prevDate = state.water.date;
+    state.wellnessLog[prevDate] = {
+      waterCount: state.water.count,
+      waterGoal: state.water.goal,
+      waterHit: state.water.count >= state.water.goal,
+      carbs: state.tavern ? state.tavern.carbsToday : 0,
+      fat: state.tavern ? state.tavern.fatToday : 0,
+      protein: state.tavern ? state.tavern.proteinToday : 0,
+      carbsOk: state.tavern ? state.tavern.carbsToday <= TAVERN_CARB_LIMIT : null,
+      sleptEarly: state.dailyReminders ? !!state.dailyReminders.sleptEarly : false,
+      morningWater: state.dailyReminders ? !!state.dailyReminders.morningWater : false,
+      fedSoel: state.dailyReminders ? !!state.dailyReminders.fedSoel : false,
+      focusSessions: state.dailyLog ? (state.dailyLog.focusSessionsToday||0) : 0,
+    };
+  }
+  if (!state.dailyLog || state.dailyLog.date !== t) state.dailyLog = { date:t, crafted:0, refined:0, potionsUsed:0, materialsGathered:0, skirmishToday:0, restToday:0, enemyKillsToday:{}, focusSessionsToday:0 };
   if (!state.dailyTasksClaimed || state.dailyTasksClaimed.date !== t) state.dailyTasksClaimed = { date:t, ids:[] };
   if (!state.water || state.water.date !== t) state.water = { date:t, count:0, goal:(state.water && state.water.goal) || 8 };
   if (!state.tavern || state.tavern.date !== t) {
@@ -1682,6 +1699,7 @@ function ensureDaily() {
   if (!state.dailyLog.enemyKillsToday) state.dailyLog.enemyKillsToday = {};
   if (state.dailyLog.skirmishToday === undefined) state.dailyLog.skirmishToday = 0;
   if (state.dailyLog.restToday === undefined) state.dailyLog.restToday = 0;
+  if (state.dailyLog.focusSessionsToday === undefined) state.dailyLog.focusSessionsToday = 0;
 }
 function grantReward(gold, xp) {
   state.player.gold += gold;
@@ -3170,6 +3188,31 @@ function bondWithCompanion(companionId) {
   else showToast(`${activity.icon} ${line}`);
 }
 
+function openInsights() { ui.showInsights = true; render(); }
+function closeInsights() { ui.showInsights = false; render(); }
+function insightsSummary(days) {
+  const entries = [];
+  for (let i = 1; i <= days; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dayKey(d);
+    if (state.wellnessLog[key]) entries.push(state.wellnessLog[key]);
+  }
+  const count = entries.length;
+  const sum = (fn) => entries.reduce((s,e) => s + (fn(e)||0), 0);
+  const avg = (fn) => count ? Math.round((sum(fn)/count) * 10) / 10 : 0;
+  return {
+    daysLogged: count,
+    waterHitDays: entries.filter(e=>e.waterHit).length,
+    carbsOkDays: entries.filter(e=>e.carbsOk).length,
+    sleptEarlyDays: entries.filter(e=>e.sleptEarly).length,
+    morningWaterDays: entries.filter(e=>e.morningWater).length,
+    fedSoelDays: entries.filter(e=>e.fedSoel).length,
+    totalFocusSessions: sum(e=>e.focusSessions),
+    avgCarbs: avg(e=>e.carbs), avgFat: avg(e=>e.fat), avgProtein: avg(e=>e.protein),
+  };
+}
+
 function openBestiary() { ui.showBestiary = true; render(); }
 function closeBestiary() { ui.showBestiary = false; render(); }
 function openAchievements() { ui.showAchievements = true; render(); }
@@ -3202,9 +3245,11 @@ function focusRemainingMs() {
 }
 function claimFocusReward() {
   if (!state.focusSession || focusRemainingMs() > 0) return;
+  ensureDaily();
   const dur = state.focusSession.durationMin;
   const gold = dur * 2, xp = dur * 2;
   state.focusSession = null;
+  state.dailyLog.focusSessionsToday = (state.dailyLog.focusSessionsToday||0) + 1;
   const leveledUp = grantReward(gold, xp);
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
@@ -3344,6 +3389,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   exportSaveFile, triggerImportFile,
   openHuntingGrounds, closeHuntingGrounds, beginHunt,
   openTavern, closeTavern,
+  openInsights, closeInsights,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -3647,12 +3693,15 @@ function renderHome() {
   `);
 
   const codexCard = card(`
-    <div style="padding:16px;display:flex;gap:10px">
-      <button data-act="openBestiary" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:14px;background:${C.mageSoft};color:${C.mageDeep}">
-        <span style="font-size:20px">📖</span><span style="font-size:11.5px;font-weight:700">Bestiary</span>
+    <div style="padding:16px;display:flex;gap:8px">
+      <button data-act="openBestiary" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:${C.mageSoft};color:${C.mageDeep}">
+        <span style="font-size:18px">📖</span><span style="font-size:10.5px;font-weight:700">Bestiary</span>
       </button>
-      <button data-act="openAchievements" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:14px;background:${C.gold}22;color:${C.mageDeep}">
-        <span style="font-size:20px">🏆</span><span style="font-size:11.5px;font-weight:700">Achievements</span>
+      <button data-act="openAchievements" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:${C.gold}22;color:${C.mageDeep}">
+        <span style="font-size:18px">🏆</span><span style="font-size:10.5px;font-weight:700">Achievements</span>
+      </button>
+      <button data-act="openInsights" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:${C.sageSoft};color:${C.sage}">
+        <span style="font-size:18px">📊</span><span style="font-size:10.5px;font-weight:700">Insights</span>
       </button>
     </div>
   `);
@@ -5098,6 +5147,46 @@ function renderHuntingGroundsModal() {
   </div>`;
 }
 
+function renderInsightsModal() {
+  if (!ui.showInsights) return "";
+  const w7 = insightsSummary(7);
+  const w30 = insightsSummary(30);
+  const statRow = (label, value, sub) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid ${C.border}">
+      <span style="font-size:12px;color:${C.ink}">${label}</span>
+      <div style="text-align:right">
+        <span class="disp" style="font-size:13px;font-weight:700;color:${C.mageDeep}">${value}</span>
+        ${sub ? `<p style="font-size:9.5px;color:${C.inkSoft};margin:0">${sub}</p>` : ""}
+      </div>
+    </div>`;
+  const section = (title, s) => s.daysLogged === 0 ? `
+    <div style="margin-bottom:16px">
+      <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:0 0 6px">${title}</p>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0">Not enough days logged yet — check back after a few more days.</p>
+    </div>` : `
+    <div style="margin-bottom:16px">
+      <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:0 0 6px">${title} <span style="font-weight:400;color:${C.inkSoft};font-size:11px">(${s.daysLogged} days logged)</span></p>
+      ${statRow("💧 Water goal hit", `${s.waterHitDays}/${s.daysLogged}`)}
+      ${statRow("🍺 Carb budget kept", `${s.carbsOkDays}/${s.daysLogged}`)}
+      ${statRow("🌙 Slept early", `${s.sleptEarlyDays}/${s.daysLogged}`)}
+      ${statRow("💧 Morning water", `${s.morningWaterDays}/${s.daysLogged}`)}
+      ${statRow("🐱 Fed Soel", `${s.fedSoelDays}/${s.daysLogged}`)}
+      ${statRow("⏳ Focus sessions", s.totalFocusSessions)}
+      ${statRow("Avg. daily macros", `F${s.avgFat} P${s.avgProtein} C${s.avgCarbs}`)}
+    </div>`;
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">📊 Insights</p>
+        <button data-act="closeInsights"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 14px">Everything real-life, pulled together. Today isn't counted until it rolls over.</p>
+      ${section("Last 7 Days", w7)}
+      ${section("Last 30 Days", w30)}
+    </div>
+  </div>`;
+}
+
 function renderBestiaryModal() {
   if (!ui.showBestiary) return "";
   const monsterRows = MONSTER_CODEX.map(m => {
@@ -5233,6 +5322,7 @@ function render() {
     ${renderChestModal()}
     ${renderHuntingGroundsModal()}
     ${renderBestiaryModal()}
+    ${renderInsightsModal()}
     ${renderTavernModal()}
     ${renderAchievementsModal()}
     ${renderZoneDetailModal()}
