@@ -1171,6 +1171,32 @@ const BOND_ACTIVITIES = {
   ]},
 };
 
+const GIFT_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const COMPANION_GIFTS = {
+  joel: { material:"Silver Ingot", line:"Joel turns it over in his hands, already thinking about what he'll reinforce with it. \"Good find,\" he says, meaning it." },
+  aisyah: { material:"Starlight Weave", line:"Aisyah's eyes light up doing mental math on resale value, then she pockets it anyway, unsold. \"...I'm keeping this one.\"" },
+  mezstorm: { material:"Starlight Thread", line:"Mezstorm holds it up to the light, already humming something new. \"This one's got a sound to it,\" she says, delighted." },
+  eliz: { material:"Ember Shard", line:"Eliz examines it with total focus, turning it slowly to catch the light from every angle. She adds it to a very particular pile." },
+  senedra: { material:"Gel Solvent", line:"Senedra checks it over fast, professional, then actually smiles. \"Perfect, I was just about to run out.\"" },
+  zaki: { material:"Herbal Extract", line:"Zaki's already narrating a new menu item in his head. \"This could be huge,\" he says, dead serious about a leaf." },
+  soel: { material:"Moonherb", line:"Soel sniffs it once, rolls onto it dramatically, and refuses to move for the next twenty minutes." },
+};
+function giftCompanion(companionId) {
+  const member = PARTY.find(p => p.id === companionId);
+  const gift = COMPANION_GIFTS[companionId];
+  if (!member || !gift || state.player.level < member.unlockLv) return;
+  if ((state.materials[gift.material]||0) < 1) return;
+  const last = state.giftCooldowns[companionId] || 0;
+  if (ui.now - last < GIFT_COOLDOWN_MS) return;
+  state.materials[gift.material] -= 1;
+  state.giftCooldowns[companionId] = ui.now;
+  state.affinity[companionId] = (state.affinity[companionId]||0) + 3;
+  const leveledUp = grantReward(3, 3);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`🎁 ${gift.line}`);
+}
+
 const ACHIEVEMENTS = [
   { id:"ach_level10", title:"Getting Started", icon:"🌱", desc:"Reach Level 10", check: () => state.player.level >= 10, reward:{gold:20,xp:0} },
   { id:"ach_level50", title:"Halfway There", icon:"⭐", desc:"Reach Level 50", check: () => state.player.level >= 50, reward:{gold:60,xp:0} },
@@ -1431,6 +1457,9 @@ function defaultState() {
     weeklyRecapSeen: { week:null },
     tavernFavorites: [],
     soelPlay: { date:null, count:0 },
+    graceTokens: 0,
+    graceMilestoneReached: 0,
+    giftCooldowns: {},
     questChainProgress: { chain_light:0, chain_market:0, chain_guild:0 },
     water: { date:null, count:0, goal:8 },
     tavern: { date:null, carbsToday:0, fatToday:0, proteinToday:0, log:[], streak:0, lastGoodDate:null },
@@ -2320,7 +2349,9 @@ function claimCall() {
   const isNewDay = state.lastCheckInDate !== t;
   const prevDate = state.lastCheckInDate ? new Date(state.lastCheckInDate) : null;
   const wasYesterday = prevDate && (new Date(t) - prevDate)/86400000 === 1;
-  const newStreak = isNewDay ? (wasYesterday || !prevDate ? (prevDate ? state.streak+1 : 1) : 1) : state.streak;
+  const streakWouldBreak = isNewDay && prevDate && !wasYesterday;
+  const usedGrace = streakWouldBreak && (state.graceTokens||0) > 0;
+  const newStreak = isNewDay ? ((wasYesterday || !prevDate || usedGrace) ? (prevDate ? state.streak+1 : 1) : 1) : state.streak;
 
   let newXp = state.player.xp + xp, newLevel = state.player.level;
   let newMaxHp = state.player.maxHp, newMaxMp = state.player.maxMp, leveledUp = false;
@@ -2347,6 +2378,11 @@ function claimCall() {
   state.player.hp = Math.min(newMaxHp, state.player.hp + (passiveActive("eliz")?6:0) + 20);
   state.player.gold += gold;
   state.totalCheckIns += 1; state.streak = newStreak; state.lastCheckInDate = t;
+  if (usedGrace) state.graceTokens = Math.max(0, state.graceTokens - 1);
+  if (newStreak > 0 && newStreak % 7 === 0 && newStreak > (state.graceMilestoneReached||0)) {
+    state.graceTokens = Math.min(3, (state.graceTokens||0) + 1);
+    state.graceMilestoneReached = newStreak;
+  }
   state.daysLog[t] = dayEntry; state.guildDays = newGuildDays;
   state.focusBuff = Math.max(0, state.focusBuff - 1);
   state.charges = spent.charges; state.chargeAnchor = spent.chargeAnchor;
@@ -2356,6 +2392,7 @@ function claimCall() {
   save(); render();
 
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${newLevel}.`), 300);
+  else if (usedGrace) setTimeout(() => showToast(`🛡️ A Grace Token protected your streak — still at ${newStreak}. (${state.graceTokens} left)`), 300);
   else if (hitSnippet) { const name = PARTY.find(m=>m.id===chosen).name; setTimeout(() => showToast(`${name}: ${hitSnippet.line}`), 300); }
   else showToast(wasBoss ? "Boss defeated. That's a good break." : "Call answered. The scroll can wait.");
 }
@@ -3336,16 +3373,25 @@ async function copyBackup() {
   renderBackupMsg();
   setTimeout(() => { ui.importMsg = ""; renderBackupMsg(); }, 3000);
 }
+function preserveStreaksOnRestore(parsed) {
+  if (parsed && typeof parsed === "object") {
+    parsed.streak = Math.max(parsed.streak || 0, state.streak || 0);
+    if (!parsed.tavern) parsed.tavern = {};
+    parsed.tavern.streak = Math.max(parsed.tavern.streak || 0, (state.tavern && state.tavern.streak) || 0);
+    parsed.graceTokens = Math.max(parsed.graceTokens || 0, state.graceTokens || 0);
+  }
+  return parsed;
+}
 function restoreBackup() {
   const ta = document.getElementById("importTextarea");
   try {
     const parsed = JSON.parse(ta.value.trim());
     if (!parsed || typeof parsed !== "object" || !parsed.player) throw new Error("bad shape");
-    state = mergeDefaults(defaultState(), parsed);
+    state = mergeDefaults(defaultState(), preserveStreaksOnRestore(parsed));
     save();
-    ui.importMsg = "Restored!";
+    ui.importMsg = "Restored! (Streaks kept at whichever was higher.)";
     renderBackupMsg();
-    setTimeout(() => { ui.showBackup = false; render(); }, 1000);
+    setTimeout(() => { ui.showBackup = false; render(); }, 1200);
   } catch (e) {
     ui.importMsg = "That didn't look like a valid backup — check for missing characters.";
     renderBackupMsg();
@@ -3387,11 +3433,11 @@ function handleImportFile(fileInput) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (!parsed || typeof parsed !== "object" || !parsed.player) throw new Error("bad shape");
-      state = mergeDefaults(defaultState(), parsed);
+      state = mergeDefaults(defaultState(), preserveStreaksOnRestore(parsed));
       save();
-      ui.importMsg = "Save file imported!";
+      ui.importMsg = "Save file imported! (Streaks kept at whichever was higher.)";
       renderBackupMsg();
-      setTimeout(() => { ui.showBackup = false; render(); }, 1000);
+      setTimeout(() => { ui.showBackup = false; render(); }, 1200);
     } catch (err) {
       ui.importMsg = "That file didn't look like a valid save.";
       renderBackupMsg();
@@ -3425,7 +3471,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openHuntingGrounds, closeHuntingGrounds, beginHunt,
   openTavern, closeTavern,
   openInsights, closeInsights,
-  playWithSoel,
+  playWithSoel, giftCompanion,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -3491,6 +3537,7 @@ function renderHeader() {
           <span style="font-size:18px;${state.streak>0?"":"filter:grayscale(1) opacity(.35)"}">🔥</span>
           <span class="disp" style="font-weight:700">${state.streak}</span>
         </div>
+        ${(state.graceTokens||0) > 0 ? `<div style="display:flex;align-items:center;gap:3px;color:${C.mage}" title="Grace Tokens — auto-protect your streak if you miss a day"><span style="font-size:16px">🛡️</span><span class="disp" style="font-weight:700;font-size:13px">${state.graceTokens}</span></div>` : ""}
         <button data-act="toggleTheme" aria-label="Toggle light/dark theme"><span style="font-size:18px;color:${C.inkSoft}">${state.theme === "dark" ? "☀️" : "🌙"}</span></button>
         <button data-act="openBackup" aria-label="Backup and restore"><span style="font-size:18px;color:${C.inkSoft}">⚙️</span></button>
       </div>
@@ -4144,6 +4191,20 @@ function renderBond() {
     const last = state.bondCooldowns[m.id] || 0;
     const remaining = BOND_COOLDOWN_MS - (ui.now - last);
     const ready = remaining <= 0;
+    const gift = COMPANION_GIFTS[m.id];
+    const giftLast = state.giftCooldowns[m.id] || 0;
+    const giftRemaining = GIFT_COOLDOWN_MS - (ui.now - giftLast);
+    const giftReady = giftRemaining <= 0;
+    const giftStock = gift ? (state.materials[gift.material]||0) : 0;
+    const giftRow = gift ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid ${C.border};display:flex;align-items:center;gap:10px">
+        <span style="font-size:16px">🎁</span>
+        <div style="flex:1">
+          <p style="font-size:11px;color:${C.ink};margin:0">Favorite: <span style="font-weight:700">${gift.material}</span> <span style="color:${C.inkSoft}">(${giftStock} in satchel)</span></p>
+          <p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${giftReady ? "Ready to gift" : `Resting · ${fmtMs(giftRemaining)}`}</p>
+        </div>
+        <button data-act="giftCompanion" data-arg="${m.id}" ${(giftReady && giftStock>0)?"":"disabled"} class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${(giftReady && giftStock>0) ? C.gold : C.creamDeep};color:${(giftReady && giftStock>0) ? "white" : C.inkSoft}">Gift</button>
+      </div>` : "";
     return card(`
       <div style="padding:14px">
         <div style="display:flex;align-items:center;gap:12px">
@@ -4160,6 +4221,7 @@ function renderBond() {
           </div>
           <p style="font-size:10px;color:${C.inkSoft};margin:3px 0 0">Bond ${aff}${nextTier ? ` · next at ${nextTier.at}` : " · fully bonded"}</p>
         </div>
+        ${giftRow}
       </div>
     `);
   }).join("<div style='height:10px'></div>");
