@@ -1372,6 +1372,26 @@ const COMPANION_QUESTS = {
       "You tell him that. He waves it off, embarrassed for exactly one second, then pivots straight back into pitching you on the next idea.",
     ], reward:{gold:60,xp:55} },
   ],
+  soel: [
+    { id:"cq_soel_1", title:"His Own Terms", icon:"🐱", affReq:5, pages:[
+      "Soel showed up on the guild doorstep long before you did, technically. Nobody quite remembers whose idea it was to keep him.",
+      "He doesn't act rescued. If anything, the arrangement seems to run the other way around, and he's made his peace with looking after all of you.",
+      "You catch him doing a slow perimeter check of the guild hall most evenings, like he's confirming everyone's still where they're supposed to be.",
+      "He'd never admit to worrying. He also never misses a night.",
+    ], reward:{gold:20,xp:20} },
+    { id:"cq_soel_2", title:"The Bag Isn't a Cage", icon:"🐱", affReq:12, pages:[
+      "Some days Soel heads straight for the bag on his own, no prompting, and settles in before you've even asked.",
+      "It'd be easy to assume he just wants out of the noise. That's part of it. But you notice he still tracks everything from in there, ears never fully at rest.",
+      "\"He's not hiding,\" Joel tells you once, amused. \"He's just choosing his vantage point.\"",
+      "You stop apologizing for the bag after that. It was never a cage. It's just where he keeps watch from, some days.",
+    ], reward:{gold:35,xp:30} },
+    { id:"cq_soel_3", title:"The Blink", icon:"🐱", affReq:20, pages:[
+      "It's a quiet night, nothing urgent, and Soel climbs up beside you without any of his usual ceremony.",
+      "You've learned by now what the slow blink means. He gives you two of them, back to back, which you're fairly sure has never happened before.",
+      "\"Don't let it go to your head,\" you imagine Joel would say, except Joel isn't here, and there's no one to perform indifference for.",
+      "You blink back, slow and deliberate, the way you've learned to. He seems satisfied. That's rare, and you know it.",
+    ], reward:{gold:60,xp:55} },
+  ],
 };
 
 /* ================= pure helpers ================= */
@@ -1491,7 +1511,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -3109,6 +3129,33 @@ function finishChapter(ch, reward, resultText) {
   else showToast(resultText || `Chapter complete: ${ch.title}`);
 }
 
+function openJournal() { ui.showJournal = true; ui.journalTab = "story"; render(); }
+function closeJournal() { ui.showJournal = false; render(); }
+function setJournalTab(tab) { ui.journalTab = tab; render(); }
+function journalEntryLookup(type, id, companionId) {
+  if (type === "story") return STORY_CHAPTERS.find(c => c.id === id);
+  if (type === "stronghold") return STRONGHOLD_STAGES.find(s => s.id === id);
+  if (type === "companion") return (COMPANION_QUESTS[companionId]||[]).find(q => q.id === id);
+  return null;
+}
+function openJournalEntry(combinedArg) {
+  const [type, id, companionId] = combinedArg.split("|");
+  const entry = journalEntryLookup(type, id, companionId);
+  if (!entry) return;
+  ui.journalReplay = { type, id, companionId: companionId||null, page: 0 };
+  render();
+}
+function closeJournalReplay() { ui.journalReplay = null; render(); }
+function journalReplayNext() {
+  if (!ui.journalReplay) return;
+  const { type, id, companionId } = ui.journalReplay;
+  const entry = journalEntryLookup(type, id, companionId);
+  if (!entry) { ui.journalReplay = null; render(); return; }
+  if (ui.journalReplay.page < entry.pages.length - 1) { ui.journalReplay.page += 1; render(); return; }
+  ui.journalReplay = null;
+  render();
+}
+
 function openCompanionQuest(companionId) {
   const q = currentCompanionQuest(companionId);
   if (!q) return;
@@ -3517,6 +3564,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openInsights, closeInsights,
   playWithSoel, giftCompanion,
   openSettings, closeSettings, setCarbLimit, setWaterGoal, requestNotificationPermission, disableNotifications,
+  openJournal, closeJournal, setJournalTab, openJournalEntry, closeJournalReplay, journalReplayNext,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -3844,15 +3892,18 @@ function renderHome() {
   `);
 
   const codexCard = card(`
-    <div style="padding:16px;display:flex;gap:8px">
-      <button data-act="openBestiary" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:${C.mageSoft};color:${C.mageDeep}">
-        <span style="font-size:18px">📖</span><span style="font-size:10.5px;font-weight:700">Bestiary</span>
+    <div style="padding:16px;display:flex;gap:6px">
+      <button data-act="openBestiary" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 3px;border-radius:14px;background:${C.mageSoft};color:${C.mageDeep}">
+        <span style="font-size:17px">🐾</span><span style="font-size:9.5px;font-weight:700">Bestiary</span>
       </button>
-      <button data-act="openAchievements" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:${C.gold}22;color:${C.mageDeep}">
-        <span style="font-size:18px">🏆</span><span style="font-size:10.5px;font-weight:700">Achievements</span>
+      <button data-act="openAchievements" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 3px;border-radius:14px;background:${C.gold}22;color:${C.mageDeep}">
+        <span style="font-size:17px">🏆</span><span style="font-size:9.5px;font-weight:700">Achievements</span>
       </button>
-      <button data-act="openInsights" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:${C.sageSoft};color:${C.sage}">
-        <span style="font-size:18px">📊</span><span style="font-size:10.5px;font-weight:700">Insights</span>
+      <button data-act="openInsights" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 3px;border-radius:14px;background:${C.sageSoft};color:${C.sage}">
+        <span style="font-size:17px">📊</span><span style="font-size:9.5px;font-weight:700">Insights</span>
+      </button>
+      <button data-act="openJournal" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 3px;border-radius:14px;background:${C.pink}22;color:${C.mageDeep}">
+        <span style="font-size:17px">📖</span><span style="font-size:9.5px;font-weight:700">Journal</span>
       </button>
     </div>
   `);
@@ -4294,7 +4345,7 @@ function renderParty() {
         ${unlockedLines.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">${unlockedLines.map(t=>`<p style="font-size:11.5px;color:${C.inkSoft};font-style:italic;margin:0">${escapeHtml(t.line)}</p>`).join("")}</div>` : ""}
       </div>` : "";
     const isSoel = m.id === "soel";
-    const cq = (!isSoel && unlocked) ? currentCompanionQuest(m.id) : null;
+    const cq = unlocked ? currentCompanionQuest(m.id) : null;
     const companionQuestBtn = cq ? `
       <button data-act="openCompanionQuest" data-arg="${m.id}" class="disp" style="margin-top:10px;padding:6px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.gold};color:white">📜 Personal Quest: ${cq.title}</button>` : "";
     const isActive = state.activeParty.includes(m.id);
@@ -5165,6 +5216,78 @@ function renderBackupModal() {
   </div>`;
 }
 
+function renderJournalReplayModal() {
+  if (!ui.journalReplay) return "";
+  const { type, id, companionId, page } = ui.journalReplay;
+  const entry = journalEntryLookup(type, id, companionId);
+  if (!entry) { ui.journalReplay = null; return ""; }
+  const subtitle = type === "story" ? "The Chronicle" : type === "stronghold" ? "Your Stronghold" : `${PARTY.find(p=>p.id===companionId).name}'s Story`;
+  const accentColor = type === "companion" ? PARTY.find(p=>p.id===companionId).color : type === "stronghold" ? C.gold : C.mage;
+  const pageText = entry.pages[page];
+  const isLastPage = page >= entry.pages.length - 1;
+  const dots = entry.pages.map((_,i) => `<span style="width:6px;height:6px;border-radius:6px;background:${i===page ? accentColor : C.creamDeep}"></span>`).join("");
+  return `<div style="position:fixed;inset:0;z-index:58;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="position:relative;background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="position:absolute;top:32px;right:32px;z-index:2"><button data-act="closeJournalReplay"><span style="color:white;background:rgba(0,0,0,.3);border-radius:9999px;width:26px;height:26px;display:flex;align-items:center;justify-content:center">✖</span></button></div>
+      ${renderSceneHeader(entry.icon, entry.title, subtitle, accentColor, C.mageDeep)}
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 8px;font-style:italic">📖 Rereading — already completed</p>
+      <p style="font-size:13.5px;line-height:1.6;color:${C.ink};min-height:110px">${escapeHtml(pageText)}</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 16px">${dots}</div>
+      <button data-act="journalReplayNext" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${accentColor}, ${C.mageDeep});color:white">${isLastPage ? "Close" : "Continue"}</button>
+    </div>
+  </div>`;
+}
+
+function renderJournalModal() {
+  if (!ui.showJournal) return "";
+  const tabs = [["story","📖 Chronicle"],["companion","💞 Companions"],["stronghold","🗼 Stronghold"]];
+  const tabButtons = tabs.map(([id,label]) => `<button data-act="setJournalTab" data-arg="${id}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:11px;font-weight:700;background:${ui.journalTab===id?C.mageDeep:C.creamDeep};color:${ui.journalTab===id?"white":C.inkSoft}">${label}</button>`).join("");
+
+  let bodyHtml = "";
+  if (ui.journalTab === "story") {
+    const readChapters = STORY_CHAPTERS.filter(c => state.storyProgress.read.includes(c.id));
+    bodyHtml = readChapters.length ? readChapters.map(c => `
+      <button data-act="openJournalEntry" data-arg="story|${c.id}" class="disp" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px;text-align:left">
+        <span style="font-size:20px">${c.icon}</span>
+        <span style="flex:1;font-weight:700;font-size:12.5px;color:${C.ink}">${c.title}</span>
+        <span style="color:${C.inkSoft};font-size:12px">▶</span>
+      </button>`).join("") : `<p style="font-size:12px;color:${C.inkSoft}">No chapters read yet — they'll show up here as you go.</p>`;
+  } else if (ui.journalTab === "stronghold") {
+    const readStages = STRONGHOLD_STAGES.filter(s => state.strongholdProgress.read.includes(s.id));
+    bodyHtml = readStages.length ? readStages.map(s => `
+      <button data-act="openJournalEntry" data-arg="stronghold|${s.id}" class="disp" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px;text-align:left">
+        <span style="font-size:20px">${s.icon}</span>
+        <span style="flex:1;font-weight:700;font-size:12.5px;color:${C.ink}">${s.title}</span>
+        <span style="color:${C.inkSoft};font-size:12px">▶</span>
+      </button>`).join("") : `<p style="font-size:12px;color:${C.inkSoft}">No Stronghold stages read yet.</p>`;
+  } else {
+    bodyHtml = PARTY.map(m => {
+      const quests = COMPANION_QUESTS[m.id] || [];
+      const readQuests = quests.filter(q => state.companionQuestProgress.read.includes(q.id));
+      if (!readQuests.length) return "";
+      const rows = readQuests.map(q => `
+        <button data-act="openJournalEntry" data-arg="companion|${q.id}|${m.id}" class="disp" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px;text-align:left">
+          <span style="font-size:20px">${q.icon}</span>
+          <span style="flex:1;font-weight:700;font-size:12.5px;color:${C.ink}">${q.title}</span>
+          <span style="color:${C.inkSoft};font-size:12px">▶</span>
+        </button>`).join("");
+      return `<p class="disp" style="font-weight:700;font-size:12px;color:${m.color};margin:10px 0 6px">${m.name}</p>${rows}`;
+    }).join("");
+    if (!bodyHtml) bodyHtml = `<p style="font-size:12px;color:${C.inkSoft}">No companion stories read yet — grow your bond to unlock them.</p>`;
+  }
+
+  return `<div style="position:fixed;inset:0;z-index:56;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">📖 Journal</p>
+        <button data-act="closeJournal"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:14px">${tabButtons}</div>
+      ${bodyHtml}
+    </div>
+  </div>`;
+}
+
 function renderStoryModal() {
   if (!ui.showStory) return "";
   const ch = currentChapter();
@@ -5545,6 +5668,8 @@ function render() {
     ${renderSettingsModal()}
     ${renderTavernModal()}
     ${renderAchievementsModal()}
+    ${renderJournalModal()}
+    ${renderJournalReplayModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
