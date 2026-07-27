@@ -381,6 +381,24 @@ const HUNTING_MONSTERS = [
 
 const MONSTER_CODEX = HUNTING_MONSTERS.map(m => ({ name:m.name, icon:m.icon, tier:m.tier, intro:m.intro }));
 
+const DRAGON_SIGN_COST = 5;
+const DRAGONS = [
+  { id:"dragon_procrastination", name:"The Procrastination Wyrm", icon:"🐉", hpMult:1.0,
+    intro:"The ground splits, and something vast and coiled rises from beneath — the Procrastination Wyrm, built from every task put off just one more day.",
+    phaseLines:["It shudders, sheds a layer of old excuses — lighter now, and worse for it.", "Down to its last coils. Whatever it was putting off, it's out of time too."],
+    ability:{ type:"debuff", stat:"hit", amount:5, rounds:2, line:"It whispers that there's still time, plenty of time — your next strike hesitates." } },
+  { id:"dragon_burnout", name:"The Burnout Drake", icon:"🐲", hpMult:1.3,
+    intro:"The sky dims as the Burnout Drake descends, wings made of every unrested night stitched together.",
+    phaseLines:["A wing-full of exhaustion sloughs off it, and for a moment it looks almost small.", "Barely airborne now. Whatever kept it going was never going to last forever."],
+    ability:{ type:"heal", frac:0.1, line:"It pulls exhaustion from the air itself, patching its wounds with borrowed hours." } },
+];
+
+const MERCENARIES = [
+  { id:"merc_scout", name:"Wandering Scout", icon:"🏹", cost:80, dmgBonus:8, hitBonus:2, line:"A scout falls in beside you, bow already drawn." },
+  { id:"merc_blade", name:"Blade for Hire", icon:"⚔️", cost:150, dmgBonus:16, hitBonus:3, line:"A mercenary blade nods once and takes position." },
+  { id:"merc_veteran", name:"Veteran Duelist", icon:"🗡️", cost:250, dmgBonus:26, hitBonus:5, line:"A grizzled duelist rolls their shoulders. They've done this before." },
+];
+
 const WANDERING_MONSTERS = [
   { name:"Wraithling", icon:"👻" },
   { name:"Feed Sprite", icon:"🦋" },
@@ -767,6 +785,7 @@ const RECIPES = [
   { id:"undying_ember", type:"equipment", slot:"weapon", name:"The Undying Ember", needs:{"Ascendant Core":4,"Legend Shard":4,"Echo Shard":4}, gold:650, requiresCrafted:"emberforged_blade", ascendantTier:true, effect:"+55 Attack, +5 INT", bonus:{atk:55}, abilityBonus:{int:5}, icon:"🌠" },
   { id:"the_unbreaking", type:"equipment", slot:"armor", name:"The Unbreaking", needs:{"Ascendant Core":4,"Legend Shard":4,"Echo Shard":4}, gold:650, requiresCrafted:"aegis_eternal", ascendantTier:true, effect:"+200 Max HP, +5 CON", bonus:{hp:200}, abilityBonus:{con:5}, icon:"🌌" },
   { id:"endless_circuit", type:"equipment", slot:"trinket", name:"The Endless Circuit", needs:{"Ascendant Core":5,"Legend Shard":5,"Echo Shard":5}, gold:750, requiresCrafted:"forgemasters_seal", ascendantTier:true, effect:"+12 Luck, +5 WIS, +4 CHA — Expeditions cost 1 less Focus", bonus:{luck:12}, abilityBonus:{wis:5,cha:4}, icon:"♾️" },
+  { id:"dragons_eye", type:"equipment", slot:"trinket", name:"Dragon's Eye", needs:{"Dragon Scale":3}, gold:400, dragonTier:true, effect:"+10 Luck, +5 STR, +5 INT", bonus:{luck:10}, abilityBonus:{str:5,int:5}, icon:"🐉" },
 ];
 
 const QUEST_CHAINS = [
@@ -1504,6 +1523,8 @@ function defaultState() {
     completedSideQuests: [],
     sideQuestKillProgress: {},
     huntingKills: {},
+    dragonSigns: 0,
+    hiredMercenary: null,
     bondCooldowns: {},
     settings: { carbLimit: 30, notificationsEnabled: false },
     wellnessLog: {},
@@ -1552,7 +1573,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"" };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -2023,6 +2044,56 @@ function beginRaid() {
   render();
 }
 
+function hireMercenary(mercId) {
+  const merc = MERCENARIES.find(m => m.id === mercId);
+  if (!merc || state.player.gold < merc.cost) return;
+  state.player.gold -= merc.cost;
+  state.hiredMercenary = mercId;
+  save(); render();
+  showToast(`${merc.icon} ${merc.line}`);
+}
+function dismissMercenary() { state.hiredMercenary = null; save(); render(); }
+function openDragonHunt() { ui.showDragonHunt = true; render(); }
+function closeDragonHunt() { ui.showDragonHunt = false; render(); }
+
+function beginDragonHunt(dragonId) {
+  const dragon = DRAGONS.find(d => d.id === dragonId);
+  if (!dragon) return;
+  if ((state.dragonSigns||0) < DRAGON_SIGN_COST) return;
+  if ((state.activeParty||[]).length < 5) { showToast("Bring at least 5 companions before hunting a dragon."); return; }
+  const cost = 4;
+  const { charges } = getCharges(state, ui.now);
+  if (charges < cost) return;
+  state.dragonSigns -= DRAGON_SIGN_COST;
+  const enemyMaxHp = Math.round((30 + state.player.level*8) * dragon.hpMult * 2.2);
+  const log = [dragon.intro];
+  const mercenaryId = state.hiredMercenary;
+  if (mercenaryId) {
+    const merc = MERCENARIES.find(m => m.id === mercenaryId);
+    if (merc) log.push(`${merc.icon} ${merc.name} joins the hunt.`);
+    state.hiredMercenary = null;
+  }
+  ui.encounter = { isBoss:true, isDragon:true, bossId:dragon.id, mercenaryId, enemyName:dragon.name, cost, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log, resolved:false };
+  ui.showDragonHunt = false;
+  save(); render();
+}
+
+function applyMercenaryStrike(enc) {
+  if (!enc.mercenaryId || encAllDefeated(enc)) return;
+  const merc = MERCENARIES.find(m => m.id === enc.mercenaryId);
+  if (!merc) return;
+  const roll = rollD20();
+  const hitBonus = Math.floor(state.player.level/4) + merc.hitBonus;
+  const AC = enc.isBoss ? 12 : 9;
+  if (roll === 1) { enc.log.push(`${merc.name} swings and misses.`); return; }
+  const isCrit = roll === 20;
+  if (!isCrit && roll + hitBonus < AC) { enc.log.push(`${merc.name}'s strike glances off.`); return; }
+  let dmg = rollDice(1,8) + merc.dmgBonus;
+  if (isCrit) dmg = dmg * 2;
+  encDealDamage(enc, dmg);
+  enc.log.push(`${merc.name} strikes for ${dmg}${isCrit ? " (critical!)" : ""}.`);
+}
+
 function rollEnemyCount(level) {
   if (level < 5) return 1;
   const roll = Math.random();
@@ -2314,9 +2385,11 @@ function attackBossAddCore(enc) {
 }
 function attackBossAdd() { attackBossAddCore(ui.encounter); }
 
+function findBossOrDragon(id) { return BOSSES.find(b => b.id === id) || DRAGONS.find(d => d.id === id); }
+
 function resolveBossRoundAftermath(enc) {
   if (enc.hitPenaltyRounds > 0) { enc.hitPenaltyRounds -= 1; if (enc.hitPenaltyRounds <= 0) enc.hitPenalty = 0; }
-  const boss = BOSSES.find(b => b.id === enc.bossId);
+  const boss = findBossOrDragon(enc.bossId);
   const ratio = enc.enemyHp / enc.enemyMaxHp;
   if (enc.phaseSeen === 0 && ratio <= 0.66) { enc.log.push(boss.phaseLines[0]); enc.phaseSeen = 1; triggerBossAbility(enc, boss); }
   else if (enc.phaseSeen === 1 && ratio <= 0.33) { enc.log.push(boss.phaseLines[1]); enc.phaseSeen = 2; triggerBossAbility(enc, boss); }
@@ -2326,7 +2399,7 @@ function resolveBossRoundAftermath(enc) {
     pushFx("player", "BLOCKED", "miss");
   } else {
     const wisMod = abilityMod(abilityScores().wis);
-    let baseRetaliation = enc.isRaid ? Math.round(7 + Math.random()*9) : Math.round(3 + Math.random()*5);
+    let baseRetaliation = enc.isDragon ? Math.round(10 + Math.random()*12) : enc.isRaid ? Math.round(7 + Math.random()*9) : Math.round(3 + Math.random()*5);
     if (enc.bossAdd && enc.bossAdd.hp > 0) baseRetaliation += 3;
     let retaliation = Math.max(1, baseRetaliation - wisMod);
     if (state.specialization === "abjurer") retaliation = Math.max(1, Math.round(retaliation * 0.75));
@@ -2342,6 +2415,7 @@ function castSpell(spellId) {
   if (!enc || enc.resolved) return;
   performSpell(enc, enc.isBoss, spellId || "arcane_bolt");
   applyPartyStrikes(enc, enc.isBoss);
+  if (enc.mercenaryId) applyMercenaryStrike(enc);
 
   if (encAllDefeated(enc)) { resolveVictory(); render(); return; }
 
@@ -2388,6 +2462,9 @@ function resolveVictory() {
     if (enc.isRaid && state.player.level >= 60) {
       drops["Ascendant Core"] = (drops["Ascendant Core"]||0) + 1;
     }
+    if (enc.isDragon) {
+      drops["Dragon Scale"] = (drops["Dragon Scale"]||0) + 2 + Math.floor(Math.random()*2);
+    }
   }
   enc.resolved = true;
   const victoryLine = isBoss ? `${enc.enemyName} shatters into scattered light.`
@@ -2425,6 +2502,8 @@ function claimCall() {
   if (wasBoss) { state.bossesDefeated = (state.bossesDefeated||0) + 1; state.bossesKilled[enc.bossId] = (state.bossesKilled[enc.bossId]||0) + 1; if (enc.isRaid) state.raidsCompleted = (state.raidsCompleted||0) + 1; }
   else if (enc.enemies) enc.enemies.forEach(e => trackKill(e.name));
   else trackKill(enc.enemyName);
+  const foundDragonSign = !!enc.isHunt && Math.random() < 0.15;
+  if (foundDragonSign) state.dragonSigns = (state.dragonSigns||0) + 1;
 
   const spent = spendCharge(state, ui.now, cost);
   if (!spent) { ui.encounter = null; render(); return; }
@@ -2454,6 +2533,7 @@ function claimCall() {
 
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${newLevel}.`), 300);
   else if (usedGrace) setTimeout(() => showToast(`🛡️ A Grace Token protected your streak — still at ${newStreak}. (${state.graceTokens} left)`), 300);
+  else if (foundDragonSign) setTimeout(() => showToast(`🐉 A Dragon Sign! You now have ${state.dragonSigns}.`), 300);
   else if (hitSnippet) { const name = PARTY.find(m=>m.id===chosen).name; setTimeout(() => showToast(`${name}: ${hitSnippet.line}`), 300); }
   else showToast(wasBoss ? "Boss defeated. That's a good break." : "Call answered. The scroll can wait.");
 }
@@ -2568,7 +2648,7 @@ function craft(id) {
 }
 function equip(id) {
   const r = findGearItem(id);
-  if (!r || r.slot === "ring") return;
+  if (!r || r.slot === "ring" || !state.crafted.includes(id)) return;
   state.equipment[r.slot] = r.id;
   save(); render();
   showToast(`${r.name} equipped.`);
@@ -2577,7 +2657,7 @@ function equipRing(combinedArg) {
   const [itemId, targetSlot] = combinedArg.split("|");
   if (targetSlot !== "ring1" && targetSlot !== "ring2") return;
   const r = findGearItem(itemId);
-  if (!r || r.slot !== "ring") return;
+  if (!r || r.slot !== "ring" || !state.crafted.includes(itemId)) return;
   state.equipment[targetSlot] = itemId;
   save(); render();
   showToast(`${r.name} equipped to ${targetSlot === "ring1" ? "Ring 1" : "Ring 2"}.`);
@@ -3526,6 +3606,85 @@ function preserveStreaksOnRestore(parsed) {
   }
   return parsed;
 }
+
+function loadGistCreds() {
+  try {
+    const raw = localStorage.getItem("legends-gist-creds");
+    return raw ? JSON.parse(raw) : { token:"", gistId:"", lastSync:null };
+  } catch (e) { return { token:"", gistId:"", lastSync:null }; }
+}
+function saveGistCreds(creds) {
+  try { localStorage.setItem("legends-gist-creds", JSON.stringify(creds)); } catch (e) {}
+}
+function saveGistCredsFromForm() {
+  const tokenEl = document.getElementById("gistTokenInput");
+  const idEl = document.getElementById("gistIdInput");
+  const creds = loadGistCreds();
+  if (tokenEl && tokenEl.value.trim()) creds.token = tokenEl.value.trim();
+  if (idEl && idEl.value.trim()) creds.gistId = idEl.value.trim();
+  saveGistCreds(creds);
+  ui.gistMsg = "Saved. You can push or pull now.";
+  render();
+}
+function clearGistCreds() {
+  saveGistCreds({ token:"", gistId:"", lastSync:null });
+  ui.gistMsg = "GitHub credentials cleared from this device.";
+  render();
+}
+async function pushToGist() {
+  const creds = loadGistCreds();
+  if (!creds.token) { ui.gistMsg = "Add your GitHub token first, then Save."; render(); return; }
+  ui.gistBusy = true; ui.gistMsg = ""; render();
+  try {
+    const body = {
+      description: "Legends: Daybreak Quest — save backup",
+      public: false,
+      files: { "legends-save.json": { content: JSON.stringify(state, null, 2) } },
+    };
+    const url = creds.gistId ? `https://api.github.com/gists/${creds.gistId}` : "https://api.github.com/gists";
+    const method = creds.gistId ? "PATCH" : "POST";
+    const res = await fetch(url, {
+      method,
+      headers: { "Authorization": `token ${creds.token}`, "Accept": "application/vnd.github+json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`GitHub responded ${res.status}`);
+    const data = await res.json();
+    creds.gistId = data.id;
+    creds.lastSync = Date.now();
+    saveGistCreds(creds);
+    ui.gistMsg = `Backed up to Gist! (${new Date().toLocaleTimeString()})`;
+  } catch (e) {
+    ui.gistMsg = "Push failed — check your token has the 'gist' scope and you're online.";
+  }
+  ui.gistBusy = false;
+  render();
+}
+async function pullFromGist() {
+  const creds = loadGistCreds();
+  if (!creds.token || !creds.gistId) { ui.gistMsg = "Need both a token and a Gist ID saved first."; render(); return; }
+  ui.gistBusy = true; ui.gistMsg = ""; render();
+  try {
+    const res = await fetch(`https://api.github.com/gists/${creds.gistId}`, {
+      headers: { "Authorization": `token ${creds.token}`, "Accept": "application/vnd.github+json" },
+    });
+    if (!res.ok) throw new Error(`GitHub responded ${res.status}`);
+    const data = await res.json();
+    const file = data.files && data.files["legends-save.json"];
+    if (!file) throw new Error("No save file found in that Gist.");
+    const parsed = JSON.parse(file.content);
+    if (!parsed || typeof parsed !== "object" || !parsed.player) throw new Error("bad shape");
+    state = mergeDefaults(defaultState(), preserveStreaksOnRestore(parsed));
+    save();
+    creds.lastSync = Date.now();
+    saveGistCreds(creds);
+    ui.gistMsg = `Restored from Gist! (${new Date().toLocaleTimeString()})`;
+  } catch (e) {
+    ui.gistMsg = "Pull failed — check your token, Gist ID, and connection.";
+  }
+  ui.gistBusy = false;
+  render();
+}
 function restoreBackup() {
   const ta = document.getElementById("importTextarea");
   try {
@@ -3618,6 +3777,8 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   playWithSoel, giftCompanion,
   openSettings, closeSettings, setCarbLimit, setWaterGoal, requestNotificationPermission, disableNotifications,
   openJournal, closeJournal, setJournalTab, openJournalEntry, closeJournalReplay, journalReplayNext,
+  hireMercenary, dismissMercenary, openDragonHunt, closeDragonHunt, beginDragonHunt,
+  saveGistCredsFromForm, clearGistCreds, pushToGist, pullFromGist,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -3944,6 +4105,22 @@ function renderHome() {
     </div>
   `);
 
+  const dragonSignsHave = state.dragonSigns||0;
+  const dragonReady = dragonSignsHave >= DRAGON_SIGN_COST;
+  const dragonCard = card(`
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:${dragonReady?0:10}px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.gold}22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🐉</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">Dragon Hunt</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">World boss · needs 5+ companions · Dragon Signs: ${dragonSignsHave}/${DRAGON_SIGN_COST}</p>
+        </div>
+        ${dragonReady ? `<button data-act="openDragonHunt" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.gold};color:white">Hunt</button>` : ""}
+      </div>
+      ${!dragonReady ? `<div style="height:6px;border-radius:9999px;overflow:hidden;background:${C.creamDeep}"><div style="height:6px;width:${Math.min(100,(dragonSignsHave/DRAGON_SIGN_COST)*100)}%;background:${C.gold}"></div></div><p style="font-size:10px;color:${C.inkSoft};margin:6px 0 0">Dragon Signs drop rarely from Hunting Grounds kills.</p>` : ""}
+    </div>
+  `);
+
   const codexCard = card(`
     <div style="padding:16px;display:flex;gap:6px">
       <button data-act="openBestiary" class="disp" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 3px;border-radius:14px;background:${C.mageSoft};color:${C.mageDeep}">
@@ -4033,7 +4210,7 @@ function renderHome() {
   const wellnessCard = renderWellness();
   const tavernCard = renderTavern();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -4906,6 +5083,8 @@ function renderForgeSection() {
   const rows = forgeItems.map(renderRecipeRow).join("<div style='height:10px'></div>");
   const ascendantItems = RECIPES.filter(r => r.ascendantTier);
   const ascendantRows = ascendantItems.map(renderRecipeRow).join("<div style='height:10px'></div>");
+  const dragonItems = RECIPES.filter(r => r.dragonTier);
+  const dragonRows = dragonItems.map(renderRecipeRow).join("<div style='height:10px'></div>");
   return `
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">⚒️ The Forge</p>
     <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Cael the Forgemaster doesn't craft from scratch — bring a finished Mythic piece and enough Legend and Echo Shards, and she'll remake it into something that didn't exist before.</p>
@@ -4913,6 +5092,9 @@ function renderForgeSection() {
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">🌌 Ascendant Tier</p>
     <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Cael's rarest work — she'll only attempt it with a Forge piece already in hand, and Ascendant Cores, which only settle out of the fiercest Raids at Level 60+.</p>
     ${ascendantRows}
+    <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 4px">🐉 Dragon-Forged</p>
+    <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Made from Dragon Scale — dropped only by hunting an actual dragon down.</p>
+    ${dragonRows}
   `;
 }
 
@@ -4954,7 +5136,7 @@ function renderShops() {
 function renderCraft() {
   const potions = RECIPES.filter(r => r.type === "potion");
   const refines = RECIPES.filter(r => r.type === "refine");
-  const equips = RECIPES.filter(r => r.type === "equipment" && !r.forgeTier && !r.ascendantTier);
+  const equips = RECIPES.filter(r => r.type === "equipment" && !r.forgeTier && !r.ascendantTier && !r.dragonTier);
   const section = (title, list) => list.length ? `
     <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:16px 0 8px">${title}</p>
     ${list.map(renderRecipeRow).join("<div style='height:10px'></div>")}
@@ -5265,9 +5447,34 @@ function renderBackupModal() {
         <textarea id="importTextarea" placeholder="Paste backup text here…" style="width:100%;height:60px;font-size:10px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:8px;color:${C.ink};margin-top:8px"></textarea>
         <button data-act="restoreBackup" class="disp" style="width:100%;padding:8px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:${C.creamDeep};color:${C.inkSoft};font-weight:600;font-size:12px"><span>📥</span><span>Restore from Text</span></button>
       </div>
+      ${renderGistSection()}
       <p id="backupMsg" style="font-size:12px;color:${C.mageDeep};margin-top:10px;text-align:center">${escapeHtml(ui.importMsg)}</p>
     </div>
   </div>`;
+}
+
+function renderGistSection() {
+  const creds = loadGistCreds();
+  const hasToken = !!creds.token;
+  const hasGist = !!creds.gistId;
+  const lastSyncText = creds.lastSync ? new Date(creds.lastSync).toLocaleString() : "Never";
+  return `
+    <div style="border-top:1px solid ${C.border};margin-top:16px;padding-top:16px">
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 4px">☁️ GitHub Gist Backup</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 10px">Extra offsite copy, just in case. Needs a <a href="https://github.com/settings/tokens/new" target="_blank" style="color:${C.mage}">classic GitHub token</a> with only the <b>gist</b> scope checked — nothing else. Stored only on this device, sent only to GitHub's own servers.</p>
+      <input type="password" id="gistTokenInput" placeholder="${hasToken ? "Token saved (leave blank to keep it)" : "ghp_... classic token, gist scope only"}" style="width:100%;padding:8px 12px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:11px;margin-bottom:6px" />
+      <input type="text" id="gistIdInput" placeholder="${hasGist ? `Gist ID: ${creds.gistId} (leave blank to keep)` : "Gist ID (leave blank to create a new one)"}" style="width:100%;padding:8px 12px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:11px;margin-bottom:8px" />
+      <button data-act="saveGistCredsFromForm" class="disp" style="width:100%;padding:8px;border-radius:16px;font-weight:600;font-size:12px;background:${C.mageSoft};color:${C.mageDeep};margin-bottom:8px">Save Credentials</button>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button data-act="pushToGist" ${ui.gistBusy?"disabled":""} class="disp" style="flex:1;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${C.mageDeep};color:white">${ui.gistBusy?"Working…":"⬆️ Push"}</button>
+        <button data-act="pullFromGist" ${ui.gistBusy?"disabled":""} class="disp" style="flex:1;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${C.gold};color:white">${ui.gistBusy?"Working…":"⬇️ Pull"}</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <p style="font-size:10px;color:${C.inkSoft};margin:0">Last synced: ${lastSyncText}</p>
+        ${hasToken || hasGist ? `<button data-act="clearGistCreds" class="disp" style="font-size:10px;color:${C.inkSoft};text-decoration:underline">Clear</button>` : ""}
+      </div>
+      ${ui.gistMsg ? `<p style="font-size:11px;color:${C.mageDeep};margin:8px 0 0;text-align:center">${escapeHtml(ui.gistMsg)}</p>` : ""}
+    </div>`;
 }
 
 function renderJournalReplayModal() {
@@ -5484,6 +5691,48 @@ function renderZoneDetailModal() {
   </div>`;
 }
 
+function renderDragonHuntModal() {
+  if (!ui.showDragonHunt) return "";
+  const { charges } = getCharges(state, ui.now);
+  const canHunt = charges >= 4 && (state.activeParty||[]).length >= 5 && (state.dragonSigns||0) >= DRAGON_SIGN_COST;
+  const dragonRows = DRAGONS.map(d => {
+    const kills = state.bossesKilled[d.id] || 0;
+    return `
+      <button data-act="beginDragonHunt" data-arg="${d.id}" ${canHunt?"":"disabled"} class="disp" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:${C.creamDeep};margin-bottom:8px;text-align:left;opacity:${canHunt?1:0.5}">
+        <span style="font-size:28px">${d.icon}</span>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">${d.name}</p>
+          <p style="font-size:10px;margin:2px 0 0;color:${C.inkSoft}">Slain: ${kills}</p>
+        </div>
+      </button>`;
+  }).join("");
+  const mercRows = MERCENARIES.map(m => {
+    const affordable = state.player.gold >= m.cost;
+    const hired = state.hiredMercenary === m.id;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${hired?C.sageSoft:C.creamDeep};border-radius:14px;margin-bottom:8px">
+        <span style="font-size:20px">${m.icon}</span>
+        <div style="flex:1"><p style="font-size:12px;font-weight:700;margin:0">${m.name}</p><p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">+${m.dmgBonus} dmg, +${m.hitBonus} to-hit — one fight only</p></div>
+        ${hired
+          ? `<button data-act="dismissMercenary" class="disp" style="padding:5px 10px;border-radius:9999px;font-size:10px;font-weight:700;background:${C.card};color:${C.inkSoft}">Dismiss</button>`
+          : `<button data-act="hireMercenary" data-arg="${m.id}" ${affordable?"":"disabled"} class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${affordable?C.gold:C.card};color:${affordable?"white":C.inkSoft}">${m.cost}g</button>`}
+      </div>`;
+  }).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">🐉 Dragon Hunt</p>
+        <button data-act="closeDragonHunt"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 14px">${canHunt ? "Costs 4 Focus and 5 Dragon Signs. A true world boss — bring your full party." : "Not ready yet — need 5+ Focus, 5+ active companions, and enough Dragon Signs."}</p>
+      ${dragonRows}
+      <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:16px 0 8px">Hire a Mercenary (optional)</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 10px">Gold buys one extra striker for your next hunt — no bond, no history, just muscle.</p>
+      ${mercRows}
+    </div>
+  </div>`;
+}
+
 function renderHuntingGroundsModal() {
   if (!ui.showHuntingGrounds) return "";
   const { charges } = getCharges(state, ui.now);
@@ -5630,19 +5879,39 @@ function renderBestiaryModal() {
         </div>
       </div>`;
   }).join("");
+  const dragonRows = DRAGONS.map(d => {
+    const kills = state.bossesKilled[d.id] || 0;
+    const discovered = kills > 0;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px;opacity:${discovered?1:0.55}">
+        <span style="font-size:24px;filter:${discovered?"none":"grayscale(1)"}">${discovered ? d.icon : "❓"}</span>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:12.5px;margin:0">${discovered ? d.name : "???"}</p>
+          <p style="font-size:10px;margin:2px 0 0;color:${C.gold};font-weight:700">World Boss</p>
+          ${discovered ? `<p style="font-size:10.5px;color:${C.inkSoft};margin:3px 0 0;font-style:italic">${d.intro}</p>` : ""}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <p style="font-size:10px;color:${C.inkSoft};margin:0">Slain</p>
+          <p class="disp" style="font-size:15px;font-weight:700;color:${C.mageDeep};margin:0">${kills}</p>
+        </div>
+      </div>`;
+  }).join("");
   const monstersFound = MONSTER_CODEX.filter(m => (state.huntingKills[m.name]||0) > 0).length;
   const bossesFound = BOSSES.filter(b => (state.bossesKilled[b.id]||0) > 0).length;
+  const dragonsFound = DRAGONS.filter(d => (state.bossesKilled[d.id]||0) > 0).length;
   return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
     <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <p class="disp" style="font-weight:700;font-size:15px;margin:0">📖 Bestiary</p>
         <button data-act="closeBestiary"><span style="color:${C.inkSoft}">✖</span></button>
       </div>
-      <p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 14px">${monstersFound}/${MONSTER_CODEX.length} monsters · ${bossesFound}/${BOSSES.length} bosses discovered</p>
+      <p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 14px">${monstersFound}/${MONSTER_CODEX.length} monsters · ${bossesFound}/${BOSSES.length} bosses · ${dragonsFound}/${DRAGONS.length} dragons</p>
       <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:0 0 8px">Monsters</p>
       ${monsterRows}
       <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:16px 0 8px">Bosses</p>
       ${bossRows}
+      <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:16px 0 8px">🐉 World Bosses</p>
+      ${dragonRows}
     </div>
   </div>`;
 }
@@ -5727,6 +5996,7 @@ function render() {
     ${renderSkirmishModal()}
     ${renderChestModal()}
     ${renderHuntingGroundsModal()}
+    ${renderDragonHuntModal()}
     ${renderBestiaryModal()}
     ${renderInsightsModal()}
     ${renderSettingsModal()}
