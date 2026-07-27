@@ -543,6 +543,57 @@ const LOCATIONS = [
 const ENCOUNTER_CYCLE = ["Gathering Day", "Crafting Day", "Boss Day", "Guild Day", "Rest Day"];
 
 // Chinese lunar calendar 1st/15th days for 2026, verified day-by-day against Hong Kong/Beijing (UTC+8, same zone as Brunei).
+// Recurring birthdays and family days (MM-DD keyed, so these repeat every year regardless of calendar year shown).
+const BIRTHDAYS = {
+  "09-18": { name:"San", icon:"🎂", type:"birthday" },
+  "10-08": { name:"Joel", icon:"🎂", type:"birthday" },
+  "10-06": { name:"Mezstorm", icon:"🎂", type:"birthday" },
+  "12-21": { name:"Aisyah", icon:"🎂", type:"birthday" },
+  "01-03": { name:"Eliz", icon:"🎂", type:"birthday" },
+  "01-24": { name:"Senedra", icon:"🎂", type:"birthday" },
+  "03-22": { name:"Zaki", icon:"🎂", type:"birthday" },
+  "12-20": { name:"Parents' Anniversary", icon:"💐", type:"family" },
+  "09-02": { name:"Dad's Birthday", icon:"💐", type:"family" },
+  "03-17": { name:"Mum's Birthday", icon:"💐", type:"family" },
+};
+const BIRTHDAY_MOMENTS = [
+  { id:"bday_san", companionId:null, month:9, day:18, title:"Not Coordinated, But There", icon:"🎂",
+    pages:[
+      "You wake up to find the guild hall already decorated, badly, with banners clearly made by committee and zero coordination.",
+      "Nobody quite agrees on the plan, everyone showed up anyway, and it turns out that's the whole point of a birthday around here.",
+    ], reward:{gold:30,xp:25} },
+  { id:"bday_joel", companionId:"joel", month:10, day:8, title:"He Insists He Doesn't Need Anything", icon:"🎂",
+    pages:[
+      "Joel insists he doesn't need anything for his birthday, the way he insists on most things about himself, which is exactly why you ignore him and plan something anyway.",
+      "He pretends to be annoyed about the fuss. He is visibly, quietly pleased the entire evening. You've learned to read the difference.",
+    ], reward:{gold:30,xp:25} },
+  { id:"bday_mezstorm", companionId:"mezstorm", month:10, day:6, title:"An Audience, Please", icon:"🎂",
+    pages:[
+      "Mezstorm's birthday request is, as always, just \"an audience, please\" — and you deliver, dragging half the guild hall to hear whatever she's been working on.",
+      "She plays like it's just practice. It is very clearly not just practice. Happy birthday, apparently, means something different when you're a musician.",
+    ], reward:{gold:30,xp:25} },
+  { id:"bday_aisyah", companionId:"aisyah", month:12, day:21, title:"The Day After", icon:"🎂",
+    pages:[
+      "Aisyah's birthday always lands the day after her parents' anniversary, which she insists is a coincidence and everyone privately agrees is not.",
+      "She spends half the party doing math on how much everyone's gifts cost. It's not about the money. It's just how she shows she noticed.",
+    ], reward:{gold:30,xp:25} },
+  { id:"bday_eliz", companionId:"eliz", month:1, day:3, title:"Forty-One Days Exactly", icon:"🎂",
+    pages:[
+      "Eliz has been counting down to her birthday for exactly forty-one days, and she informs you of this precisely, first thing in the morning.",
+      "She wants the same cake as last year, in the same order, with the same candles. You make sure it happens exactly that way. Some traditions matter more for staying the same.",
+    ], reward:{gold:30,xp:25} },
+  { id:"bday_senedra", companionId:"senedra", month:1, day:24, title:"Physically Intercepted", icon:"🎂",
+    pages:[
+      "Senedra almost works straight through her own birthday, the way she almost works through everything, until you physically intercept her at the door.",
+      "She lets herself be pulled away for exactly one evening. It's not nothing, coming from her. It might be everything, actually.",
+    ], reward:{gold:30,xp:25} },
+  { id:"bday_zaki", companionId:"zaki", month:3, day:22, title:"A Pitch Meeting, Somehow", icon:"🎂",
+    pages:[
+      "Zaki turns his own birthday into a pitch meeting somehow, unveiling three new business ideas before anyone's even cut the cake.",
+      "You tell him to just enjoy the day for once. He hears you, nods seriously, and immediately starts a fourth pitch. Some things aren't fixable, and that's fine.",
+    ], reward:{gold:30,xp:25} },
+];
+
 const LUNAR_VEG_DAYS_2026 = [
   "2026-01-03","2026-01-19",
   "2026-02-02","2026-02-17",
@@ -1098,6 +1149,11 @@ const STORY_CHAPTERS = [
       "You look back at the whole map stretched out behind you: the Forest, the Market, the Ruins, the Cliffs, all of it smaller from up here.",
       "It's a strange kind of proud, seeing how far back the path goes. You turn back around and keep climbing.",
     ], reward:{gold:40,xp:36} },
+  { id:"ch27", title:"Three Houses, One Family", icon:"🏠", unlockLv:10,
+    pages:[
+      "It comes up sideways, the way these things always do — Mezstorm mentions, half-joking, that she's the only one of the three of you still \"unclaimed,\" and Aisyah nearly chokes on her tea defending herself. San's got her steady thing in Joel. Aisyah's got a husband of her own, even if he's currently a very long way from here. Growing up, none of you even shared the same house at the same time — three sisters, three different roofs, spaced out by years and, later, by an ocean or two.",
+      "\"Do you miss him?\" San asks Aisyah later, quieter, meaning it. Aisyah considers the question like she's actually going to answer it honestly instead of deflecting. \"Every day,\" she admits. \"But we make it work. Guess it runs in the family — Mom and Dad still haven't lived in the same house in years, and they're still just as married as ever.\" She says it like a fact, not a complaint. You're starting to think that might be exactly the point.",
+    ], reward:{gold:35,xp:30} },
 ];
 
 const STRONGHOLD_STAGES = [
@@ -1565,6 +1621,7 @@ function defaultState() {
     settings: { carbLimit: 30, notificationsEnabled: false },
     wellnessLog: {},
     achievementsClaimed: [],
+    birthdaysCelebrated: { year:null, ids:[] },
     bossesKilled: {},
     raidsCompleted: 0,
     dungeonsCompleted: 0,
@@ -1609,7 +1666,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"" };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0 };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -2007,6 +2064,36 @@ function currentCompanionQuest(companionId) {
   if (!quests) return null;
   const aff = state.affinity[companionId] || 0;
   return quests.find(q => aff >= q.affReq && !state.companionQuestProgress.read.includes(q.id)) || null;
+}
+function ensureBirthdayYear() {
+  const y = new Date().getFullYear();
+  if (state.birthdaysCelebrated.year !== y) state.birthdaysCelebrated = { year:y, ids:[] };
+}
+function currentBirthdayMoment() {
+  ensureBirthdayYear();
+  const now = new Date();
+  return BIRTHDAY_MOMENTS.find(b => b.month === now.getMonth()+1 && b.day === now.getDate() && !state.birthdaysCelebrated.ids.includes(b.id)) || null;
+}
+function openBirthdayMoment() {
+  const b = currentBirthdayMoment();
+  if (!b) return;
+  ui.showBirthday = true;
+  ui.birthdayPage = 0;
+  render();
+}
+function closeBirthdayMoment() { ui.showBirthday = false; render(); }
+function birthdayMomentNext() {
+  const b = currentBirthdayMoment();
+  if (!b) return;
+  if (ui.birthdayPage < b.pages.length - 1) { ui.birthdayPage += 1; render(); return; }
+  ensureBirthdayYear();
+  state.birthdaysCelebrated.ids.push(b.id);
+  const leveledUp = grantReward(b.reward.gold||0, b.reward.xp||0);
+  if (b.companionId) state.affinity[b.companionId] = (state.affinity[b.companionId]||0) + 1;
+  ui.showBirthday = false;
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`🎂 Happy birthday, ${b.companionId ? PARTY.find(p=>p.id===b.companionId).name : "San"}!`);
 }
 function todaysHitList() {
   const idx = hashDay(today() + "-hitlist") % HIT_LIST.length;
@@ -3816,6 +3903,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openJournal, closeJournal, setJournalTab, openJournalEntry, closeJournalReplay, journalReplayNext,
   hireMercenary, dismissMercenary, openDragonHunt, closeDragonHunt, beginDragonHunt,
   saveGistCredsFromForm, clearGistCreds, pushToGist, pullFromGist,
+  openBirthdayMoment, closeBirthdayMoment, birthdayMomentNext,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
 
@@ -4088,6 +4176,18 @@ function renderHome() {
     `);
   })() : "";
 
+  const birthdayMoment = currentBirthdayMoment();
+  const birthdayCard = birthdayMoment ? card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.pink}33, ${C.gold}22)">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">${birthdayMoment.icon}</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">${birthdayMoment.companionId ? `${PARTY.find(p=>p.id===birthdayMoment.companionId).name}'s Birthday` : "Your Birthday"}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Today's a special day.</p>
+      </div>
+      <button data-act="openBirthdayMoment" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${C.pink};color:white">Celebrate</button>
+    </div>
+  `) : "";
+
   const specCard = (state.player.level >= 15 && !state.specialization) ? card(`
     <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.mageSoft}, ${C.cream})">
       <div style="width:42px;height:42px;border-radius:12px;background:${C.mage}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">📖</span></div>
@@ -4247,7 +4347,7 @@ function renderHome() {
   const wellnessCard = renderWellness();
   const tavernCard = renderTavern();
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderWellness() {
@@ -5209,8 +5309,13 @@ function renderCalendar() {
     const col = colors[enc] || C.inkSoft;
     const isVegDay = LUNAR_VEG_DAYS_2026.includes(key);
     const holidayName = BRUNEI_HOLIDAYS_2026[key];
-    const tagRow = (isVegDay || holidayName) ? `<div style="display:flex;gap:1px;margin-top:1px">${isVegDay?`<span style="font-size:7px">🌱</span>`:""}${holidayName?`<span style="font-size:7px">🎉</span>`:""}</div>` : "";
-    cells += `<div title="${holidayName ? escapeHtml(holidayName) : ""}${isVegDay ? (holidayName?" · ":"")+"Vegetarian Day":""}" style="aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${log ? col+"33" : C.creamDeep};border:${isToday ? `2px solid ${C.mageDeep}` : holidayName ? `1px solid ${C.gold}` : isVegDay ? `1px solid ${C.sage}` : "1px solid transparent"}">
+    const mmdd = key.slice(5);
+    const specialDay = BIRTHDAYS[mmdd];
+    const isBirthday = specialDay && specialDay.type === "birthday";
+    const isFamilyDay = specialDay && specialDay.type === "family";
+    const tagRow = (isVegDay || holidayName || specialDay) ? `<div style="display:flex;gap:1px;margin-top:1px">${isVegDay?`<span style="font-size:7px">🌱</span>`:""}${holidayName?`<span style="font-size:7px">🎉</span>`:""}${specialDay?`<span style="font-size:7px">${specialDay.icon}</span>`:""}</div>` : "";
+    const titleParts = [holidayName, isVegDay?"Vegetarian Day":null, isBirthday?`${specialDay.name}'s Birthday`:null, isFamilyDay?specialDay.name:null].filter(Boolean);
+    cells += `<div title="${escapeHtml(titleParts.join(" · "))}" style="aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${log ? col+"33" : C.creamDeep};border:${isToday ? `2px solid ${C.mageDeep}` : isBirthday ? `1px solid ${C.pink}` : holidayName ? `1px solid ${C.gold}` : isVegDay ? `1px solid ${C.sage}` : "1px solid transparent"}">
       <span style="font-size:11px;font-weight:${log?700:400}">${d}</span>
       ${log ? `<div style="width:4px;height:4px;border-radius:4px;background:${col};margin-top:1px"></div>` : ""}
       ${tagRow}
@@ -5231,8 +5336,10 @@ function renderCalendar() {
       ${legend}
       <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">🌱</span><span style="font-size:11px;color:${C.inkSoft}">Vegetarian Day</span></div>
       <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">🎉</span><span style="font-size:11px;color:${C.inkSoft}">Holiday</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">🎂</span><span style="font-size:11px;color:${C.inkSoft}">Birthday</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">💍</span><span style="font-size:11px;color:${C.inkSoft}">Family Date</span></div>
     </div>
-    <p style="font-size:10px;color:${C.inkSoft};margin:8px 0 0">Lunar days and Brunei holidays are marked for 2026. Tap a marked day to see what it is.</p>
+    <p style="font-size:10px;color:${C.inkSoft};margin:8px 0 0">Lunar days and Brunei holidays are marked for 2026. Birthdays and family dates repeat every year. Tap a marked day to see what it is.</p>
   </div>`;
 }
 
@@ -5521,6 +5628,26 @@ function renderGistSection() {
       </div>
       ${ui.gistMsg ? `<p style="font-size:11px;color:${C.mageDeep};margin:8px 0 0;text-align:center">${escapeHtml(ui.gistMsg)}</p>` : ""}
     </div>`;
+}
+
+function renderBirthdayModal() {
+  if (!ui.showBirthday) return "";
+  const b = currentBirthdayMoment();
+  if (!b) { ui.showBirthday = false; return ""; }
+  const accentColor = b.companionId ? PARTY.find(p=>p.id===b.companionId).color : C.pink;
+  const subtitle = b.companionId ? `${PARTY.find(p=>p.id===b.companionId).name}'s Birthday` : "Your Birthday";
+  const page = b.pages[ui.birthdayPage];
+  const isLastPage = ui.birthdayPage >= b.pages.length - 1;
+  const dots = b.pages.map((_,i) => `<span style="width:6px;height:6px;border-radius:6px;background:${i===ui.birthdayPage ? accentColor : C.creamDeep}"></span>`).join("");
+  return `<div style="position:fixed;inset:0;z-index:57;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="position:relative;background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="position:absolute;top:32px;right:32px;z-index:2"><button data-act="closeBirthdayMoment"><span style="color:white;background:rgba(0,0,0,.3);border-radius:9999px;width:26px;height:26px;display:flex;align-items:center;justify-content:center">✖</span></button></div>
+      ${renderSceneHeader(b.icon, b.title, subtitle, accentColor, C.gold)}
+      <p style="font-size:13.5px;line-height:1.6;color:${C.ink};min-height:90px">${escapeHtml(page)}</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 16px">${dots}</div>
+      <button data-act="birthdayMomentNext" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;background:linear-gradient(135deg, ${accentColor}, ${C.gold});color:white">${isLastPage ? "Finish" : "Continue"}</button>
+    </div>
+  </div>`;
 }
 
 function renderJournalReplayModal() {
@@ -6050,6 +6177,7 @@ function render() {
     ${renderAchievementsModal()}
     ${renderJournalModal()}
     ${renderJournalReplayModal()}
+    ${renderBirthdayModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
