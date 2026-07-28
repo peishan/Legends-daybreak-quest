@@ -1568,6 +1568,7 @@ const COMPANION_QUESTS = {
 
 /* ================= pure helpers ================= */
 const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 const hashDay = (s) => { let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
 const encounterForDate = (dateStr) => ENCOUNTER_CYCLE[hashDay(dateStr) % ENCOUNTER_CYCLE.length];
 const today = () => dayKey(new Date());
@@ -1639,6 +1640,11 @@ function defaultState() {
     hiredMercenary: null,
     bondCooldowns: {},
     settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false },
+    bills: {
+      electricity: { dueDay: 15, paidThisMonth: false, monthKey: null, streak: 0 },
+      phone: { dueDay: 20, paidThisMonth: false, monthKey: null, streak: 0 },
+    },
+    notebookEntries: [],
     wellnessLog: {},
     achievementsClaimed: [],
     birthdaysCelebrated: { year:null, ids:[] },
@@ -1686,7 +1692,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0 };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -1887,6 +1893,17 @@ function effectiveCarbLimit() { return carbLimitForDate(today()); }
 function isVegDayToday() { return LUNAR_VEG_DAYS_2026.includes(today()); }
 function ensureDaily() {
   const t = today();
+  const mk = monthKey(new Date());
+  ["electricity","phone"].forEach(billId => {
+    const bill = state.bills[billId];
+    if (bill.monthKey && bill.monthKey !== mk) {
+      bill.streak = bill.paidThisMonth ? bill.streak + 1 : 0;
+    }
+    if (bill.monthKey !== mk) {
+      bill.monthKey = mk;
+      bill.paidThisMonth = false;
+    }
+  });
   if (state.water && state.water.date && state.water.date !== t) {
     const prevDate = state.water.date;
     state.wellnessLog[prevDate] = {
@@ -3571,6 +3588,48 @@ function toggleReminder(key) {
   }
 }
 
+const BILL_LABELS = {
+  electricity: { icon:"💡", label:"Electricity Bill" },
+  phone: { icon:"📱", label:"Phone Bill" },
+};
+function markBillPaid(billId) {
+  ensureDaily();
+  const bill = state.bills[billId];
+  if (!bill || bill.paidThisMonth) return;
+  const dayOfMonth = new Date().getDate();
+  const onTime = dayOfMonth <= bill.dueDay;
+  bill.paidThisMonth = true;
+  const leveledUp = grantReward(onTime ? 10 : 6, onTime ? 8 : 5);
+  save(); render();
+  const label = BILL_LABELS[billId].label;
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else if (onTime) showToast(`${BILL_LABELS[billId].icon} ${label} paid on time! +10g +8xp`);
+  else showToast(`${BILL_LABELS[billId].icon} ${label} paid — a little late, but paid. +6g +5xp`);
+}
+function setBillDueDay(combinedArg) {
+  const [billId, day] = combinedArg.split("|");
+  const d = parseInt(day, 10);
+  if (!state.bills[billId] || !d || d < 1 || d > 28) return;
+  state.bills[billId].dueDay = d;
+  save(); render();
+}
+
+function addNotebookEntry() {
+  const ta = document.getElementById("notebookInput");
+  if (!ta || !ta.value.trim()) return;
+  const isFirst = state.notebookEntries.length === 0;
+  state.notebookEntries.unshift({ id: `note_${Date.now()}`, text: ta.value.trim(), date: today() });
+  ta.value = "";
+  if (isFirst) grantReward(5, 5);
+  save(); render();
+}
+function deleteNotebookEntry(id) {
+  state.notebookEntries = state.notebookEntries.filter(n => n.id !== id);
+  save(); render();
+}
+function openNotebook() { ui.showNotebook = true; render(); }
+function closeNotebook() { ui.showNotebook = false; render(); }
+
 const FOCUS_DURATIONS = [5, 10, 15, 20];
 function bondWithCompanion(companionId) {
   const member = PARTY.find(p => p.id === companionId);
@@ -3931,6 +3990,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openSettings, closeSettings, setCarbLimit, setVegDayCarbLimit, setWaterGoal, requestNotificationPermission, disableNotifications,
   openJournal, closeJournal, setJournalTab, openJournalEntry, closeJournalReplay, journalReplayNext,
   hireMercenary, dismissMercenary, openDragonHunt, closeDragonHunt, beginDragonHunt,
+  markBillPaid, setBillDueDay, addNotebookEntry, deleteNotebookEntry, openNotebook, closeNotebook,
   saveGistCredsFromForm, clearGistCreds, pushToGist, pullFromGist,
   openBirthdayMoment, closeBirthdayMoment, birthdayMomentNext,
   bondWithCompanion,
@@ -4375,8 +4435,49 @@ function renderHome() {
 
   const wellnessCard = renderWellness();
   const tavernCard = renderTavern();
+  const billsCard = renderBillsCard();
+  const notebookCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">📓</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Notebook</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${state.notebookEntries.length ? `${state.notebookEntries.length} note${state.notebookEntries.length===1?"":"s"} kept` : "Jot anything down, anytime."}</p>
+      </div>
+      <button data-act="openNotebook" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Open</button>
+    </div>
+  `);
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+}
+
+function renderBillsCard() {
+  const todayDate = new Date().getDate();
+  const rows = Object.entries(BILL_LABELS).map(([billId, info]) => {
+    const bill = state.bills[billId];
+    const overdue = !bill.paidThisMonth && todayDate > bill.dueDay;
+    const daysLeft = bill.dueDay - todayDate;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${overdue?"animation:tavernGlitter 1.6s ease-in-out infinite":""}">
+        <span style="font-size:18px">${info.icon}</span>
+        <div style="flex:1">
+          <p style="font-size:12px;font-weight:700;margin:0;color:${overdue?"#E85B5B":C.ink}">${info.label}</p>
+          <p style="font-size:10px;color:${overdue?"#E85B5B":C.inkSoft};margin:1px 0 0">${bill.paidThisMonth ? `✔️ Paid this month${bill.streak>0?` · 🔥 ${bill.streak}mo streak`:""}` : overdue ? `Overdue — was due the ${bill.dueDay}${ordinalSuffix(bill.dueDay)}` : `Due the ${bill.dueDay}${ordinalSuffix(bill.dueDay)} · ${daysLeft>=0?daysLeft+" days left":""}`}</p>
+        </div>
+        <button data-act="markBillPaid" data-arg="${billId}" ${bill.paidThisMonth?"disabled":""} class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${bill.paidThisMonth?C.creamDeep:(overdue?"#E85B5B":C.sage)};color:${bill.paidThisMonth?C.inkSoft:"white"}">${bill.paidThisMonth?"✔️ Paid":"Mark Paid"}</button>
+      </div>`;
+  }).join("");
+  return card(`
+    <div style="padding:16px">
+      <p class="disp" style="font-weight:700;font-size:14px;margin:0 0 8px;color:${C.mageDeep}">📋 Bills</p>
+      ${rows}
+    </div>
+  `);
+}
+function ordinalSuffix(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return "st";
+  if (n % 10 === 2 && n % 100 !== 12) return "nd";
+  if (n % 10 === 3 && n % 100 !== 13) return "rd";
+  return "th";
 }
 
 function renderWellness() {
@@ -5724,6 +5825,29 @@ function renderJournalReplayModal() {
   </div>`;
 }
 
+function renderNotebookModal() {
+  if (!ui.showNotebook) return "";
+  const entries = state.notebookEntries.map(n => `
+    <div style="padding:10px 12px;background:${C.creamDeep};border-radius:14px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <p style="font-size:12.5px;color:${C.ink};margin:0;white-space:pre-wrap;flex:1">${escapeHtml(n.text)}</p>
+        <button data-act="deleteNotebookEntry" data-arg="${n.id}"><span style="color:${C.inkSoft};font-size:12px">✖</span></button>
+      </div>
+      <p style="font-size:9.5px;color:${C.inkSoft};margin:6px 0 0">${n.date}</p>
+    </div>`).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">📓 Notebook</p>
+        <button data-act="closeNotebook"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <textarea id="notebookInput" placeholder="Jot something down…" style="width:100%;height:70px;font-size:12.5px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:10px;color:${C.ink};margin-bottom:8px"></textarea>
+      <button data-act="addNotebookEntry" class="disp" style="width:100%;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${C.mageDeep};color:white;margin-bottom:16px">Add Note</button>
+      ${entries || `<p style="font-size:12px;color:${C.inkSoft}">Nothing yet — your notes will show up here.</p>`}
+    </div>
+  </div>`;
+}
+
 function renderJournalModal() {
   if (!ui.showJournal) return "";
   const tabs = [["story","📖 Chronicle"],["companion","💞 Companions"],["sidequest","🗺️ Side Quests"],["stronghold","🗼 Stronghold"]];
@@ -6022,6 +6146,16 @@ function renderSettingsModal() {
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.water.goal} cups/day.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${waterButtons}</div>
 
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">📋 Bill Due Days</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Which day of the month each bill is due.</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        ${Object.entries(BILL_LABELS).map(([billId,info]) => `
+          <div style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;background:${C.creamDeep};border-radius:12px">
+            <span style="font-size:14px">${info.icon}</span>
+            <input type="number" min="1" max="28" value="${state.bills[billId].dueDay}" onchange="ACTIONS.setBillDueDay('${billId}|'+this.value)" style="width:36px;border:none;background:transparent;font-size:13px;font-weight:700;color:${C.ink}" />
+          </div>`).join("")}
+      </div>
+
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Notifications</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">${notifStatus}. Only covers your Focus timer finishing — this app can't reliably notify you after it's fully closed.</p>
       ${state.settings.notificationsEnabled && notifGranted
@@ -6234,6 +6368,7 @@ function render() {
     ${renderJournalModal()}
     ${renderJournalReplayModal()}
     ${renderBirthdayModal()}
+    ${renderNotebookModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
