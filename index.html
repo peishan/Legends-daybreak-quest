@@ -130,11 +130,30 @@ const TAVERN_FOODS = [
   { id:"f55", name:"Pumpkin (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.0, carbs:6.0, emoji:"🎃" },
   { id:"f56", name:"Pumpkin (1 cup, ~245g)", cat:"⚠️ Higher-Carb Veg", fat:0.3, protein:2.5, carbs:14.5, emoji:"🎃" },
   { id:"f57", name:"Carrot (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.2, protein:0.9, carbs:8.0, emoji:"🥕" },
+  { id:"f293", name:"Carrot (50g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:0.5, carbs:4.0, emoji:"🥕" },
+  { id:"f294", name:"Carrot, a few pieces (~20g)", cat:"⚠️ Higher-Carb Veg", fat:0.0, protein:0.2, carbs:1.6, emoji:"🥕" },
   { id:"f58", name:"Peas (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.4, protein:5.0, carbs:11.0, emoji:"🟢" },
   { id:"f59", name:"Corn (100g)", cat:"⚠️ Higher-Carb Veg", fat:1.2, protein:3.3, carbs:19.0, emoji:"🌽" },
   { id:"f60", name:"Potato (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:2.0, carbs:17.0, emoji:"🥔" },
   { id:"f61", name:"½ Potato (~75g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.5, carbs:13.0, emoji:"🥔" },
+  { id:"f295", name:"Potato (50g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.0, carbs:8.5, emoji:"🥔" },
+  { id:"f296", name:"Potato, a few bites (~20g)", cat:"⚠️ Higher-Carb Veg", fat:0.0, protein:0.4, carbs:3.4, emoji:"🥔" },
   { id:"f62", name:"Sweet Potato (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.6, carbs:17.0, emoji:"🍠" },
+  { id:"f297", name:"Sweet Potato (50g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:0.8, carbs:8.5, emoji:"🍠" },
+  { id:"f298", name:"Mock Duck / Vegetarian Duck (100g)", cat:"🌱 Mock Meat (SG/TW)", fat:8.0, protein:18.0, carbs:6.0, emoji:"🦆" },
+  { id:"f299", name:"Mock Chicken / Vegetarian Chicken (100g)", cat:"🌱 Mock Meat (SG/TW)", fat:10.0, protein:16.0, carbs:8.0, emoji:"🍗" },
+  { id:"f300", name:"Mock Char Siu (100g)", cat:"🌱 Mock Meat (SG/TW)", fat:6.0, protein:14.0, carbs:12.0, emoji:"🍢" },
+  { id:"f301", name:"Mock Abalone, mushroom-based (3-4pc)", cat:"🌱 Mock Meat (SG/TW)", fat:2.0, protein:4.0, carbs:6.0, emoji:"🍄" },
+  { id:"f302", name:"Vegetarian Bak Kwa (2 slices, ~40g)", cat:"🌱 Mock Meat (SG/TW)", fat:4.0, protein:6.0, carbs:14.0, emoji:"🥓" },
+  { id:"f303", name:"Luohan Zhai / Buddha's Delight (1 bowl)", cat:"🌱 Mock Meat (SG/TW)", fat:10.0, protein:8.0, carbs:20.0, emoji:"🥘" },
+  { id:"f304", name:"Tofu Skin / Beancurd Roll (2 rolls)", cat:"🌱 Mock Meat (SG/TW)", fat:8.0, protein:10.0, carbs:8.0, emoji:"🌯" },
+  { id:"f305", name:"Mock Fish / Vegetarian Fish (100g)", cat:"🌱 Mock Meat (SG/TW)", fat:5.0, protein:15.0, carbs:10.0, emoji:"🐟" },
+  { id:"f306", name:"Braised Mock Pork Belly (100g)", cat:"🌱 Mock Meat (SG/TW)", fat:12.0, protein:12.0, carbs:8.0, emoji:"🥩" },
+  { id:"f307", name:"Vegetarian Satay, no sauce (3 sticks)", cat:"🌱 Mock Meat (SG/TW)", fat:5.0, protein:10.0, carbs:6.0, emoji:"🍢" },
+  { id:"f308", name:"Vegetarian Meat Floss (2 tbsp)", cat:"🌱 Mock Meat (SG/TW)", fat:3.0, protein:4.0, carbs:8.0, emoji:"🥣" },
+  { id:"f309", name:"Braised Mock Mutton (100g)", cat:"🌱 Mock Meat (SG/TW)", fat:9.0, protein:14.0, carbs:7.0, emoji:"🍖" },
+  { id:"f310", name:"Vegetarian Spring Rolls, mock meat filling (2pc)", cat:"🌱 Mock Meat (SG/TW)", fat:8.0, protein:6.0, carbs:16.0, emoji:"🌯" },
+  { id:"f311", name:"Mock Prawn / Vegetarian Prawn (4-5pc)", cat:"🌱 Mock Meat (SG/TW)", fat:3.0, protein:8.0, carbs:9.0, emoji:"🍤" },
   { id:"f63", name:"Beetroot (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.2, protein:1.6, carbs:8.0, emoji:"🟣" },
   { id:"f64", name:"Konjac Dry Rice, cooked (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.3, protein:1.5, carbs:13.7, emoji:"🍚" },
   { id:"f65", name:"Konjac Dry Rice, cooked (½ cup ~80g)", cat:"⚠️ Higher-Carb Veg", fat:0.2, protein:1.2, carbs:11.0, emoji:"🍚" },
@@ -1215,8 +1234,9 @@ const BOUNTY_GEAR_MILESTONES = [3, 7, 12];
 
 const COMPANION_GEAR = [
   { id:"comp_blade", name:"Companion's Blade", icon:"⚔️", slot:"weapon", dmgBonus:3, hitBonus:0, needs:{"Ember Shard":2,"Silver Dust":1}, gold:25 },
-  { id:"comp_gauntlets", name:"Companion's Gauntlets", icon:"🥊", slot:"weapon", dmgBonus:5, hitBonus:1, needs:{"Ember Core":2,"Silver Ingot":1}, gold:60 },
   { id:"comp_greatblade", name:"Companion's Greatblade", icon:"🗡️", slot:"weapon", dmgBonus:9, hitBonus:2, needs:{"Legend Shard":2}, gold:120 },
+  { id:"comp_gauntlets", name:"Companion's Gauntlets", icon:"🥊", slot:"gloves", dmgBonus:5, hitBonus:1, needs:{"Ember Core":2,"Silver Ingot":1}, gold:60 },
+  { id:"comp_war_gloves", name:"Companion's War Gloves", icon:"🧤", slot:"gloves", dmgBonus:8, hitBonus:3, needs:{"Legend Shard":2}, gold:130 },
   { id:"comp_charm", name:"Companion's Charm", icon:"🍀", slot:"armor", dmgBonus:0, hitBonus:2, needs:{"Starlight Thread":2,"Moonherb":1}, gold:25 },
   { id:"comp_sigil", name:"Companion's Sigil", icon:"🔱", slot:"armor", dmgBonus:4, hitBonus:3, needs:{"Legend Shard":2}, gold:100 },
   { id:"comp_ward", name:"Companion's Ward", icon:"🛡️", slot:"armor", dmgBonus:0, hitBonus:5, needs:{"Echo Shard":2}, gold:140 },
@@ -1618,7 +1638,7 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { carbLimit: 30, notificationsEnabled: false },
+    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false },
     wellnessLog: {},
     achievementsClaimed: [],
     birthdaysCelebrated: { year:null, ids:[] },
@@ -1862,6 +1882,9 @@ function canAfford(recipe) {
   const prereqOk = !recipe.requiresCrafted || state.crafted.includes(recipe.requiresCrafted);
   return goldOk && matsOk && prereqOk;
 }
+function carbLimitForDate(dateKey) { return LUNAR_VEG_DAYS_2026.includes(dateKey) ? state.settings.vegDayCarbLimit : state.settings.carbLimit; }
+function effectiveCarbLimit() { return carbLimitForDate(today()); }
+function isVegDayToday() { return LUNAR_VEG_DAYS_2026.includes(today()); }
 function ensureDaily() {
   const t = today();
   if (state.water && state.water.date && state.water.date !== t) {
@@ -1873,7 +1896,7 @@ function ensureDaily() {
       carbs: state.tavern ? state.tavern.carbsToday : 0,
       fat: state.tavern ? state.tavern.fatToday : 0,
       protein: state.tavern ? state.tavern.proteinToday : 0,
-      carbsOk: state.tavern ? state.tavern.carbsToday <= state.settings.carbLimit : null,
+      carbsOk: state.tavern ? state.tavern.carbsToday <= carbLimitForDate(prevDate) : null,
       sleptEarly: state.dailyReminders ? !!state.dailyReminders.sleptEarly : false,
       morningWater: state.dailyReminders ? !!state.dailyReminders.morningWater : false,
       fedSoel: state.dailyReminders ? !!state.dailyReminders.fedSoel : false,
@@ -1889,7 +1912,7 @@ function ensureDaily() {
     let streak = state.tavern ? state.tavern.streak : 0;
     let lastGoodDate = state.tavern ? state.tavern.lastGoodDate : null;
     if (prevDate) {
-      const wasGood = prevCarbs <= state.settings.carbLimit;
+      const wasGood = prevCarbs <= carbLimitForDate(prevDate);
       if (wasGood) {
         const wasConsecutive = lastGoodDate && (new Date(prevDate) - new Date(lastGoodDate))/86400000 === 1;
         streak = (wasConsecutive || !lastGoodDate) ? streak + 1 : 1;
@@ -2430,7 +2453,7 @@ function applyPartyStrikes(enc, isBoss) {
     const member = PARTY.find(p => p.id === pid);
     if (!member || state.player.level < member.unlockLv) return;
     const equipped = state.companionEquipment[pid] || {};
-    const slotKeys = ["weapon","armor","trinket","amulet","cloak","ring1","ring2"];
+    const slotKeys = ["weapon","armor","gloves","trinket","amulet","cloak","ring1","ring2"];
     let gearHit = 0, gearDmg = 0;
     slotKeys.forEach(sk => {
       const item = equipped[sk] ? COMPANION_GEAR.find(g => g.id === equipped[sk]) : null;
@@ -2910,7 +2933,7 @@ function assignCompanionGear(combinedArg) {
   const [companionId, targetSlot, itemId] = combinedArg.split("|");
   const member = PARTY.find(p => p.id === companionId);
   if (!member || state.player.level < member.unlockLv || companionId === "soel") return;
-  const validSlots = ["weapon","armor","trinket","amulet","cloak","ring1","ring2"];
+  const validSlots = ["weapon","armor","gloves","trinket","amulet","cloak","ring1","ring2"];
   if (!validSlots.includes(targetSlot)) return;
   if (!state.companionEquipment[companionId]) state.companionEquipment[companionId] = {};
   const current = state.companionEquipment[companionId][targetSlot];
@@ -3491,7 +3514,7 @@ function orderTavernItem(itemId) {
   ensureDaily();
   const item = TAVERN_FOODS.find(i => i.id === itemId);
   if (!item) return;
-  const wouldExceed = (state.tavern.carbsToday + item.carbs) > state.settings.carbLimit;
+  const wouldExceed = (state.tavern.carbsToday + item.carbs) > effectiveCarbLimit();
   state.tavern.carbsToday = Math.round((state.tavern.carbsToday + item.carbs) * 10) / 10;
   state.tavern.fatToday = Math.round((state.tavern.fatToday + item.fat) * 10) / 10;
   state.tavern.proteinToday = Math.round((state.tavern.proteinToday + item.protein) * 10) / 10;
@@ -3501,7 +3524,7 @@ function orderTavernItem(itemId) {
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${state.tavern.carbsToday}g carbs today.`);
-  else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${state.settings.carbLimit}g carbs today.`);
+  else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${effectiveCarbLimit()}g carbs today.`);
 }
 
 function openTavern() { ui.showTavern = true; render(); }
@@ -3666,6 +3689,12 @@ function setCarbLimit(value) {
   const v = parseInt(value, 10);
   if (!v || v < 5 || v > 150) return;
   state.settings.carbLimit = v;
+  save(); render();
+}
+function setVegDayCarbLimit(value) {
+  const v = parseInt(value, 10);
+  if (!v || v < 5 || v > 150) return;
+  state.settings.vegDayCarbLimit = v;
   save(); render();
 }
 function setWaterGoal(value) {
@@ -3899,7 +3928,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openTavern, closeTavern,
   openInsights, closeInsights,
   playWithSoel, giftCompanion,
-  openSettings, closeSettings, setCarbLimit, setWaterGoal, requestNotificationPermission, disableNotifications,
+  openSettings, closeSettings, setCarbLimit, setVegDayCarbLimit, setWaterGoal, requestNotificationPermission, disableNotifications,
   openJournal, closeJournal, setJournalTab, openJournalEntry, closeJournalReplay, journalReplayNext,
   hireMercenary, dismissMercenary, openDragonHunt, closeDragonHunt, beginDragonHunt,
   saveGistCredsFromForm, clearGistCreds, pushToGist, pullFromGist,
@@ -4387,11 +4416,21 @@ function renderWellness() {
   `);
 }
 
+function macroRatio(fat, protein, carbs) {
+  const fatCal = fat*9, proteinCal = protein*4, carbCal = carbs*4;
+  const total = fatCal + proteinCal + carbCal;
+  if (total <= 0) return { fatPct:0, proteinPct:0, carbPct:0 };
+  return {
+    fatPct: Math.round((fatCal/total)*100),
+    proteinPct: Math.round((proteinCal/total)*100),
+    carbPct: Math.round((carbCal/total)*100),
+  };
+}
 function renderTavern() {
   ensureDaily();
   const carbs = state.tavern.carbsToday;
-  const overBudget = carbs > state.settings.carbLimit;
-  const pct = Math.min(100, (carbs / state.settings.carbLimit) * 100);
+  const overBudget = carbs > effectiveCarbLimit();
+  const pct = Math.min(100, (carbs / effectiveCarbLimit()) * 100);
   const barColor = overBudget ? "#E85B5B" : (pct > 75 ? C.gold : C.sage);
   const logRows = state.tavern.log.slice().reverse().slice(0, 5).map(entry => `
     <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
@@ -4399,21 +4438,31 @@ function renderTavern() {
       <span style="font-size:11px;color:${entry.overBudget ? "#E85B5B" : C.ink};flex:1;font-weight:${entry.overBudget?700:400}">${entry.name}</span>
       <span style="font-size:10px;color:${C.inkSoft}">F${entry.fat} P${entry.protein} C${entry.carbs}</span>
     </div>`).join("");
+  const ratio = macroRatio(state.tavern.fatToday, state.tavern.proteinToday, carbs);
   return card(`
     <div style="padding:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <p class="disp" style="font-weight:700;font-size:14px;margin:0;color:${C.mageDeep}">🍺 The Tavern</p>
         <button data-act="openTavern" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Log a Meal</button>
       </div>
-      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${state.settings.carbLimit}g today. ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${effectiveCarbLimit()}g today.${isVegDayToday()?" 🌱 Vegetarian Day — limit relaxed.":""} ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Fat</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:#D9A441">${state.tavern.fatToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Protein</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${C.sage}">${state.tavern.proteinToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Carbs</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${overBudget?"#E85B5B":C.ink}">${carbs}g</p></div>
       </div>
+      ${(state.tavern.fatToday+state.tavern.proteinToday+carbs) > 0 ? `
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:10px;color:${C.inkSoft}">LCHF Ratio (by calories)</span><span style="font-size:10px;color:${C.inkSoft}">${ratio.fatPct}F · ${ratio.proteinPct}P · ${ratio.carbPct}C</span></div>
+        <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};display:flex">
+          <div style="height:8px;width:${ratio.fatPct}%;background:#D9A441"></div>
+          <div style="height:8px;width:${ratio.proteinPct}%;background:${C.sage}"></div>
+          <div style="height:8px;width:${ratio.carbPct}%;background:#E85B5B"></div>
+        </div>
+      </div>` : ""}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <span style="font-size:11px;color:${C.inkSoft}">Carb budget</span>
-        <span style="font-size:11px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${state.settings.carbLimit}g</span>
+        <span style="font-size:11px;font-weight:700;color:${overBudget ? "#E85B5B" : C.ink}">${carbs}g / ${effectiveCarbLimit()}g</span>
       </div>
       <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};${state.tavern.log.length?"margin-bottom:12px":""};${overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
         <div style="height:8px;width:${pct}%;background:${barColor}"></div>
@@ -4430,7 +4479,7 @@ function renderTavernModal() {
     const chips = state.tavernFavorites.map(id => {
       const item = TAVERN_FOODS.find(f => f.id === id);
       if (!item) return "";
-      const wouldExceed = (carbs + item.carbs) > state.settings.carbLimit;
+      const wouldExceed = (carbs + item.carbs) > effectiveCarbLimit();
       return `<button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px;border-radius:12px;background:${wouldExceed?"rgba(232,91,91,0.12)":C.mageSoft};flex-shrink:0;min-width:64px">
         <span style="font-size:16px">${item.emoji}</span>
         <span style="font-size:9px;font-weight:700;color:${C.mageDeep};text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">${escapeHtml(item.name)}</span>
@@ -4442,7 +4491,7 @@ function renderTavernModal() {
   })() : "";
   let currentCat = null;
   const rows = TAVERN_FOODS.map(item => {
-    const wouldExceed = (carbs + item.carbs) > state.settings.carbLimit;
+    const wouldExceed = (carbs + item.carbs) > effectiveCarbLimit();
     const header = item.cat !== currentCat ? (() => {
       currentCat = item.cat;
       return `<p data-cat-header="${escapeHtml(item.cat)}" class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:14px 0 6px">${item.cat}</p>`;
@@ -4736,7 +4785,7 @@ function renderParty() {
     })() : "";
     const equipped = state.companionEquipment[m.id] || {};
     const gearChipRow = (unlocked && !isSoel) ? (() => {
-      const slotLabels = [["weapon","⚔️"],["armor","🛡️"],["trinket","💎"],["amulet","🔯"],["cloak","🧣"],["ring1","💍1"],["ring2","💍2"]];
+      const slotLabels = [["weapon","⚔️"],["armor","🛡️"],["gloves","🧤"],["trinket","💎"],["amulet","🔯"],["cloak","🧣"],["ring1","💍1"],["ring2","💍2"]];
       const chips = slotLabels.map(([slotKey,icon]) => {
         const itemId = equipped[slotKey];
         const item = itemId ? COMPANION_GEAR.find(g => g.id === itemId) : null;
@@ -4767,6 +4816,7 @@ function renderParty() {
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid ${C.border}">
         ${renderSlotPicker("weapon", "⚔️ Weapon")}
         ${renderSlotPicker("armor", "🛡️ Armor")}
+        ${renderSlotPicker("gloves", "🧤 Gloves")}
         ${renderSlotPicker("trinket", "💎 Trinket")}
         ${renderSlotPicker("amulet", "🔯 Amulet")}
         ${renderSlotPicker("cloak", "🧣 Cloak")}
@@ -5165,7 +5215,7 @@ function renderTraders() {
 }
 
 function renderCompanionGearSection() {
-  const slotLabels = { weapon:"⚔️ Weapon", armor:"🛡️ Armor", trinket:"💎 Trinket", amulet:"🔯 Amulet", cloak:"🧣 Cloak", ring:"💍 Ring" };
+  const slotLabels = { weapon:"⚔️ Weapon", armor:"🛡️ Armor", gloves:"🧤 Gloves", trinket:"💎 Trinket", amulet:"🔯 Amulet", cloak:"🧣 Cloak", ring:"💍 Ring" };
   const rows = COMPANION_GEAR.map(item => {
     const affordable = canAffordCompanionGear(item);
     const owned = state.companionGearOwned[item.id] || 0;
@@ -5252,7 +5302,7 @@ function renderShops() {
     const item = COMPANION_GEAR.find(x => x.id === stock.id);
     const price = Math.round(stock.price * (1 - disc));
     const affordable = state.player.gold >= price;
-    const slotLabels = { weapon:"⚔️ Weapon", armor:"🛡️ Armor", trinket:"💎 Trinket", amulet:"🔯 Amulet", cloak:"🧣 Cloak", ring:"💍 Ring" };
+    const slotLabels = { weapon:"⚔️ Weapon", armor:"🛡️ Armor", gloves:"🧤 Gloves", trinket:"💎 Trinket", amulet:"🔯 Amulet", cloak:"🧣 Cloak", ring:"💍 Ring" };
     return `
       <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid ${C.border}">
         <div style="flex:1"><span style="font-size:12.5px">${item.icon} ${item.name}</span><p style="font-size:10px;color:${C.inkSoft};margin:2px 0 0">${slotLabels[item.slot]} · ${item.dmgBonus?`+${item.dmgBonus} dmg `:""}${item.hitBonus?`+${item.hitBonus} to-hit`:""}</p></div>
@@ -5942,6 +5992,8 @@ function renderSettingsModal() {
   if (!ui.showSettings) return "";
   const carbPresets = [20, 25, 30, 40, 50];
   const carbButtons = carbPresets.map(v => `<button data-act="setCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.carbLimit===v?C.mageDeep:C.creamDeep};color:${state.settings.carbLimit===v?"white":C.ink}">${v}g</button>`).join("");
+  const vegCarbPresets = [40, 50, 60, 70];
+  const vegCarbButtons = vegCarbPresets.map(v => `<button data-act="setVegDayCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.vegDayCarbLimit===v?C.sage:C.creamDeep};color:${state.settings.vegDayCarbLimit===v?"white":C.ink}">${v}g</button>`).join("");
   const waterPresets = [6, 8, 10, 12];
   const waterButtons = waterPresets.map(v => `<button data-act="setWaterGoal" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.water.goal===v?C.mage:C.creamDeep};color:${state.water.goal===v?"white":C.ink}">${v} cups</button>`).join("");
   const notifSupported = typeof Notification !== "undefined";
@@ -5961,6 +6013,10 @@ function renderSettingsModal() {
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Tavern Carb Limit</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.settings.carbLimit}g/day.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${carbButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.sage};margin:0 0 6px">🌱 Vegetarian Day Carb Limit</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">More forgiving on lunar 1st/15th (2×/month) — currently ${state.settings.vegDayCarbLimit}g/day, vegetarian meals lean carbier.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${vegCarbButtons}</div>
 
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Water Goal</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.water.goal} cups/day.</p>
