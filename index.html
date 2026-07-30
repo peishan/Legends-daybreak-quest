@@ -292,7 +292,7 @@ const TAVERN_FOODS = [
   { id:"f178", name:"Ayam Penyet (no rice)", cat:"🍱 Common Meals", fat:20.0, protein:35.0, carbs:8.0, emoji:"🍛" },
   { id:"f179", name:"Chicken Rendang (no rice)", cat:"🍱 Common Meals", fat:18.0, protein:28.0, carbs:5.0, emoji:"🍛" },
   { id:"f180", name:"Chicken Masala (no sauce, 100g)", cat:"🍱 Common Meals", fat:8.0, protein:25.0, carbs:4.0, emoji:"🍛" },
-  { id:"f335", name:"Breaded Chicken Cup (1 cup)", cat:"🍱 Common Meals", fat:18.0, protein:20.0, carbs:22.0, emoji:"🍗" },
+  { id:"f335", name:"Breaded Chicken Bites, mini cup (~6-8 pcs)", cat:"🍱 Common Meals", fat:6.0, protein:7.0, carbs:8.0, emoji:"🍗" },
   { id:"f181", name:"Lelapan (no rice, full)", cat:"🍱 Common Meals", fat:25.0, protein:35.0, carbs:6.0, emoji:"🍱" },
   { id:"f182", name:"Salty Chicken Soup (bowl)", cat:"🍱 Common Meals", fat:15.0, protein:35.0, carbs:3.0, emoji:"🥣" },
   { id:"f183", name:"1 Poppadom", cat:"🍱 Common Meals", fat:3.0, protein:2.0, carbs:8.0, emoji:"🫓" },
@@ -3592,11 +3592,17 @@ const REMINDER_LABELS = {
   supplements: { icon:"💊", label:"Afternoon Supplements", desc:"Methylene blue, Mega B, Collagen/glutathione, Cran Max — Mon–Sat.", days:[1,2,3,4,5,6] },
   magnesium: { icon:"🌌", label:"Magnesium Glycinate", desc:"~9:30 PM, before amitriptyline." },
   amitriptyline: { icon:"🌛", label:"Amitriptyline", desc:"~10:00 PM, before sleep." },
+  periodMeds: { icon:"🩸", label:"Tranexamic + Mefenamic Acid", desc:"Period days only.", periodOnly:true },
+  acv: { icon:"🍏", label:"Apple Cider Vinegar", desc:"With water, at night." },
+  healthCheckup: { icon:"🩺", label:"Yearly Health Checkup", desc:"August 31st.", onlyDate:"08-31" },
 };
 function reminderAppliesToday(key) {
   const info = REMINDER_LABELS[key];
-  if (!info || !info.days) return true;
-  return info.days.includes(new Date().getDay());
+  if (!info) return true;
+  if (info.days && !info.days.includes(new Date().getDay())) return false;
+  if (info.periodOnly && !isDateInPeriod(today())) return false;
+  if (info.onlyDate && today().slice(5) !== info.onlyDate) return false;
+  return true;
 }
 function toggleReminder(key) {
   ensureDaily();
