@@ -1663,7 +1663,10 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false },
+    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20 },
+    slackDays: [],
+    weightLog: [],
+    calendarNotes: {},
     bills: {
       electricity: { dueDay: 15, paidThisMonth: false, monthKey: null, streak: 0 },
       phone: { dueDay: 20, paidThisMonth: false, monthKey: null, streak: 0 },
@@ -1717,7 +1720,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -1913,8 +1916,23 @@ function canAfford(recipe) {
   const prereqOk = !recipe.requiresCrafted || state.crafted.includes(recipe.requiresCrafted);
   return goldOk && matsOk && prereqOk;
 }
-function carbLimitForDate(dateKey) { return LUNAR_VEG_DAYS_2026.includes(dateKey) ? state.settings.vegDayCarbLimit : state.settings.carbLimit; }
+function carbLimitForDate(dateKey) {
+  if (state.slackDays && state.slackDays.includes(dateKey)) return state.settings.slackDayCarbLimit;
+  let base = LUNAR_VEG_DAYS_2026.includes(dateKey) ? state.settings.vegDayCarbLimit : state.settings.carbLimit;
+  const pDay = periodDayNumber(dateKey);
+  if (pDay && pDay <= 2) base += state.settings.periodSweetBiteBonus;
+  return base;
+}
 function effectiveCarbLimit() { return carbLimitForDate(today()); }
+function isSlackDayToday() { return state.slackDays && state.slackDays.includes(today()); }
+function toggleSlackDay(dateKey) {
+  dateKey = dateKey || today();
+  const idx = state.slackDays.indexOf(dateKey);
+  if (idx >= 0) { state.slackDays.splice(idx, 1); }
+  else { state.slackDays.push(dateKey); }
+  save(); render();
+  showToast(idx >= 0 ? "Slack Day removed." : `🍰 Slack Day on — carb limit raised to ${state.settings.slackDayCarbLimit}g today. Enjoy it, then back to normal tomorrow.`);
+}
 function isVegDayToday() { return LUNAR_VEG_DAYS_2026.includes(today()); }
 function ensureDaily() {
   const t = today();
@@ -3706,6 +3724,11 @@ function cycleStats() {
 function isDateInPeriod(dateKey) {
   return state.cycles.periods.some(p => dateKey >= p.start && dateKey <= (p.end || today()));
 }
+function periodDayNumber(dateKey) {
+  const p = state.cycles.periods.find(p => dateKey >= p.start && dateKey <= (p.end || today()));
+  if (!p) return null;
+  return Math.round((new Date(dateKey) - new Date(p.start)) / 86400000) + 1;
+}
 function isDatePredictedPeriod(dateKey) {
   const stats = cycleStats();
   if (!stats || !stats.predictedNext) return false;
@@ -3715,6 +3738,65 @@ function isDatePredictedPeriod(dateKey) {
 }
 function openCycles() { ui.showCycles = true; render(); }
 function closeCycles() { ui.showCycles = false; render(); }
+
+/* ================= calendar day notes / reminders ================= */
+function openDay(dateKey) { ui.showDay = dateKey; render(); }
+function closeDay() { ui.showDay = null; render(); }
+function addDayNote() {
+  const ta = document.getElementById("dayNoteInput");
+  const dateKey = ui.showDay;
+  if (!ta || !ta.value.trim() || !dateKey) return;
+  if (!state.calendarNotes[dateKey]) state.calendarNotes[dateKey] = [];
+  state.calendarNotes[dateKey].push({ id: `note_${Date.now()}`, text: ta.value.trim(), done: false });
+  ta.value = "";
+  save(); render();
+}
+function deleteDayNote(combinedArg) {
+  const [dateKey, id] = combinedArg.split("|");
+  if (!state.calendarNotes[dateKey]) return;
+  state.calendarNotes[dateKey] = state.calendarNotes[dateKey].filter(n => n.id !== id);
+  if (!state.calendarNotes[dateKey].length) delete state.calendarNotes[dateKey];
+  save(); render();
+}
+function toggleDayNoteDone(combinedArg) {
+  const [dateKey, id] = combinedArg.split("|");
+  const note = state.calendarNotes[dateKey] && state.calendarNotes[dateKey].find(n => n.id === id);
+  if (!note) return;
+  note.done = !note.done;
+  save(); render();
+}
+
+/* ================= weigh-ins ================= */
+function logWeight() {
+  const inp = document.getElementById("weightInput");
+  if (!inp || !inp.value) return;
+  const v = parseFloat(inp.value);
+  if (isNaN(v) || v <= 0 || v > 500) return;
+  const existingIdx = state.weightLog.findIndex(w => w.date === today());
+  if (existingIdx >= 0) state.weightLog[existingIdx].weight = v;
+  else state.weightLog.push({ date: today(), weight: v });
+  state.weightLog.sort((a,b) => a.date < b.date ? -1 : 1);
+  inp.value = "";
+  const isFirst = state.weightLog.length === 1;
+  if (isFirst) grantReward(5, 5);
+  save(); render();
+  showToast(`⚖️ Weight logged: ${v}`);
+}
+function deleteWeightEntry(dateKey) {
+  state.weightLog = state.weightLog.filter(w => w.date !== dateKey);
+  save(); render();
+}
+function openWeightHistory() { ui.showWeightHistory = true; render(); }
+function closeWeightHistory() { ui.showWeightHistory = false; render(); }
+function weightStats() {
+  const log = state.weightLog;
+  if (!log.length) return null;
+  const first = log[0], latest = log[log.length-1];
+  const change = latest.weight - first.weight;
+  let recentChange = null;
+  if (log.length >= 2) recentChange = latest.weight - log[log.length-2].weight;
+  return { first, latest, change, recentChange, count: log.length };
+}
 
 const FOCUS_DURATIONS = [5, 10, 15, 20];
 function bondWithCompanion(companionId) {
@@ -3847,6 +3929,18 @@ function setWaterGoal(value) {
   if (!v || v < 1 || v > 20) return;
   ensureDaily();
   state.water.goal = v;
+  save(); render();
+}
+function setSlackDayCarbLimit(value) {
+  const v = parseInt(value, 10);
+  if (!v || v < 5 || v > 200) return;
+  state.settings.slackDayCarbLimit = v;
+  save(); render();
+}
+function setPeriodSweetBiteBonus(value) {
+  const v = parseInt(value, 10);
+  if (isNaN(v) || v < 0 || v > 100) return;
+  state.settings.periodSweetBiteBonus = v;
   save(); render();
 }
 function fmtMMSS(ms) {
@@ -4081,7 +4175,10 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   saveGistCredsFromForm, clearGistCreds, pushToGist, pullFromGist,
   openBirthdayMoment, closeBirthdayMoment, birthdayMomentNext,
   bondWithCompanion,
-  openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement };
+  openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement,
+  openDay, closeDay, addDayNote, deleteDayNote, toggleDayNoteDone, toggleSlackDay,
+  logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
+  setSlackDayCarbLimit, setPeriodSweetBiteBonus };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -4547,7 +4644,38 @@ function renderHome() {
     </div>
   `);
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  const wStats = weightStats();
+  const weighInCard = card(`
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:${wStats?10:0}px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.sageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">⚖️</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">Weigh-In</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${wStats ? `Latest: ${wStats.latest.weight} (${wStats.latest.date})${wStats.recentChange!==null ? ` · ${wStats.recentChange>0?"+":""}${wStats.recentChange.toFixed(1)} vs last` : ""}` : "Log your weight whenever you weigh in."}</p>
+        </div>
+        ${wStats ? `<button data-act="openWeightHistory" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.sage};color:white">History</button>` : ""}
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="weightInput" type="number" step="0.1" inputmode="decimal" placeholder="e.g. 68.5" style="flex:1;padding:9px 12px;border-radius:12px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12.5px;color:${C.ink}" />
+        <button data-act="logWeight" class="disp" style="padding:9px 16px;border-radius:12px;font-size:12px;font-weight:700;background:${C.mageDeep};color:white">Log</button>
+      </div>
+    </div>
+  `);
+
+  const todayNotes = state.calendarNotes[today()] || [];
+  const pendingTodayNotes = todayNotes.filter(n => !n.done);
+  const remindersCard = pendingTodayNotes.length ? card(`
+    <div style="padding:16px">
+      <p class="disp" style="font-weight:700;font-size:13px;margin:0 0 10px">🔔 Today's Reminders</p>
+      ${pendingTodayNotes.map(n => `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:${C.creamDeep};border-radius:12px;margin-bottom:6px">
+          <button data-act="toggleDayNoteDone" data-arg="${today()}|${n.id}" style="flex-shrink:0;margin-top:1px"><span style="font-size:14px">⬜</span></button>
+          <p style="flex:1;font-size:12.5px;color:${C.ink};margin:0;white-space:pre-wrap">${escapeHtml(n.text)}</p>
+        </div>`).join("")}
+    </div>
+  `) : "";
+
+  return `<div style="display:flex;flex-direction:column;gap:16px">${remindersCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${weighInCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderBillsCard() {
@@ -4646,7 +4774,7 @@ function renderTavern() {
         <p class="disp" style="font-weight:700;font-size:14px;margin:0;color:${C.mageDeep}">🍺 The Tavern</p>
         <button data-act="openTavern" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Log a Meal</button>
       </div>
-      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${effectiveCarbLimit()}g today.${isVegDayToday()?" 🌱 Vegetarian Day — limit relaxed.":""} ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${effectiveCarbLimit()}g today.${isSlackDayToday()?" 🍰 Slack Day — limit raised.":isVegDayToday()?" 🌱 Vegetarian Day — limit relaxed.":(periodDayNumber(today())&&periodDayNumber(today())<=2)?" 🩸 Period sweet-bite bonus applied.":""} ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Fat</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:#D9A441">${state.tavern.fatToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Protein</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${C.sage}">${state.tavern.proteinToday}g</p></div>
@@ -5566,13 +5694,15 @@ function renderCalendar() {
     const isFamilyDay = specialDay && specialDay.type === "family";
     const inPeriod = isDateInPeriod(key);
     const isPredictedPeriod = !inPeriod && isDatePredictedPeriod(key);
-    const tagRow = (isVegDay || holidayName || specialDay || inPeriod || isPredictedPeriod) ? `<div style="display:flex;gap:1px;margin-top:1px">${inPeriod?`<span style="font-size:7px">🩸</span>`:isPredictedPeriod?`<span style="font-size:7px">🔮</span>`:""}${isVegDay?`<span style="font-size:7px">🌱</span>`:""}${holidayName?`<span style="font-size:7px">🎉</span>`:""}${specialDay?`<span style="font-size:7px">${specialDay.icon}</span>`:""}</div>` : "";
-    const titleParts = [holidayName, isVegDay?"Vegetarian Day":null, isBirthday?`${specialDay.name}'s Birthday`:null, isFamilyDay?specialDay.name:null, inPeriod?"Period":null, isPredictedPeriod?"Predicted Period":null].filter(Boolean);
-    cells += `<div title="${escapeHtml(titleParts.join(" · "))}" style="aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${inPeriod?C.pink+"33":log ? col+"33" : C.creamDeep};border:${isToday ? `2px solid ${C.mageDeep}` : inPeriod ? `1px solid ${C.pink}` : isPredictedPeriod ? `1px dashed ${C.pink}` : isBirthday ? `1px solid ${C.pink}` : holidayName ? `1px solid ${C.gold}` : isVegDay ? `1px solid ${C.sage}` : "1px solid transparent"}">
-      <span style="font-size:11px;font-weight:${log?700:400}">${d}</span>
+    const hasNotes = !!(state.calendarNotes[key] && state.calendarNotes[key].length);
+    const isSlackDay = state.slackDays && state.slackDays.includes(key);
+    const tagRow = (isVegDay || holidayName || specialDay || inPeriod || isPredictedPeriod || hasNotes || isSlackDay) ? `<div style="display:flex;gap:1px;margin-top:1px">${inPeriod?`<span style="font-size:7px">🩸</span>`:isPredictedPeriod?`<span style="font-size:7px">🔮</span>`:""}${isVegDay?`<span style="font-size:7px">🌱</span>`:""}${holidayName?`<span style="font-size:7px">🎉</span>`:""}${specialDay?`<span style="font-size:7px">${specialDay.icon}</span>`:""}${isSlackDay?`<span style="font-size:7px">🍰</span>`:""}${hasNotes?`<span style="font-size:7px">📌</span>`:""}</div>` : "";
+    const titleParts = [holidayName, isVegDay?"Vegetarian Day":null, isBirthday?`${specialDay.name}'s Birthday`:null, isFamilyDay?specialDay.name:null, inPeriod?"Period":null, isPredictedPeriod?"Predicted Period":null, isSlackDay?"Slack Day":null, hasNotes?`${state.calendarNotes[key].length} note(s)`:null].filter(Boolean);
+    cells += `<button data-act="openDay" data-arg="${key}" title="${escapeHtml(titleParts.join(" · "))}" style="aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${inPeriod?C.pink+"33":log ? col+"33" : C.creamDeep};border:${isToday ? `2px solid ${C.mageDeep}` : inPeriod ? `1px solid ${C.pink}` : isPredictedPeriod ? `1px dashed ${C.pink}` : isBirthday ? `1px solid ${C.pink}` : holidayName ? `1px solid ${C.gold}` : isVegDay ? `1px solid ${C.sage}` : "1px solid transparent"}">
+      <span style="font-size:11px;font-weight:${log?700:400};color:${C.ink}">${d}</span>
       ${log ? `<div style="width:4px;height:4px;border-radius:4px;background:${col};margin-top:1px"></div>` : ""}
       ${tagRow}
-    </div>`;
+    </button>`;
   }
   const legend = ENCOUNTER_CYCLE.map(e => `<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:8px;background:${colors[e]}"></div><span style="font-size:11px;color:${C.inkSoft}">${e}</span></div>`).join("");
   return `<div>
@@ -5593,8 +5723,10 @@ function renderCalendar() {
       <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">💍</span><span style="font-size:11px;color:${C.inkSoft}">Family Date</span></div>
       <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">🩸</span><span style="font-size:11px;color:${C.inkSoft}">Period</span></div>
       <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">🔮</span><span style="font-size:11px;color:${C.inkSoft}">Predicted Period</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">📌</span><span style="font-size:11px;color:${C.inkSoft}">Note / Reminder</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px">🍰</span><span style="font-size:11px;color:${C.inkSoft}">Slack Day</span></div>
     </div>
-    <p style="font-size:10px;color:${C.inkSoft};margin:8px 0 0">Lunar days and Brunei holidays are marked for 2026. Birthdays, family dates, and cycles repeat/predict every year. Tap ◀▶ above to browse other months. Tap a marked day to see what it is.</p>
+    <p style="font-size:10px;color:${C.inkSoft};margin:8px 0 0">Lunar days and Brunei holidays are marked for 2026. Birthdays, family dates, and cycles repeat/predict every year. Tap ◀▶ above to browse other months. Tap any day to add a reminder, mark it a Slack Day, or see what it is.</p>
   </div>`;
 }
 
@@ -5992,6 +6124,78 @@ function renderNotebookModal() {
   </div>`;
 }
 
+function renderDayModal() {
+  const dateKey = ui.showDay;
+  if (!dateKey) return "";
+  const dt = new Date(dateKey + "T00:00:00");
+  const isToday = dateKey === today();
+  const isPast = dateKey < today();
+  const notes = state.calendarNotes[dateKey] || [];
+  const isSlackDay = state.slackDays && state.slackDays.includes(dateKey);
+  const inPeriod = isDateInPeriod(dateKey);
+  const pDay = periodDayNumber(dateKey);
+  const isVegDay = LUNAR_VEG_DAYS_2026.includes(dateKey);
+  const holidayName = BRUNEI_HOLIDAYS_2026[dateKey];
+  const specialDay = BIRTHDAYS[dateKey.slice(5)];
+  const tags = [
+    isToday ? "Today" : null,
+    inPeriod ? `Period${pDay ? ` · day ${pDay}` : ""}` : null,
+    isVegDay ? "🌱 Vegetarian Day" : null,
+    holidayName || null,
+    specialDay ? `${specialDay.icon} ${specialDay.name}` : null,
+  ].filter(Boolean);
+  const noteRows = notes.map(n => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:${n.done?C.sageSoft:C.creamDeep};border-radius:12px;margin-bottom:6px">
+      <button data-act="toggleDayNoteDone" data-arg="${dateKey}|${n.id}" style="flex-shrink:0;margin-top:1px"><span style="font-size:14px">${n.done?"✅":"⬜"}</span></button>
+      <p style="flex:1;font-size:12.5px;color:${C.ink};margin:0;white-space:pre-wrap;text-decoration:${n.done?"line-through":"none"};opacity:${n.done?0.6:1}">${escapeHtml(n.text)}</p>
+      <button data-act="deleteDayNote" data-arg="${dateKey}|${n.id}"><span style="color:${C.inkSoft};font-size:12px">✖</span></button>
+    </div>`).join("");
+  const carbForDay = carbLimitForDate(dateKey);
+  return `<div style="position:fixed;inset:0;z-index:54;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${dt.toLocaleDateString("default",{weekday:"long",month:"long",day:"numeric"})}</p>
+        <button data-act="closeDay"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      ${tags.length ? `<p style="font-size:11px;color:${C.inkSoft};margin:0 0 14px">${escapeHtml(tags.join(" · "))}</p>` : `<div style="margin-bottom:14px"></div>`}
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">🔔 Notes & Reminders</p>
+      <textarea id="dayNoteInput" placeholder="${isToday?"Something you need to do today…":"Add a note for this day…"}" style="width:100%;height:56px;font-size:12.5px;background:${C.creamDeep};border:1px solid ${C.border};border-radius:12px;padding:10px;color:${C.ink};margin-bottom:8px"></textarea>
+      <button data-act="addDayNote" data-arg="${dateKey}" class="disp" style="width:100%;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${C.mageDeep};color:white;margin-bottom:12px">Add</button>
+      ${noteRows || `<p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 16px">No notes for this day yet.</p>`}
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.gold};margin:16px 0 6px">🍰 Slack Day</p>
+      <p style="font-size:11px;color:${C.inkSoft};margin:0 0 8px">${isSlackDay ? `On — carb limit is ${carbForDay}g for this day.` : `A planned, guilt-free higher-carb day. Turning it on for ${dateKey} raises the limit to ${state.settings.slackDayCarbLimit}g just for that day — everything resets back to normal the next day.`}</p>
+      <button data-act="toggleSlackDay" data-arg="${dateKey}" class="disp" style="width:100%;padding:10px;border-radius:16px;font-weight:600;font-size:12.5px;background:${isSlackDay?C.creamDeep:C.gold};color:${isSlackDay?C.inkSoft:"white"}">${isSlackDay?"Remove Slack Day":"Mark as Slack Day"}</button>
+    </div>
+  </div>`;
+}
+
+function renderWeightHistoryModal() {
+  if (!ui.showWeightHistory) return "";
+  const rows = state.weightLog.slice().reverse().map((w,i,arr) => {
+    const prev = arr[i+1];
+    const diff = prev ? +(w.weight - prev.weight).toFixed(1) : null;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${C.creamDeep};border-radius:12px;margin-bottom:6px">
+        <div style="flex:1">
+          <p style="font-size:12.5px;color:${C.ink};margin:0;font-weight:600">${w.weight}</p>
+          <p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${w.date}${diff!==null ? ` · ${diff>0?"+":""}${diff}` : ""}</p>
+        </div>
+        <button data-act="deleteWeightEntry" data-arg="${w.date}"><span style="color:${C.inkSoft};font-size:11px">✖</span></button>
+      </div>`;
+  }).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">⚖️ Weigh-Ins</p>
+        <button data-act="closeWeightHistory"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      ${rows || `<p style="font-size:12px;color:${C.inkSoft}">Nothing logged yet.</p>`}
+    </div>
+  </div>`;
+}
+
 function renderJournalModal() {
   if (!ui.showJournal) return "";
   const tabs = [["story","📖 Chronicle"],["companion","💞 Companions"],["sidequest","🗺️ Side Quests"],["stronghold","🗼 Stronghold"]];
@@ -6262,6 +6466,10 @@ function renderSettingsModal() {
   const carbButtons = carbPresets.map(v => `<button data-act="setCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.carbLimit===v?C.mageDeep:C.creamDeep};color:${state.settings.carbLimit===v?"white":C.ink}">${v}g</button>`).join("");
   const vegCarbPresets = [40, 50, 60, 70];
   const vegCarbButtons = vegCarbPresets.map(v => `<button data-act="setVegDayCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.vegDayCarbLimit===v?C.sage:C.creamDeep};color:${state.settings.vegDayCarbLimit===v?"white":C.ink}">${v}g</button>`).join("");
+  const slackCarbPresets = [60, 80, 100, 120];
+  const slackCarbButtons = slackCarbPresets.map(v => `<button data-act="setSlackDayCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.slackDayCarbLimit===v?C.gold:C.creamDeep};color:${state.settings.slackDayCarbLimit===v?"white":C.ink}">${v}g</button>`).join("");
+  const periodBonusPresets = [0, 10, 20, 30];
+  const periodBonusButtons = periodBonusPresets.map(v => `<button data-act="setPeriodSweetBiteBonus" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.periodSweetBiteBonus===v?C.pink:C.creamDeep};color:${state.settings.periodSweetBiteBonus===v?"white":C.ink}">+${v}g</button>`).join("");
   const waterPresets = [6, 8, 10, 12];
   const waterButtons = waterPresets.map(v => `<button data-act="setWaterGoal" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.water.goal===v?C.mage:C.creamDeep};color:${state.water.goal===v?"white":C.ink}">${v} cups</button>`).join("");
   const notifSupported = typeof Notification !== "undefined";
@@ -6285,6 +6493,14 @@ function renderSettingsModal() {
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.sage};margin:0 0 6px">🌱 Vegetarian Day Carb Limit</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">More forgiving on lunar 1st/15th (2×/month) — currently ${state.settings.vegDayCarbLimit}g/day, vegetarian meals lean carbier.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${vegCarbButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.gold};margin:0 0 6px">🍰 Slack Day Carb Limit</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">The limit for any day you mark as a Slack Day from the Calendar — currently ${state.settings.slackDayCarbLimit}g. Use it deliberately, not automatically.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${slackCarbButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🍬 Period Sweet-Bite Bonus</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Extra carbs allowed on day 1–2 of your period (on top of your normal limit) — currently +${state.settings.periodSweetBiteBonus}g.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${periodBonusButtons}</div>
 
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Water Goal</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.water.goal} cups/day.</p>
@@ -6514,6 +6730,8 @@ function render() {
     ${renderBirthdayModal()}
     ${renderNotebookModal()}
     ${renderCyclesModal()}
+    ${renderDayModal()}
+    ${renderWeightHistoryModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
