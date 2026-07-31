@@ -1720,7 +1720,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -3587,6 +3587,33 @@ function orderTavernItem(itemId) {
   else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${effectiveCarbLimit()}g carbs today.`);
 }
 
+function toggleCustomFoodForm() { ui.showCustomFoodForm = !ui.showCustomFoodForm; render(); }
+function orderCustomFood() {
+  ensureDaily();
+  const nameEl = document.getElementById("customFoodName");
+  const carbsEl = document.getElementById("customFoodCarbs");
+  const fatEl = document.getElementById("customFoodFat");
+  const proteinEl = document.getElementById("customFoodProtein");
+  if (!nameEl || !carbsEl) return;
+  const name = nameEl.value.trim() || "Off-menu bite";
+  const carbs = parseFloat(carbsEl.value) || 0;
+  const fat = parseFloat(fatEl.value) || 0;
+  const protein = parseFloat(proteinEl.value) || 0;
+  if (carbs < 0 || fat < 0 || protein < 0) return;
+  const wouldExceed = (state.tavern.carbsToday + carbs) > effectiveCarbLimit();
+  state.tavern.carbsToday = Math.round((state.tavern.carbsToday + carbs) * 10) / 10;
+  state.tavern.fatToday = Math.round((state.tavern.fatToday + fat) * 10) / 10;
+  state.tavern.proteinToday = Math.round((state.tavern.proteinToday + protein) * 10) / 10;
+  state.tavern.log.push({ id: `custom_${Date.now()}`, name, icon: "🍽️", carbs, fat, protein, overBudget: wouldExceed, custom: true });
+  nameEl.value = ""; carbsEl.value = ""; fatEl.value = ""; proteinEl.value = "";
+  ui.showCustomFoodForm = false;
+  const leveledUp = grantReward(2, 2);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else if (wouldExceed) showToast(`⚠️ ${name} logged, over budget — ${state.tavern.carbsToday}g carbs today.`);
+  else showToast(`🍽️ ${name} logged. ${state.tavern.carbsToday}/${effectiveCarbLimit()}g carbs today.`);
+}
+
 function openTavern() { ui.showTavern = true; render(); }
 function closeTavern() { ui.showTavern = false; render(); }
 function filterTavernFoods(query) {
@@ -4178,7 +4205,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement,
   openDay, closeDay, addDayNote, deleteDayNote, toggleDayNoteDone, toggleSlackDay,
   logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
-  setSlackDayCarbLimit, setPeriodSweetBiteBonus };
+  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -4835,6 +4862,28 @@ function renderTavernModal() {
         <button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Log</button>
       </div>`;
   }).join("");
+  const customFoodSection = ui.showCustomFoodForm ? `
+    <div style="padding:12px;border-radius:14px;background:${C.mageSoft};margin-bottom:12px">
+      <p class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:0 0 8px">🍽️ Log Something Off-Menu</p>
+      <input id="customFoodName" type="text" placeholder="What was it? (optional)" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink};margin-bottom:6px" />
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div style="flex:1">
+          <p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Carbs (g)</p>
+          <input id="customFoodCarbs" type="number" step="0.1" inputmode="decimal" placeholder="0" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink}" />
+        </div>
+        <div style="flex:1">
+          <p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Fat (g)</p>
+          <input id="customFoodFat" type="number" step="0.1" inputmode="decimal" placeholder="0" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink}" />
+        </div>
+        <div style="flex:1">
+          <p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Protein (g)</p>
+          <input id="customFoodProtein" type="number" step="0.1" inputmode="decimal" placeholder="0" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink}" />
+        </div>
+      </div>
+      <button data-act="orderCustomFood" class="disp" style="width:100%;padding:9px;border-radius:12px;font-weight:700;font-size:12px;background:${C.mageDeep};color:white">Log It</button>
+      <p style="font-size:9.5px;color:${C.inkSoft};margin:6px 0 0">A one-off — this won't be added to your regular menu.</p>
+    </div>`
+    : `<button data-act="toggleCustomFoodForm" class="disp" style="width:100%;padding:9px;border-radius:12px;font-weight:700;font-size:11.5px;background:${C.mageSoft};color:${C.mageDeep};margin-bottom:12px">🍽️ Log Something Off-Menu (one-off)</button>`;
   return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
     <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:88vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -4842,7 +4891,8 @@ function renderTavernModal() {
         <button data-act="closeTavern"><span style="color:${C.inkSoft}">✖</span></button>
       </div>
       ${favRow}
-      <input type="text" placeholder="Search foods…" oninput="filterTavernFoods(this.value)" style="width:100%;padding:10px 14px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:13px;margin-bottom:4px" />
+      <input type="text" placeholder="Search foods…" oninput="filterTavernFoods(this.value)" style="width:100%;padding:10px 14px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:13px;margin-bottom:10px" />
+      ${customFoodSection}
       ${rows}
     </div>
   </div>`;
