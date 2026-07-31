@@ -1595,7 +1595,11 @@ const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0
 const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 const hashDay = (s) => { let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0; return h; };
 const encounterForDate = (dateStr) => ENCOUNTER_CYCLE[hashDay(dateStr) % ENCOUNTER_CYCLE.length];
-const today = () => dayKey(new Date());
+function nowShifted() {
+  const resetHour = (state && state.settings && typeof state.settings.dayResetHour === "number") ? state.settings.dayResetHour : 8;
+  return new Date(Date.now() - resetHour * 3600000);
+}
+const today = () => dayKey(nowShifted());
 const xpToNext = (level) => 50 + level * 25;
 const fmtMs = (ms) => { const m = Math.max(1, Math.ceil(ms/60000)); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${m%60}m`; };
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1663,7 +1667,7 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20 },
+    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20, dayResetHour: 8 },
     slackDays: [],
     weightLog: [],
     calendarNotes: {},
@@ -1936,7 +1940,7 @@ function toggleSlackDay(dateKey) {
 function isVegDayToday() { return LUNAR_VEG_DAYS_2026.includes(today()); }
 function ensureDaily() {
   const t = today();
-  const mk = monthKey(new Date());
+  const mk = monthKey(nowShifted());
   ["electricity","phone"].forEach(billId => {
     const bill = state.bills[billId];
     if (bill.monthKey && bill.monthKey !== mk) {
@@ -3644,7 +3648,7 @@ const REMINDER_LABELS = {
 function reminderAppliesToday(key) {
   const info = REMINDER_LABELS[key];
   if (!info) return true;
-  if (info.days && !info.days.includes(new Date().getDay())) return false;
+  if (info.days && !info.days.includes(nowShifted().getDay())) return false;
   if (info.periodOnly && !isDateInPeriod(today())) return false;
   if (info.onlyDate && today().slice(5) !== info.onlyDate) return false;
   return true;
@@ -3672,7 +3676,7 @@ function markBillPaid(billId) {
   ensureDaily();
   const bill = state.bills[billId];
   if (!bill || bill.paidThisMonth) return;
-  const dayOfMonth = new Date().getDate();
+  const dayOfMonth = nowShifted().getDate();
   const onTime = dayOfMonth <= bill.dueDay;
   bill.paidThisMonth = true;
   const leveledUp = grantReward(onTime ? 10 : 6, onTime ? 8 : 5);
@@ -3970,6 +3974,13 @@ function setPeriodSweetBiteBonus(value) {
   state.settings.periodSweetBiteBonus = v;
   save(); render();
 }
+function setDayResetHour(value) {
+  const v = parseInt(value, 10);
+  if (isNaN(v) || v < 0 || v > 23) return;
+  state.settings.dayResetHour = v;
+  save(); render();
+  showToast(v === 0 ? "Daily reset set to midnight." : `Daily reset set to ${v}am.`);
+}
 function fmtMMSS(ms) {
   const totalSec = Math.max(0, Math.ceil(ms/1000));
   const m = Math.floor(totalSec/60);
@@ -4205,7 +4216,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement,
   openDay, closeDay, addDayNote, deleteDayNote, toggleDayNoteDone, toggleSlackDay,
   logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
-  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood };
+  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -4706,7 +4717,7 @@ function renderHome() {
 }
 
 function renderBillsCard() {
-  const todayDate = new Date().getDate();
+  const todayDate = nowShifted().getDate();
   const rows = Object.entries(BILL_LABELS).map(([billId, info]) => {
     const bill = state.bills[billId];
     const overdue = !bill.paidThisMonth && todayDate > bill.dueDay;
@@ -6520,6 +6531,9 @@ function renderSettingsModal() {
   const slackCarbButtons = slackCarbPresets.map(v => `<button data-act="setSlackDayCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.slackDayCarbLimit===v?C.gold:C.creamDeep};color:${state.settings.slackDayCarbLimit===v?"white":C.ink}">${v}g</button>`).join("");
   const periodBonusPresets = [0, 10, 20, 30];
   const periodBonusButtons = periodBonusPresets.map(v => `<button data-act="setPeriodSweetBiteBonus" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.periodSweetBiteBonus===v?C.pink:C.creamDeep};color:${state.settings.periodSweetBiteBonus===v?"white":C.ink}">+${v}g</button>`).join("");
+  const resetHourPresets = [0, 4, 6, 8, 10];
+  const resetHourLabel = (h) => h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h-12}pm`;
+  const resetHourButtons = resetHourPresets.map(v => `<button data-act="setDayResetHour" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.dayResetHour===v?C.mageDeep:C.creamDeep};color:${state.settings.dayResetHour===v?"white":C.ink}">${resetHourLabel(v)}</button>`).join("");
   const waterPresets = [6, 8, 10, 12];
   const waterButtons = waterPresets.map(v => `<button data-act="setWaterGoal" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.water.goal===v?C.mage:C.creamDeep};color:${state.water.goal===v?"white":C.ink}">${v} cups</button>`).join("");
   const notifSupported = typeof Notification !== "undefined";
@@ -6551,6 +6565,10 @@ function renderSettingsModal() {
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🍬 Period Sweet-Bite Bonus</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Extra carbs allowed on day 1–2 of your period (on top of your normal limit) — currently +${state.settings.periodSweetBiteBonus}g.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${periodBonusButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">🌅 Daily Reset Time</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">When your "day" rolls over — carbs, water, streak, reminders, all of it. Currently ${resetHourLabel(state.settings.dayResetHour)}. Log anything before that time and it still counts toward the previous day.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${resetHourButtons}</div>
 
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Water Goal</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.water.goal} cups/day.</p>
