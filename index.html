@@ -868,6 +868,10 @@ const BOSSES = [
     intro:"The Final Excuse is smaller than the others, almost reasonable-sounding. That's what makes it dangerous.",
     hpMult:8.2, phaseLines:["It stumbles over its own reasoning — even it doesn't fully believe this one.", "Nearly out of ways to sound convincing. There's really nothing left to excuse."],
     ability:{ type:"debuff", stat:"hit", amount:4, rounds:2, line:"\"Just this once,\" it offers, reasonable as ever — and just for a moment, it almost sounds right." } },
+  { id:"hollow_victory", name:"The Hollow Victory", minLv:100,
+    intro:"The Hollow Victory wears the shape of everything you've already won, insisting none of it was ever quite enough.",
+    hpMult:9.0, phaseLines:["It flickers — for a second it can't decide what 'enough' was even supposed to mean.", "Barely a shape left. Winning was never going to feel like this one described it."],
+    ability:{ type:"summon", name:"Unmet Bar", icon:"📏", hpFrac:0.16, line:"It raises the bar again, just out of reach, just to keep the win from ever landing." } },
 ];
 function pickBossForLevel(level) {
   const bucket = level < 10 ? 1 : Math.floor(level/10) * 10;
@@ -1612,9 +1616,28 @@ function isoWeekKey(d) {
   return `${date.getUTCFullYear()}-W${weekNo}`;
 }
 
+function challengeScale(level) {
+  const over = Math.max(0, level - 50);
+  return 1 + over * 0.025;
+}
+function rewardScale(level) {
+  const over = Math.max(0, level - 50);
+  return 1 + over * 0.02;
+}
+function encAC(isBoss) {
+  return (isBoss ? 12 : 9) + (state.eliteMode ? 2 : 0);
+}
+function canUseEliteMode() { return state.player.level >= 50; }
+function toggleEliteMode() {
+  if (!canUseEliteMode()) return;
+  state.eliteMode = !state.eliteMode;
+  save(); render();
+  showToast(state.eliteMode ? "⚔️ Elite Mode ON — enemies hit harder, everything's worth more." : "Elite Mode off — back to standard difficulty.");
+}
+
 function effectiveChargeCap() { return CHARGE_CAP + (state.ascensionRank||0); }
 
-function nextAscensionLevel() { return 100 + (state.ascensionRank||0) * 15; }
+function nextAscensionLevel() { return 50 + (state.ascensionRank||0) * 20; }
 function canAscend() { return state.player.level >= nextAscensionLevel(); }
 function ascensionTitle(rank) { return rank <= 0 ? null : `Ascended ${rank}`; }
 function ascend() {
@@ -1671,6 +1694,7 @@ function defaultState() {
     slackDays: [],
     weightLog: [],
     calendarNotes: {},
+    eliteMode: false,
     bills: {
       electricity: { dueDay: 15, paidThisMonth: false, monthKey: null, streak: 0 },
       phone: { dueDay: 20, paidThisMonth: false, monthKey: null, streak: 0 },
@@ -2249,7 +2273,7 @@ function beginRaid() {
   if (charges < cost) return;
   if ((state.activeParty||[]).length < 3) { showToast("Bring at least 3 companions before starting a Raid."); return; }
   const boss = pickBossForLevel(state.player.level);
-  const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult * 1.8);
+  const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult * 1.8 * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
   ui.encounter = { isBoss:true, isRaid:true, bossId:boss.id, enemyName:`${boss.name} (Raid)`, cost, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
   render();
 }
@@ -2275,7 +2299,7 @@ function beginDragonHunt(dragonId) {
   const { charges } = getCharges(state, ui.now);
   if (charges < cost) return;
   state.dragonSigns -= DRAGON_SIGN_COST;
-  const enemyMaxHp = Math.round((30 + state.player.level*8) * dragon.hpMult * 2.2);
+  const enemyMaxHp = Math.round((30 + state.player.level*8) * dragon.hpMult * 2.2 * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
   const log = [dragon.intro];
   const mercenaryId = state.hiredMercenary;
   if (mercenaryId) {
@@ -2294,7 +2318,7 @@ function applyMercenaryStrike(enc) {
   if (!merc) return;
   const roll = rollD20();
   const hitBonus = Math.floor(state.player.level/4) + merc.hitBonus;
-  const AC = enc.isBoss ? 12 : 9;
+  const AC = encAC(enc.isBoss);
   if (roll === 1) { enc.log.push(`${merc.name} swings and misses.`); return; }
   const isCrit = roll === 20;
   if (!isCrit && roll + hitBonus < AC) { enc.log.push(`${merc.name}'s strike glances off.`); return; }
@@ -2320,13 +2344,13 @@ function beginCall() {
   if (charges < cost) return;
   if (isBossDay) {
     const boss = pickBossForLevel(state.player.level);
-    const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult);
+    const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
     ui.encounter = { isBoss:true, bossId:boss.id, enemyName:boss.name, cost, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
   } else {
     const count = rollEnemyCount(state.player.level);
     const chosen = Array.from({length: count}).map(() => ENEMIES[Math.floor(Math.random()*ENEMIES.length)]);
     const enemies = chosen.map(e => {
-      const maxHp = Math.round((18 + state.player.level*6) * e.hpMod);
+      const maxHp = Math.round((18 + state.player.level*6) * e.hpMod * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
       return { name: e.name, hp: maxHp, maxHp };
     });
     const introLines = count === 1 ? [chosen[0].intro] : [`${count} enemies close in around you.`, ...chosen.map(e => e.intro)];
@@ -2343,7 +2367,7 @@ function beginHunt(monsterId) {
   const { charges } = getCharges(state, ui.now);
   const cost = 1;
   if (charges < cost) return;
-  const enemyMaxHp = Math.round((20 + state.player.level*5.5) * monster.hpMod);
+  const enemyMaxHp = Math.round((20 + state.player.level*5.5) * monster.hpMod * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
   ui.encounter = { isBoss:false, isHunt:true, cost, enemies:[{ name:monster.name, hp:enemyMaxHp, maxHp:enemyMaxHp }], targetIndex:0, log:[monster.intro], resolved:false };
   ui.showHuntingGrounds = false;
   render();
@@ -2406,7 +2430,7 @@ function rollAndApplyDamage(enc, isBoss, spell) {
   const luckBonus = eb.luck + familiarLuckBonus();
   const debuffPenalty = (enc.hitPenaltyRounds > 0) ? (enc.hitPenalty||0) : 0;
   const hitBonus = Math.floor(state.player.level/4) + luckBonus + dexMod + divinerBonus - debuffPenalty;
-  const AC = isBoss ? 12 : 9;
+  const AC = encAC(isBoss);
   const roll = rollD20();
 
   if (roll === 1) {
@@ -2526,7 +2550,7 @@ function applyPartyStrikes(enc, isBoss) {
     const lvlBonus = companionLevelBonus(pid);
     const roll = rollD20();
     const hitBonus = Math.floor(state.player.level/4) + gearHit + Math.floor(lvlBonus/3);
-    const AC = isBoss ? 12 : 9;
+    const AC = encAC(isBoss);
     const targetIdx = enc.enemies ? encRandomAliveIndex(enc) : undefined;
     const targetName = enc.enemies ? (enc.enemies[targetIdx] ? enc.enemies[targetIdx].name : member.name) : null;
     if (gainCompanionXp(pid, 2)) leveledCompanions.push(member.name);
@@ -2656,12 +2680,12 @@ function resolveVictory() {
   const enc = ui.encounter;
   const isBoss = enc.isBoss;
   const enemyCount = enc.enemies ? enc.enemies.length : 1;
-  const mult = (isBoss ? 3 : 1) * (enc.isRaid ? 2.2 : 1) * (enc.enemies ? (0.7 + enemyCount*0.4) : 1);
+  const mult = (isBoss ? 3 : 1) * (enc.isRaid ? 2.2 : 1) * (enc.enemies ? (0.7 + enemyCount*0.4) : 1) * rewardScale(state.player.level) * (state.eliteMode ? 1.75 : 1);
   const goldBonus = (passiveActive("aisyah") ? (state.questFlags.aisyahBonus ? 1.35 : 1.2) : 1) * (1 + abilityMod(abilityScores().cha)*0.05);
   const xpBonus = passiveActive("mezstorm") ? 1.15 : 1;
   const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult);
   const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult);
-  const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0) + (enc.isRaid ? 2 : 0) + Math.max(0, enemyCount-1);
+  const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0) + (enc.isRaid ? 2 : 0) + Math.max(0, enemyCount-1) + (state.eliteMode ? 1 : 0);
   const drops = {};
   for (let i=0;i<dropCount;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
   if (isBoss) {
@@ -3119,11 +3143,11 @@ function advanceDungeonRoom() {
   if (type === "combat") {
     const enemy = ENEMIES[Math.floor(Math.random()*ENEMIES.length)];
     const mult = 1 + dg.roomIndex*0.12;
-    const enemyMaxHp = Math.round((16 + state.player.level*5) * enemy.hpMod * mult);
+    const enemyMaxHp = Math.round((16 + state.player.level*5) * enemy.hpMod * mult * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
     dg.roomState = { type:"combat", enemyName:enemy.name, enemyHp:enemyMaxHp, enemyMaxHp, log:[enemy.intro], resolved:false };
   } else if (type === "boss") {
     const boss = pickBossForLevel(state.player.level);
-    const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult * 1.3);
+    const enemyMaxHp = Math.round((18 + state.player.level*6) * boss.hpMult * 1.3 * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
     dg.roomState = { type:"boss", isBoss:true, bossId:boss.id, enemyName:boss.name, phaseSeen:0, enemyHp:enemyMaxHp, enemyMaxHp, log:[boss.intro], resolved:false };
   } else if (type === "trap") {
     dg.roomState = { type:"trap", resolved:false, log:[] };
@@ -3255,7 +3279,7 @@ function beginExpedition() {
   const { charges } = getCharges(state, ui.now);
   if (charges < cost) return;
   const enemy = ENEMIES[Math.floor(Math.random()*ENEMIES.length)];
-  const enemyMaxHp = Math.round((16 + state.player.level*5) * enemy.hpMod);
+  const enemyMaxHp = Math.round((16 + state.player.level*5) * enemy.hpMod * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
   ui.expedition = { wave:1, cost, enemyName:enemy.name, enemyHp:enemyMaxHp, enemyMaxHp,
     log:[`Wave 1: ${enemy.intro}`], resolved:false, cumGold:0, cumXp:0, drops:{} };
   render();
@@ -3285,7 +3309,7 @@ function castExpeditionSpell(spellId) {
       const nextEnemy = ENEMIES[Math.floor(Math.random()*ENEMIES.length)];
       const mult = exp.wave === EXPEDITION_WAVES ? 1.5 : 1.15;
       exp.enemyName = nextEnemy.name;
-      exp.enemyMaxHp = Math.round((16 + state.player.level*5) * nextEnemy.hpMod * mult);
+      exp.enemyMaxHp = Math.round((16 + state.player.level*5) * nextEnemy.hpMod * mult * challengeScale(state.player.level) * (state.eliteMode?1.5:1));
       exp.enemyHp = exp.enemyMaxHp;
       exp.log.push(`Wave ${exp.wave}${exp.wave === EXPEDITION_WAVES ? " — a tougher foe emerges" : ""}: ${nextEnemy.intro}`);
     } else {
@@ -4216,7 +4240,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement,
   openDay, closeDay, addDayNote, deleteDayNote, toggleDayNoteDone, toggleSlackDay,
   logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
-  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour };
+  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -4521,6 +4545,17 @@ function renderHome() {
     </div>
   `) : "";
 
+  const eliteModeCard = canUseEliteMode() ? card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;background:${state.eliteMode ? `linear-gradient(135deg, #E85B5B33, ${C.mageSoft})` : C.card}">
+      <div style="width:42px;height:42px;border-radius:12px;background:${state.eliteMode?'#E85B5B55':C.creamDeep};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">⚔️</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Elite Mode ${state.eliteMode?"— ON":""}</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${state.eliteMode ? "Tougher enemies, harder to hit — and everything pays out more." : "Optional — raises enemy HP/AC and reward payouts across the board."}</p>
+      </div>
+      <button data-act="toggleEliteMode" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;flex-shrink:0;background:${state.eliteMode?'#E85B5B':C.creamDeep};color:${state.eliteMode?'white':C.ink}">${state.eliteMode?"Turn Off":"Turn On"}</button>
+    </div>
+  `) : "";
+
   const repBonusCard = ((state.reputation||0) >= 75 && !state.repBonusClaimed) ? card(`
     <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.gold}22, ${C.cream})">
       <div style="width:42px;height:42px;border-radius:12px;background:${C.gold}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🏅</span></div>
@@ -4713,7 +4748,7 @@ function renderHome() {
     </div>
   `) : "";
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${remindersCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${weighInCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${remindersCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${weighInCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderBillsCard() {
