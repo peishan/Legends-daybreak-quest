@@ -67,8 +67,8 @@ const MATERIALS_REFINED = ["Herbal Extract", "Silver Ingot", "Ember Core", "Star
 
 const CHARGE_CAP = 6;
 const CHARGE_REGEN_MS = 90 * 60 * 1000;
-const LOCATION_COOLDOWN_MS = 8 * 60 * 1000;
-const LANDMARK_COOLDOWN_MS = 5 * 60 * 1000;
+const LOCATION_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+const LANDMARK_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 const REST_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 
 const TAVERN_FOODS = [
@@ -1695,6 +1695,8 @@ function defaultState() {
     weightLog: [],
     calendarNotes: {},
     eliteMode: false,
+    medPrn: {},
+    sickness: { episodes: [] },
     bills: {
       electricity: { dueDay: 15, paidThisMonth: false, monthKey: null, streak: 0 },
       phone: { dueDay: 20, paidThisMonth: false, monthKey: null, streak: 0 },
@@ -1748,7 +1750,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false, showMedHistory:false, showSickTracker:false };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -2793,24 +2795,27 @@ function visitLocation(id) {
   if (ui.now - last < LOCATION_COOLDOWN_MS) return;
   ensureDaily();
   const line = loc.flavor[Math.floor(Math.random()*loc.flavor.length)];
-  const gold = 1 + Math.floor(Math.random()*4);
-  const foundMaterial = Math.random() < 0.25;
+  const gold = 5 + Math.floor(Math.random()*16);
+  const foundMaterial = Math.random() < 0.4;
+  const bonusMaterial = foundMaterial && Math.random() < 0.3;
   const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
+  const mat2 = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
   state.locations[id] = ui.now;
   state.player.gold += gold;
   if (foundMaterial) { state.materials[mat] = (state.materials[mat]||0) + 1; state.dailyLog.materialsGathered += 1; }
+  if (bonusMaterial) { state.materials[mat2] = (state.materials[mat2]||0) + 1; state.dailyLog.materialsGathered += 1; }
 
   let chestJustFound = false;
   let skirmishEnemy = null;
-  if (state.player.level >= 3 && !state.questFlags.chestFound && !state.questFlags.chestChoice && Math.random() < 0.12) {
+  if (state.player.level >= 3 && !state.questFlags.chestFound && !state.questFlags.chestChoice && Math.random() < 0.16) {
     state.questFlags.chestFound = true;
     chestJustFound = true;
-  } else if (Math.random() < 0.22) {
+  } else if (Math.random() < 0.28) {
     skirmishEnemy = WANDERING_MONSTERS[Math.floor(Math.random()*WANDERING_MONSTERS.length)];
   }
 
   save(); render();
-  showToast(`${line} (+${gold}g${foundMaterial ? `, +1 ${mat}` : ""})`);
+  showToast(`${line} (+${gold}g${foundMaterial ? `, +1 ${mat}` : ""}${bonusMaterial ? `, +1 ${mat2}` : ""})`);
   if (chestJustFound) setTimeout(() => { ui.showChest = true; render(); }, 1600);
   else if (skirmishEnemy) setTimeout(() => { ui.skirmish = { ...skirmishEnemy, resolved:false }; render(); }, 1400);
 }
@@ -2825,8 +2830,8 @@ function visitLandmark(combinedArg) {
   if (ui.now - last < LANDMARK_COOLDOWN_MS) return;
   ensureDaily();
   const line = loc.flavor[Math.floor(Math.random()*loc.flavor.length)];
-  const gold = 1 + Math.floor(Math.random()*3);
-  const foundMaterial = Math.random() < 0.18;
+  const gold = 4 + Math.floor(Math.random()*13);
+  const foundMaterial = Math.random() < 0.32;
   const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
   state.landmarkVisits[landmarkId] = ui.now;
   state.player.gold += gold;
@@ -2834,10 +2839,10 @@ function visitLandmark(combinedArg) {
 
   let chestJustFound = false;
   let skirmishEnemy = null;
-  if (state.player.level >= 3 && !state.questFlags.chestFound && !state.questFlags.chestChoice && Math.random() < 0.08) {
+  if (state.player.level >= 3 && !state.questFlags.chestFound && !state.questFlags.chestChoice && Math.random() < 0.11) {
     state.questFlags.chestFound = true;
     chestJustFound = true;
-  } else if (Math.random() < 0.16) {
+  } else if (Math.random() < 0.20) {
     skirmishEnemy = WANDERING_MONSTERS[Math.floor(Math.random()*WANDERING_MONSTERS.length)];
   }
 
@@ -3663,6 +3668,12 @@ const REMINDER_LABELS = {
   fedSoel: { icon:"🐱", label:"Feed Soel", desc:"He's not subtle about reminding you either." },
   sleptEarly: { icon:"🌙", label:"Sleep Early", desc:"Lights out before midnight." },
   supplements: { icon:"💊", label:"Afternoon Supplements", desc:"Methylene blue, Mega B, Collagen/glutathione, Cran Max — Mon–Sat.", days:[1,2,3,4,5,6] },
+  coughLinctusMorning: { icon:"🍯", label:"Cough Linctus — Morning", desc:"While you're sick, 3x daily.", sickOnly:true },
+  coughLinctusAfternoon: { icon:"🍯", label:"Cough Linctus — Afternoon", desc:"While you're sick, 3x daily.", sickOnly:true },
+  coughLinctusNight: { icon:"🍯", label:"Cough Linctus — Night", desc:"While you're sick, 3x daily.", sickOnly:true },
+  mucolyticMorning: { icon:"💊", label:"Carboxymethylcysteine — Morning", desc:"While you're sick, 3x daily.", sickOnly:true },
+  mucolyticAfternoon: { icon:"💊", label:"Carboxymethylcysteine — Afternoon", desc:"While you're sick, 3x daily.", sickOnly:true },
+  mucolyticNight: { icon:"💊", label:"Carboxymethylcysteine — Night", desc:"While you're sick, 3x daily.", sickOnly:true },
   magnesium: { icon:"🌌", label:"Magnesium Glycinate", desc:"~9:30 PM, before amitriptyline." },
   amitriptyline: { icon:"🌛", label:"Amitriptyline", desc:"~10:00 PM, before sleep." },
   periodMeds: { icon:"🩸", label:"Tranexamic + Mefenamic Acid", desc:"Period days only.", periodOnly:true },
@@ -3674,6 +3685,7 @@ function reminderAppliesToday(key) {
   if (!info) return true;
   if (info.days && !info.days.includes(nowShifted().getDay())) return false;
   if (info.periodOnly && !isDateInPeriod(today())) return false;
+  if (info.sickOnly && !isDateSick(today())) return false;
   if (info.onlyDate && today().slice(5) !== info.onlyDate) return false;
   return true;
 }
@@ -3852,6 +3864,67 @@ function weightStats() {
   if (log.length >= 2) recentChange = latest.weight - log[log.length-2].weight;
   return { first, latest, change, recentChange, count: log.length };
 }
+
+/* ================= sickness tracker ================= */
+function sickActiveEpisode() {
+  const eps = state.sickness.episodes;
+  if (!eps.length) return null;
+  const last = eps[eps.length-1];
+  return last.end ? null : last;
+}
+function startSickEpisode() {
+  if (sickActiveEpisode()) return;
+  state.sickness.episodes.push({ start: today(), end: null });
+  save(); render();
+  showToast("🤒 Logged. Cough Linctus and Carboxymethylcysteine are now active in your Daily Reminders.");
+}
+function endSickEpisode() {
+  const active = sickActiveEpisode();
+  if (!active) return;
+  active.end = today();
+  save(); render();
+  showToast("Glad you're feeling better — cough meds are back off your list.");
+}
+function deleteSickEntry(indexStr) {
+  const index = parseInt(indexStr, 10);
+  if (isNaN(index) || index < 0 || index >= state.sickness.episodes.length) return;
+  state.sickness.episodes.splice(index, 1);
+  save(); render();
+}
+function isDateSick(dateKey) {
+  return state.sickness.episodes.some(e => dateKey >= e.start && dateKey <= (e.end || today()));
+}
+function sickDayNumber(dateKey) {
+  const e = state.sickness.episodes.find(e => dateKey >= e.start && dateKey <= (e.end || today()));
+  if (!e) return null;
+  return Math.round((new Date(dateKey) - new Date(e.start)) / 86400000) + 1;
+}
+function openSickTracker() { ui.showSickTracker = true; render(); }
+function closeSickTracker() { ui.showSickTracker = false; render(); }
+
+/* ================= as-needed medicine ================= */
+const MED_PRN_LABELS = {
+  paracetamol: { label: "Paracetamol", icon: "⚪" },
+  paracetamol_codeine: { label: "Paracetamol/Codeine", icon: "🔴" },
+};
+function logPrnMed(type) {
+  if (!MED_PRN_LABELS[type]) return;
+  const t = today();
+  if (!state.medPrn[t]) state.medPrn[t] = [];
+  const timeLabel = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  state.medPrn[t].push({ id: `prn_${Date.now()}`, type, time: timeLabel });
+  save(); render();
+  showToast(`${MED_PRN_LABELS[type].icon} ${MED_PRN_LABELS[type].label} logged at ${timeLabel}.`);
+}
+function deletePrnMed(arg) {
+  const [dateKey, id] = arg.split("|");
+  if (!state.medPrn[dateKey]) return;
+  state.medPrn[dateKey] = state.medPrn[dateKey].filter(e => e.id !== id);
+  if (!state.medPrn[dateKey].length) delete state.medPrn[dateKey];
+  save(); render();
+}
+function openMedHistory() { ui.showMedHistory = true; render(); }
+function closeMedHistory() { ui.showMedHistory = false; render(); }
 
 const FOCUS_DURATIONS = [5, 10, 15, 20];
 function bondWithCompanion(companionId) {
@@ -4240,7 +4313,9 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement,
   openDay, closeDay, addDayNote, deleteDayNote, toggleDayNoteDone, toggleSlackDay,
   logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
-  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode };
+  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode,
+  logPrnMed, deletePrnMed, openMedHistory, closeMedHistory,
+  startSickEpisode, endSickEpisode, deleteSickEntry, openSickTracker, closeSickTracker };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -4717,6 +4792,18 @@ function renderHome() {
     </div>
   `);
 
+  const sickActive = sickActiveEpisode();
+  const sickCard = card(`
+    <div style="padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:12px;background:${C.mageSoft};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">🤒</span></div>
+      <div style="flex:1">
+        <p class="disp" style="font-weight:700;font-size:13px;margin:0">Sick Tracker</p>
+        <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${sickActive ? `Day ${sickDayNumber(today())} sick — cough meds active below` : "Not sick right now."}</p>
+      </div>
+      <button data-act="openSickTracker" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Open</button>
+    </div>
+  `);
+
   const wStats = weightStats();
   const weighInCard = card(`
     <div style="padding:16px">
@@ -4735,6 +4822,31 @@ function renderHome() {
     </div>
   `);
 
+  const todayMedPrn = state.medPrn[today()] || [];
+  const prnRows = todayMedPrn.map(e => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${C.creamDeep};border-radius:10px;margin-bottom:5px">
+      <span style="font-size:13px">${MED_PRN_LABELS[e.type].icon}</span>
+      <p style="flex:1;font-size:11.5px;color:${C.ink};margin:0">${MED_PRN_LABELS[e.type].label} <span style="color:${C.inkSoft}">· ${e.time}</span></p>
+      <button data-act="deletePrnMed" data-arg="${today()}|${e.id}"><span style="color:${C.inkSoft};font-size:10px">✖</span></button>
+    </div>`).join("");
+  const prnCard = card(`
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.pink}22;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px">💊</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13px;margin:0">As-Needed Medicine</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">Paracetamol, alone or with codeine.</p>
+        </div>
+        ${Object.keys(state.medPrn).length ? `<button data-act="openMedHistory" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.pink};color:white">History</button>` : ""}
+      </div>
+      ${prnRows}
+      <div style="display:flex;gap:8px;margin-top:${prnRows?6:0}px">
+        <button data-act="logPrnMed" data-arg="paracetamol" class="disp" style="flex:1;padding:9px 6px;border-radius:12px;font-size:11.5px;font-weight:700;background:${C.creamDeep};color:${C.ink}">⚪ Paracetamol</button>
+        <button data-act="logPrnMed" data-arg="paracetamol_codeine" class="disp" style="flex:1;padding:9px 6px;border-radius:12px;font-size:11.5px;font-weight:700;background:${C.creamDeep};color:${C.ink}">🔴 +Codeine</button>
+      </div>
+    </div>
+  `);
+
   const todayNotes = state.calendarNotes[today()] || [];
   const pendingTodayNotes = todayNotes.filter(n => !n.done);
   const remindersCard = pendingTodayNotes.length ? card(`
@@ -4748,7 +4860,7 @@ function renderHome() {
     </div>
   `) : "";
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${remindersCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${weighInCard}${wellnessCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${remindersCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${sickCard}${weighInCard}${wellnessCard}${prnCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderBillsCard() {
@@ -6197,6 +6309,41 @@ function renderCyclesModal() {
   </div>`;
 }
 
+function renderSickModal() {
+  if (!ui.showSickTracker) return "";
+  const active = sickActiveEpisode();
+  const actionButton = active
+    ? `<button data-act="endSickEpisode" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;font-size:13px;background:${C.mageDeep};color:white;margin-bottom:16px">Mark Recovered (started ${active.start})</button>`
+    : `<button data-act="startSickEpisode" class="disp" style="width:100%;padding:12px;border-radius:16px;font-weight:600;font-size:13px;background:${C.mage};color:white;margin-bottom:16px">🤒 Mark Sick Day 1</button>`;
+  const helper = active
+    ? `<p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 16px;text-align:center">Cough Linctus and Carboxymethylcysteine are active in your Daily Reminders (3x a day) until you mark yourself recovered.</p>`
+    : `<p style="font-size:11.5px;color:${C.inkSoft};margin:0 0 16px;text-align:center">Marking Day 1 turns on Cough Linctus and Carboxymethylcysteine reminders automatically — recovering turns them back off.</p>`;
+  const history = state.sickness.episodes.slice().reverse().map((e, revIdx) => {
+    const idx = state.sickness.episodes.length - 1 - revIdx;
+    const len = e.end ? Math.round((new Date(e.end)-new Date(e.start))/86400000)+1 : null;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${C.creamDeep};border-radius:12px;margin-bottom:6px">
+        <span style="font-size:14px">🤒</span>
+        <div style="flex:1">
+          <p style="font-size:11.5px;color:${C.ink};margin:0">${e.start} ${e.end ? `→ ${e.end}` : "(ongoing)"}</p>
+          ${len ? `<p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${len} day${len===1?"":"s"}</p>` : ""}
+        </div>
+        <button data-act="deleteSickEntry" data-arg="${idx}"><span style="color:${C.inkSoft};font-size:11px">✖</span></button>
+      </div>`;
+  }).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">🤒 Sick Tracker</p>
+        <button data-act="closeSickTracker"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      ${helper}
+      ${actionButton}
+      ${history || `<p style="font-size:12px;color:${C.inkSoft}">Nothing logged yet.</p>`}
+    </div>
+  </div>`;
+}
+
 function renderNotebookModal() {
   if (!ui.showNotebook) return "";
   const entries = state.notebookEntries.map(n => `
@@ -6286,6 +6433,29 @@ function renderWeightHistoryModal() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <p class="disp" style="font-weight:700;font-size:15px;margin:0">⚖️ Weigh-Ins</p>
         <button data-act="closeWeightHistory"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      ${rows || `<p style="font-size:12px;color:${C.inkSoft}">Nothing logged yet.</p>`}
+    </div>
+  </div>`;
+}
+
+function renderMedHistoryModal() {
+  if (!ui.showMedHistory) return "";
+  const dateKeys = Object.keys(state.medPrn).sort().reverse();
+  const rows = dateKeys.map(dateKey => {
+    const prn = state.medPrn[dateKey] || [];
+    const prnLine = prn.map(e => `${MED_PRN_LABELS[e.type].icon} ${e.time}`).join(", ");
+    return `
+      <div style="padding:10px 12px;background:${C.creamDeep};border-radius:12px;margin-bottom:6px">
+        <p style="font-size:11.5px;font-weight:700;color:${C.ink};margin:0 0 3px">${dateKey}${dateKey===today()?" (today)":""}</p>
+        <p style="font-size:10.5px;color:${C.inkSoft};margin:0">${prnLine}</p>
+      </div>`;
+  }).join("");
+  return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">💊 As-Needed Medicine History</p>
+        <button data-act="closeMedHistory"><span style="color:${C.inkSoft}">✖</span></button>
       </div>
       ${rows || `<p style="font-size:12px;color:${C.inkSoft}">Nothing logged yet.</p>`}
     </div>
@@ -6833,8 +7003,10 @@ function render() {
     ${renderBirthdayModal()}
     ${renderNotebookModal()}
     ${renderCyclesModal()}
+    ${renderSickModal()}
     ${renderDayModal()}
     ${renderWeightHistoryModal()}
+    ${renderMedHistoryModal()}
     ${renderZoneDetailModal()}
     ${renderBackupModal()}
     ${renderNav()}
