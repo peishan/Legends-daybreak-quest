@@ -2,20 +2,50 @@
 // Build timestamp — update this string on every deploy. Shown at the bottom of the
 // Home screen so it's possible to confirm at a glance whether a refresh actually
 // picked up the latest version, rather than a stuck cache silently serving the old one.
-const APP_VERSION = '2026-07-27 14:30';
+const APP_VERSION = '2026-08-08 14:40 (Farseer quest recovery v2, Ser Aldric confirmed)';
 
 // PWA Install Prompt Handler
 let deferredPrompt = null;
+const PWA_INSTALL_DISMISSED_KEY = 'ldb_pwa_install_dismissed';
+const installWrap = document.createElement('div');
+installWrap.id = 'pwa-install-wrap';
+installWrap.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:1000;display:none;align-items:center;gap:6px;';
 const installBtn = document.createElement('button');
 installBtn.id = 'pwa-install-btn';
-installBtn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:1000;padding:12px 20px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;display:none;box-shadow:0 4px 12px #7c3aed40;';
+installBtn.style.cssText = 'padding:12px 20px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 12px #7c3aed40;';
 installBtn.textContent = '⚔️ Install Daybreak';
-document.body.appendChild(installBtn);
+const installDismissBtn = document.createElement('button');
+installDismissBtn.id = 'pwa-install-dismiss';
+installDismissBtn.style.cssText = 'width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,0.4);color:#fff;border:none;font-size:14px;cursor:pointer;line-height:1;flex-shrink:0;';
+installDismissBtn.textContent = '\u2715';
+installDismissBtn.setAttribute('aria-label', 'Dismiss install prompt');
+installWrap.appendChild(installBtn);
+installWrap.appendChild(installDismissBtn);
+document.body.appendChild(installWrap);
+
+// Session Recap — detects meaningful away-time (tab backgrounded, e.g. asleep or at
+// work with the music running) and surfaces a "while you were away" summary rather
+// than trying to make the live combat log hold hours of history. Threshold set at
+// 10 minutes hidden so brief app-switches don't trigger it, only genuine breaks.
+const SESSION_RECAP_THRESHOLD_MS = 10 * 60 * 1000;
+document.addEventListener('visibilitychange', () => {
+  if (typeof G === 'undefined' || !G.sessionRecap) return;
+  if (document.hidden) {
+    G.sessionRecap.hiddenAt = Date.now();
+  } else if (G.sessionRecap.hiddenAt > 0) {
+    const awayMs = Date.now() - G.sessionRecap.hiddenAt;
+    G.sessionRecap.hiddenAt = 0;
+    if (awayMs >= SESSION_RECAP_THRESHOLD_MS && typeof showSessionRecap === 'function') {
+      showSessionRecap();
+    }
+  }
+});
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
+  if (localStorage.getItem(PWA_INSTALL_DISMISSED_KEY) === 'true') return; // user already said no thanks
   deferredPrompt = e;
-  installBtn.style.display = 'block';
+  installWrap.style.display = 'flex';
   lg('📲 PWA install available! Tap the floating button to install.');
 });
 
@@ -25,14 +55,20 @@ installBtn.addEventListener('click', async () => {
   const { outcome } = await deferredPrompt.userChoice;
   if (outcome === 'accepted') {
     lg('🎉 Daybreak installed! Welcome, San.');
-    installBtn.style.display = 'none';
+    installWrap.style.display = 'none';
   }
+  deferredPrompt = null;
+});
+
+installDismissBtn.addEventListener('click', () => {
+  installWrap.style.display = 'none';
+  localStorage.setItem(PWA_INSTALL_DISMISSED_KEY, 'true');
   deferredPrompt = null;
 });
 
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
-  installBtn.style.display = 'none';
+  installWrap.style.display = 'none';
   lg('✅ Daybreak is now installed on your device!');
 });
 
@@ -102,7 +138,21 @@ const G = {
       { n: 'Black Blade of Disaster', c: 70, dmg: '6d10', on: false, ul: 45, tier: 9, d: 'A blade of pure entropy that unmakes what it touches.', elem: 'arcane' },
       { n: 'Meteor Swarm', c: 60, dmg: '4d10', on: false, ul: 47, tier: 9, d: 'Ultimate destruction from the sky.', elem: 'fire', status: { type: 'burn', chance: 0.5, dmg: 5, turns: 3 } },
       { n: 'Wish Fulfilled', c: 50, on: false, ul: 48, tier: 9, d: 'Reality bends briefly in your favor.', buff: true, buffType: 'fullRestore', elem: 'arcane' },
-      { n: 'Time Stop', c: 80, on: false, ul: 50, tier: 9, d: 'The world freezes. You alone still move.', buff: true, buffType: 'timeStop', elem: 'arcane' }
+      { n: 'Time Stop', c: 80, on: false, ul: 50, tier: 9, d: 'The world freezes. You alone still move.', buff: true, buffType: 'timeStop', elem: 'arcane' },
+
+      // === TIER 10 (Lv 60) — the original capstone was designed for a level-50 game;
+      // everything from here on extends that same spell tradition into what the game
+      // actually became, each tier tied to a real story beat rather than an arbitrary
+      // number, spaced far enough apart that reaching one still feels like a milestone.
+      { n: "Farseer's Reach", c: 85, dmg: '5d12', on: false, ul: 60, tier: 10, d: "Varel taught you this without meaning to — see the strike land before you throw it.", elem: 'arcane', status: { type: 'shock', chance: 0.35, turns: 1 } },
+      { n: 'Guildbound Surge', c: 40, on: false, ul: 90, tier: 11, d: "Something in you moves faster once you stop carrying everything alone.", buff: true, buffType: 'haste', buffVal: 8, buffTurns: 4, elem: 'arcane' },
+      { n: "Muster's Call", c: 90, dmg: '6d12', on: false, ul: 120, tier: 12, d: "The line holds because everyone actually shows up. This is what showing up sounds like.", elem: 'lightning', status: { type: 'shock', chance: 0.4, turns: 1 } },
+      { n: 'Kindled Resolve', c: 45, on: false, ul: 150, tier: 13, d: "A small, steady flame that has survived worse than this.", buff: true, buffType: 'defense', buffVal: 9, buffTurns: 4, elem: 'fire' },
+      { n: 'Threshold Whisper', c: 35, on: false, ul: 180, tier: 14, d: "Something on the other side is already listening. You listen back.", buff: true, buffType: 'manaRestore', buffVal: 35, elem: 'arcane' },
+      { n: 'Breach Strike', c: 100, dmg: '7d12', on: false, ul: 210, tier: 15, d: "The door opened once. This is what walked through with you.", elem: 'void', status: { type: 'poison', chance: 0.4, dmg: 6, turns: 3 } },
+      { n: 'Kaya Kaya', c: 55, on: false, ul: 240, tier: 16, d: "An old joke that stopped being a joke. Still means the same thing: I am glad you are here.", buff: true, buffType: 'fullRestore', elem: 'arcane' },
+      { n: 'Steady Hand', c: 95, dmg: '6d14', on: false, ul: 260, tier: 17, d: "Line up the shot. Wait. Then wait a little longer than that.", elem: 'physical', status: { type: 'shock', chance: 0.45, turns: 1 } },
+      { n: 'What the Journey Kept', c: 110, on: false, ul: 300, tier: 18, d: "Everyone who stayed, all the way to here. This is theirs too.", buff: true, buffType: 'timeStop', elem: 'arcane' }
     ],
     eq: {
     weapon: { n: 'Apprentice Staff', slot: 'weapon', atk: 2, int: 1, r: 'common', ilvl: 1, d: 'A worn wooden staff crackling with faint arcane energy.' },
@@ -124,6 +174,11 @@ const G = {
     ],
     buffs: [], ailments: [], kills: 0, quests: 0, fstreak: 0, bossKills: 0, crafts: 0, survivedCritical: false, focusMinutesToday: 0
   },
+  // Which 4 of the swappable pool are actually fighting right now. Defaults to the
+  // original four so existing saves see zero change in who's active until the player
+  // deliberately opens the new selection screen. San, Joel, Aisyah, and Soel are fixed
+  // and never appear in this list — they're not swappable at all.
+  activePartySelection: ['Mezstorm', 'Eliz', 'Senedra', 'Zaki'],
   party: [
     { n: 'Joel', t: 'The Steadfast', r: 'Tank', hp: 120, mhp: 120, atk: 6, def: 8, spd: 4, on: true, d: 'Your partner and shield. Never lets you fight alone. A steadfast man from a Philippine village, second of four, breadwinner, stray-feeder, yours. He does not ask why you are here. He asks if you will let him stand beside you while you find out.', b: '+10% Max HP', col: '#7c3aed', affinityBonuses: [], gear: null, base: { mhp: 120, atk: 6, def: 8, spd: 4 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
     { n: 'Aisyah', t: 'Sisterblade', r: 'Rogue', hp: 70, mhp: 70, atk: 10, def: 4, spd: 9, on: true, d: 'Your sister, sharp-eyed and sharper-tongued. Your eldest sister, who spent decades teaching secondary school math in the old world before she taught you to fight. Now she teaches you the dangerous paths of Aethon. Family is complicated. Family with knives is complicated and useful.', b: '+20% Gold found', col: '#059669', affinityBonuses: [], gear: null, base: { mhp: 70, atk: 10, def: 4, spd: 9 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
@@ -131,7 +186,14 @@ const G = {
     { n: 'Eliz', t: 'Little Healer', r: 'Healer', hp: 65, mhp: 65, atk: 4, def: 5, spd: 5, on: false, ul: 4, d: 'A gentle soul with hands that mend wounds. She is your niece, Mez\'s daughter, autistic in the old world — which here means she experiences magic in textures and colors no one else can perceive. She cannot be reduced below 1 HP — a Guardian Spirit, the game calls it. You call it Eliz being Eliz. The girl who has always endured.', b: '+25% Healing potency. Guardian Spirit: Cannot be reduced below 1 HP.', col: '#db2777', passive: 'guardian_spirit', resurrect: { name: 'Breath of Life', cooldown: 0, maxCooldown: 5, healPct: 0.5, desc: 'Revives a fallen ally with 50% HP. 5-turn cooldown.' }, affinityBonuses: [], gear: null, base: { mhp: 65, atk: 4, def: 5, spd: 5 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
     { n: 'Senedra', t: 'Swift Scout', r: 'Ranger', hp: 75, mhp: 75, atk: 8, def: 5, spd: 10, on: false, ul: 6, d: 'An eagle-eyed tracker from the northern woods. She learned this from her mother. From Aisyah. She finds secret paths where others see only walls. She offers you pemmican and speaks of trade routes and dried goods. The real money is in dried goods. They travel. They last. They sell.', b: '+20% Crit chance', col: '#ca8a04', affinityBonuses: [], gear: null, base: { mhp: 75, atk: 8, def: 5, spd: 10 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
     { n: 'Zaki', t: 'Young Blade', r: 'Warrior', hp: 100, mhp: 100, atk: 9, def: 6, spd: 6, on: false, ul: 8, d: 'A hot-headed swordsman with a heart of gold. He is young. The firelight makes him look younger. He checks his pack seventeen times. Nervous, he admits. You tell him it is okay. You tell him checking is a kind of love. He wants to be brave like you. You do not feel brave. You feel tired. But you smile anyway.', b: '+15% Attack speed', col: '#dc2626', affinityBonuses: [], gear: null, base: { mhp: 100, atk: 9, def: 6, spd: 6 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
-    { n: 'Soel', t: 'The Familiar', r: 'Support', hp: 55, mhp: 55, atk: 5, def: 4, spd: 8, on: false, ul: 10, d: 'Your loyal spirit cat companion. He came with the rain. He chose you. That is rare. That is everything. He is not merely a cat. He is a spirit. He is a choice made flesh. He is the space between San and Joel — the letters overlapping, the sounds merging. He cannot be killed — he reforms from spirit flame.', b: '+10% All stats · Spirit Cat (unkillable)', col: '#7c2d12', spiritCat: true, affinityBonuses: [], gear: null, base: { mhp: 55, atk: 5, def: 4, spd: 8 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } }
+    { n: 'Soel', t: 'The Familiar', r: 'Support', hp: 55, mhp: 55, atk: 5, def: 4, spd: 8, on: false, ul: 10, d: 'Your loyal spirit cat companion. He came with the rain. He chose you. That is rare. That is everything. He is not merely a cat. He is a spirit. He is a choice made flesh. He is the space between San and Joel — the letters overlapping, the sounds merging. He cannot be killed — he reforms from spirit flame.', b: '+10% All stats · Spirit Cat (unkillable)', col: '#7c2d12', spiritCat: true, affinityBonuses: [], gear: null, base: { mhp: 55, atk: 5, def: 4, spd: 8 }, eq: { weapon: null, armor: null, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'KW Liang', t: 'Quick Hands', r: 'Scout', hp: 70, mhp: 70, atk: 9, def: 4, spd: 9, on: false, ul: 999, recruitGated: true, d: 'A personal shopper turned survivor turned something else entirely. Quick, sharp, and finally committed to something worth the trouble of showing up for. He still carries the Bunnies with him, quietly, even when he is laughing. Snowball, small and quick, never strays far.', b: '+15% Crit chance \u00b7 Snowball (18% dodge chance)', col: '#0d9488', affinityBonuses: [], gear: null, base: { mhp: 70, atk: 9, def: 4, spd: 9 }, eq: { weapon: { n: "Quick Hands' Edge", slot: 'weapon', forCompanion: 'KW Liang', r: 'rare', ilvl: 28, atk: 24, spd: 10, d: "Twin blades for Liang. +24 ATK, +10 SPD" }, armor: { n: "Scavenger's Wrap", slot: 'armor', forCompanion: 'KW Liang', r: 'rare', ilvl: 28, def: 16, spd: 8, d: "Light armor for Liang. +16 DEF, +8 SPD" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'Mimi', t: 'Dreamwalker', r: 'Divination Mage', hp: 55, mhp: 55, atk: 11, def: 3, spd: 7, on: false, ul: 999, recruitGated: true, d: 'She already knew you would ask before you finished asking. That is not a figure of speech with Mimi \u2014 the Dreamsight sees the shape of a fight before it happens, and she has learned to trust it completely.', b: '+15% Crit chance', col: '#a855f7', affinityBonuses: [], gear: null, base: { mhp: 55, atk: 11, def: 3, spd: 7 }, eq: { weapon: { n: 'Dreamsight Focus', slot: 'weapon', forCompanion: 'Mimi', r: 'rare', ilvl: 28, atk: 26, def: 4, d: "Focus for Mimi. +26 ATK, +4 DEF" }, armor: { n: "Dreamwalker's Shawl", slot: 'armor', forCompanion: 'Mimi', r: 'rare', ilvl: 28, def: 14, spd: 6, d: "Light robes for Mimi. +14 DEF, +6 SPD" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'Brada Shah', t: 'Steady Hand', r: 'Artillery', hp: 90, mhp: 90, atk: 13, def: 7, spd: 3, on: false, ul: 999, recruitGated: true, d: "Mimi's partner, and steady in every sense of the word \u2014 ballistas, siege lines, anything that rewards patience over speed. Slow to move, impossible to rush, and devastating once he actually lines up the shot.", b: '+15% Attack damage', col: '#78716c', affinityBonuses: [], gear: null, base: { mhp: 90, atk: 13, def: 7, spd: 3 }, eq: { weapon: { n: "Steady Hand's Ballista-Bow", slot: 'weapon', forCompanion: 'Brada Shah', r: 'rare', ilvl: 28, atk: 30, def: 10, d: "Heavy siege bow for Brada. +30 ATK, +10 DEF" }, armor: { n: 'Siege-Line Plating', slot: 'armor', forCompanion: 'Brada Shah', r: 'rare', ilvl: 28, def: 22, d: "Heavy plating for Brada. +22 DEF" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'Dr. AA', t: 'Steady Hands', r: 'Healer', hp: 70, mhp: 70, atk: 5, def: 6, spd: 5, on: false, ul: 999, recruitGated: true, d: 'Calm under pressure in the specific way only someone who has already seen the worst of it can be. Keeps a ghost story ready for the ride there, and a steady hand ready for whatever happens once you arrive.', b: '+20% Healing potency', col: '#0284c7', affinityBonuses: [], gear: null, base: { mhp: 70, atk: 5, def: 6, spd: 5 }, eq: { weapon: { n: 'Old-World Medical Kit', slot: 'weapon', forCompanion: 'Dr. AA', r: 'rare', ilvl: 28, atk: 14, def: 10, d: "Field kit for Dr. AA. +14 ATK, +10 DEF" }, armor: { n: "Physician's Coat", slot: 'armor', forCompanion: 'Dr. AA', r: 'rare', ilvl: 28, def: 18, atk: 4, d: "Coat for Dr. AA. +18 DEF, +4 ATK" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'Sister Wren', t: 'True Devotion', r: 'Healer', hp: 68, mhp: 68, atk: 4, def: 8, spd: 5, on: false, ul: 999, recruitGated: true, d: 'Spent a long time devoted to something that was never real. Knows real when she finally gets to stand next to it \u2014 and stands between the party and whatever comes next, calling on the Temple\u2019s grace when it is needed.', b: '+10% Defense (party) \u00b7 Intercession (DEF buff) \u00b7 Temple\u2019s Grace (cure chance)', col: '#f0abfc', affinityBonuses: [], gear: null, base: { mhp: 68, atk: 4, def: 8, spd: 5 }, eq: { weapon: { n: 'Temple-Blessed Censer', slot: 'weapon', forCompanion: 'Sister Wren', r: 'rare', ilvl: 28, atk: 12, def: 12, d: "Censer for Sister Wren. +12 ATK, +12 DEF" }, armor: { n: 'Vestments of Intercession', slot: 'armor', forCompanion: 'Sister Wren', r: 'rare', ilvl: 28, def: 20, d: "Sacred vestments for Sister Wren. +20 DEF" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'Ser Aldric', t: 'The Other Kind of Found', r: 'Knight', hp: 110, mhp: 110, atk: 7, def: 9, spd: 3, on: false, ul: 999, recruitGated: true, d: 'Spent a long time being found by things. Guild work feels like the other version of that \u2014 chosen instead of caught. Holds a line like it is a personal promise, because to him, it is.', b: '+15% Defense', col: '#57534e', affinityBonuses: [], gear: null, base: { mhp: 110, atk: 7, def: 9, spd: 3 }, eq: { weapon: { n: "The Other Kind of Found's Blade", slot: 'weapon', forCompanion: 'Ser Aldric', r: 'rare', ilvl: 28, atk: 20, def: 14, d: "Sword for Ser Aldric. +20 ATK, +14 DEF" }, armor: { n: "Knight's Unbroken Plate", slot: 'armor', forCompanion: 'Ser Aldric', r: 'rare', ilvl: 28, def: 26, d: "Heavy plate for Ser Aldric. +26 DEF" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } },
+    { n: 'Iris', t: 'Held Her Own', r: 'Scout', hp: 68, mhp: 68, atk: 9, def: 4, spd: 10, on: false, ul: 999, recruitGated: true, d: 'Held a line alone for years before the Guild gave her something better than solitude. Ash has never once left her side, and Ash is usually right.', b: '+15% Crit chance \u00b7 Ash (20% chance a missed attack lands anyway)', col: '#c2703d', affinityBonuses: [], gear: null, base: { mhp: 68, atk: 9, def: 4, spd: 10 }, eq: { weapon: { n: "Iris's Long Knives", slot: 'weapon', forCompanion: 'Iris', r: 'rare', ilvl: 28, atk: 25, spd: 9, d: "Twin knives for Iris. +25 ATK, +9 SPD" }, armor: { n: "Ash's Watch", slot: 'armor', forCompanion: 'Iris', r: 'rare', ilvl: 28, def: 15, spd: 7, d: "Light armor for Iris. +15 DEF, +7 SPD" }, head: null, hands: null, feet: null, ring1: null, ring2: null, amulet: null } }
   ],
 
   partySynergies: [
@@ -376,17 +438,17 @@ const G = {
   autoCombatHeartbeat: 0,
 
   zones: [
-    { n: 'Whispering Woods', lv: 1, d: 'Mossy paths where goblins lurk.', en: ['Goblin','Wolf','Slime'], loot: ['Herb Bundle','Goblin Tooth','Health Potion'], xp: 15, dg: 'low' },
-    { n: 'Cursed Catacombs', lv: 2, d: 'Ancient tombs filled with restless dead.', en: ['Skeleton','Zombie','Ghost'], loot: ['Iron Ore','Bone Shard','Mana Potion'], xp: 30, dg: 'medium' },
+    { n: 'Whispering Woods', lv: 1, d: 'Mossy paths where goblins lurk.', en: ['Goblin','Wolf','Slime'], loot: ['Herb Bundle','Goblin Tooth','Forest Sap'], xp: 15, dg: 'low' },
+    { n: 'Cursed Catacombs', lv: 2, d: 'Ancient tombs filled with restless dead.', en: ['Skeleton','Zombie','Ghost'], loot: ['Iron Ore','Bone Shard','Grave Dust'], xp: 30, dg: 'medium' },
     { n: 'Crystal Caverns', lv: 3, d: 'Shimmering caves where crystal spiders weave.', en: ['Crystal Spider','Gem Golem','Shimmer Bat'], loot: ['Crystal Shard','Silk Thread','Gem Dust'], xp: 45, dg: 'medium' },
-    { n: 'Ember Peak', lv: 4, d: 'Volcanic caves with fire elementals.', en: ['Fire Imp','Lava Slug','Ash Wraith'], loot: ['Fire Essence','Obsidian','Phoenix Feather'], xp: 60, dg: 'high' },
+    { n: 'Ember Peak', lv: 4, d: 'Volcanic caves with fire elementals.', en: ['Fire Imp','Lava Slug','Ash Wraith'], loot: ['Fire Essence','Obsidian','Cinder Fragment'], xp: 60, dg: 'high' },
     { n: 'Stormhold', lv: 5, d: 'A crumbling fortress lashed by eternal lightning.', en: ['Storm Wraith','Lightning Hound','Thunder Knight'], loot: ['Storm Core','Conductive Wire','Static Orb'], xp: 80, dg: 'high' },
     { n: 'Frostspire Ruins', lv: 6, d: 'Frozen castle of a fallen ice lord.', en: ['Ice Elemental','Frost Wolf','Frozen Knight'], loot: ['Ice Crystal','Frost Gem','Glacial Staff'], xp: 100, dg: 'very high' },
     { n: 'Sunken Temple', lv: 7, d: 'An underwater ruin swallowed by the sea.', en: ['Drowned Sailor','Sea Serpent','Coral Golem'], loot: ['Pearl','Coral Branch','Aqua Pearl'], xp: 130, dg: 'very high' },
     { n: 'Abyssal Depths', lv: 8, d: 'The void between worlds. Only the brave enter.', en: ['Void Beast','Shadow Demon','Abyssal Horror'], loot: ['Void Essence','Dark Crystal','Abyssal Robe'], xp: 200, dg: 'extreme' },
     { n: "Dragon's Maw", lv: 9, d: 'The lair of an ancient dragon. Ash falls like snow.', en: ['Dragon Whelp','Ash Drake','Elder Wyrm'], loot: ['Dragon Scale','Wyrm Tooth','Ember Heart'], xp: 280, dg: 'extreme' },
     { n: 'Starlight Spire', lv: 10, d: 'A tower that touches the sky. The final challenge.', en: ['Star Sentinel','Celestial Knight','Astral Lord'], loot: ['Star Fragment','Celestial Dust','Astral Core'], xp: 400, dg: 'impossible' },
-    { n: 'Arcane Planar Tower', lv: 11, d: 'A spire torn between dimensions. Reality frays here — gravity shifts, time stutters, and the walls breathe with planar magic.', en: ['Planar Wisp','Rift Stalker','Aether Golem','Chronomancer','Void Weaver','Planar Leviathan'], loot: ['Planar Essence','Aether Shard','Chrono Sand','Void Thread','Reality Anchor'], xp: 500, dg: 'impossible' },
+    { n: 'Arcane Planar Tower', lv: 11, d: 'A spire torn between dimensions. Reality frays here — gravity shifts, time stutters, and the walls breathe with planar magic.', en: ['Planar Wisp','Rift Stalker','Aether Golem','Chronomancer','Void Weaver','Planar Leviathan'], loot: ['Planar Essence','Aether Shard','Chrono Sand','Void Thread','Rift Splinter'], xp: 500, dg: 'impossible' },
     // PHASE 2: PLANAR REALMS (Lv 12-20)
     { n: 'The Shattered Veil', lv: 12, elem: 'arcane', d: 'Reality tears at the seams. Fragments of dead worlds float in crystalline silence.', en: ['Veil Wraith','Shardling','Echo Walker'], loot: ['Planar Essence','Aether Shard','Reality Fragment'], xp: 180, dg: 'impossible' },
     { n: 'Emberfall Dimension', lv: 13, elem: 'fire', d: 'A realm where gravity pulls downward into an infinite inferno. Ash rains upward.', en: ['Ember Drake','Ash Titan','Flame Serpent'], loot: ['Ember Core','Ash Crystal','Inferno Gem'], xp: 220, dg: 'impossible' },
@@ -401,7 +463,7 @@ const G = {
         // === EXPANSION: LV 21+ ZONES ===
     { n: 'The Fractured Veil', lv: 21, elem: 'arcane', d: 'Reality tears at the seams. Fragments of dead worlds float in crystalline silence.', en: ['Veil Wraith','Shardling','Echo Walker','Fracture Hound'], loot: ['Planar Essence','Aether Shard','Reality Fragment'], xp: 550, dg: 'impossible' },
         // === PHASE 1 EXPANSION: LV 22-23 ZONES ===
-    { n: 'The Astral Maelstrom', lv: 22, elem: 'arcane', d: 'A storm of raw planar energy where dimensions collide and unravel. Reality here is a suggestion, not a rule.', en: ['Astral Construct','Void Hound','Phase Walker','Rift Rat','Reality Weaver'], loot: ['Astral Dust','Void Fragment','Planar Essence','Reality Anchor'], xp: 600, dg: 'impossible' },
+    { n: 'The Astral Maelstrom', lv: 22, elem: 'arcane', d: 'A storm of raw planar energy where dimensions collide and unravel. Reality here is a suggestion, not a rule.', en: ['Astral Construct','Void Hound','Phase Walker','Rift Rat','Reality Weaver'], loot: ['Astral Dust','Void Fragment','Planar Essence','Rift Splinter'], xp: 600, dg: 'impossible' },
         { n: 'Infernal Crucible', lv: 23, elem: 'fire', d: 'The forge where stars are born and die. Magma rivers flow upward into a sky of eternal flame.', en: ['Ember Wraith','Ash Phantom','Flame Serpent','Magma Titan'], loot: ['Inferno Gem','Ash Crystal','Ember Core','Phoenix Ash'], xp: 680, dg: 'impossible' },
 
     // === GAP FILLERS ===
@@ -460,8 +522,40 @@ const G = {
     // grow back on its own. Zones spaced wide deliberately; the grind between them is
     // the content here, not constant new backdrops. ===
     { n: 'The Unbroken Vale', lv: 56, elem: 'poison', d: 'The first stretch of ground the party has found since the Breaking that was never actually broken — or healed so completely there is no telling the difference anymore. No ruins. No ash. Just green, further than anyone can see, and the strange quiet of a wound that finally closed.', en: ['Bramble Warden','Wildroot Sprite','Thistle Stalker'], loot: ['Unbroken Root', 'First Bloom Petal', 'Soil That Remembers Nothing'], xp: 3050, g: 2100, dg: 'impossible' },
+    { n: "The Retainer's Hollow", lv: 60, elem: 'poison', d: "A patch of the Vale that never grew right — silverleaf trees bent into rows like filing cabinets, roots knotted tight as a signature nobody actually got to read in full. There is an office here, standing where an office has no business standing. San recognizes the smell of it before she recognizes anything else: burnt coffee, cold fluorescent light, and somebody else's overtime.", en: ['Associate Wraith','Non-Compete Bramble','Overtime Root'], loot: ['Shredded Contract', 'Unsigned Ledger', 'A Clause Nobody Read'], xp: 3800, g: 2600, dg: 'impossible' },
+    { n: 'The Verdant Choir', lv: 65, elem: 'poison', d: 'Fallen columns, half-swallowed by root and bloom, arranged in a circle too deliberate to be an accident of growth. Something was built here, once, and something has been quietly guarding what is left of it ever since — not fiercely. Patiently, the way only something that has waited a very long time can afford to be.', en: ['Rootbound Acolyte','Hollow Chorister','Bloomveiled Sentinel'], loot: ['Weathered Hymnal Page', 'A Bell That Still Rings', 'Sanctum Moss'], xp: 4600, g: 3200, dg: 'impossible' },
     { n: 'Sunreach Fields', lv: 75, elem: 'poison', d: "A whole community living here, quietly, for who knows how long — fields actually under cultivation, harvests actually being brought in. Nobody out this far seems to know or care what the rest of the world has been through. They just kept growing things, the entire time.", en: ['Harvest Golem','Sunreach Guardian','Bloomwatcher'], loot: ['Sunreach Grain', 'A Harvest Nobody Rationed', 'Guardian\'s Bramble'], xp: 6000, g: 4400, dg: 'impossible' },
+    { n: 'The Treeline Detail', lv: 82, elem: 'poison', d: "Another patch of green quietly ruined by something that has no business out here — a loading dock bolted onto the edge of the vale, floodlights running on a generator nobody asked permission to install. Past the treeline, the brush has clearly been cleared, over and over, by people who were never given a choice about it.", en: ['Overtime Wraith','Off-Day Enforcer','Loading Dock Sentinel'], loot: ['Clocked-In Badge', 'A Shift Nobody Chose', 'Treeline Splinter'], xp: 9000, g: 6400, dg: 'impossible' },
     { n: 'The Rootbound Sanctuary', lv: 95, elem: 'poison', d: 'Whatever is actually doing the mending out here, this is close to its source — roots thick as towers, growth old enough to have opinions about who is allowed to pass through. Healing this deep does not come free. Something this old does not let go of what it has grown around without a reason.', en: ['Root-Bound Elder','Sanctuary Keeper','Elderwood Sentinel'], loot: ['Heartwood Shard', 'What the Roots Kept', 'The First Bloom, Still Sealed'], xp: 12000, g: 8800, dg: 'impossible' },
+    { n: 'The Thinning', lv: 96, elem: 'void', d: "Past the edge of everything mapped, the ground does not end so much as it stops fully agreeing to exist. Colors run thin here. Sound arrives a half-second late, or not at all. Nothing is dying, exactly — it is just quietly, steadily, being asked fewer and fewer questions by the world it used to belong to.", en: ['Fraying Wisp','Unwoven Stalker','Hollow Seam'], loot: ['A Thinning Thread', 'Something Barely Held', 'Proof It Can Be Pushed Back'], xp: 24000, g: 17000, dg: 'impossible' },
+    { n: 'The Held Line', lv: 97, elem: 'void', d: "Not abandoned like the rest of the Thinning — fought for. Scorch marks that are not scorch marks, ground that has clearly been defended, over and over, by something that never once had backup. The line is still holding. Barely. Whatever has been holding it has been doing this alone for longer than anything should have to.", en: ['Line-Breaker','Corrosion Vessel','Unmaking Sentinel'], loot: ['A Line Held Alone', 'Proof Someone Stayed', 'What the Solitary Carried'], xp: 30000, g: 21000, dg: 'impossible' },
+    { n: 'Where Others Still Hold', lv: 98, elem: 'void', d: "Found on purpose this time, not stumbled into — the party going looking specifically for ground that is still being defended alone. This one has not been fighting as long as the last. There is still time here. That is the entire difference this visit is trying to make.", en: ['Testing Current','Patience-Eater','Unmaking Vanguard'], loot: ['A Line Found in Time', 'Backup, Finally', 'Proof It Does Not Have to Wear Someone All the Way Down First'], xp: 33000, g: 23500, dg: 'impossible' },
+    { n: "Someone Else's Watch", lv: 99, elem: 'void', d: "Tracks that are not yours, at a line none of you have visited before. Supplies left behind, tended, recent. Something was already here, already fighting, already doing exactly what you came out here to do — and for the first time since any of this started, that is not a disappointment. It is proof the practice was never just yours to begin with.", en: ['Remnant Current','Half-Won Vessel','Watching Sentinel'], loot: ["Someone Else's Kindling", 'Proof the Practice Spread', 'A Line Half-Won Already'], xp: 36000, g: 25500, dg: 'impossible' },
+    { n: 'The Farthest Kindling', lv: 100, elem: 'void', d: "Deeper than tracks and waterskins this time — an actual camp, tended, occupied. Someone is here. Not gone, not glimpsed after the fact, not evidence of a visit already finished. Actually here, actually fighting, close enough to call out to. The practice just stopped being a rumor.", en: ['Deepfray Current','Warden of the Gap','Unmaking Herald'], loot: ['A Shared Kindling', 'Proof of Another Hand', 'What Two Lines Held Together'], xp: 45000, g: 32000, dg: 'impossible' },
+    // Unlike every zone before it, this one has no fixed ceiling — its enemies read the
+    // player's *current* level live (see sc() in the combat code) rather than a zoneLv
+    // baked into the registry, so it keeps pace no matter how far past 100 leveling goes.
+    { n: 'The Endless Thinning', lv: 100, elem: 'void', d: "Past even the farthest kindling, the ground stops bothering to have an edge at all. It does not get easier the longer you hold it, and it does not get harder because someone decided it should — it simply keeps matching whatever you actually bring to it, exactly, every single time. There is no farther than this. There is only however far you are each willing to keep going.", en: ['Unspooling Current', 'Whatever Keeps Arriving', 'A Ground Still Being Asked'], loot: ['A Thread With No End', 'Proof It Never Actually Stops', 'Something the Ground Kept Anyway'], xp: 45000, g: 32000, dg: 'impossible' },
+
+    // === THE PORTAL WORLD — a third, separate world Liang came through alone, still
+    // actively collapsing, not post-collapse the way Aethon now is. Nothing magical
+    // here — failed automation, still running, with nobody left who can shut it off.
+    { n: 'The Threshold District', lv: 210, elem: 'none', d: "The first real look at where Liang came from — not ruins to pick through, but a city still actively falling, systems still running that were never meant to run this long unattended. Streetlights count down to crossings that will never have anyone standing at them again.", en: ['Idle Sentry Unit', 'Looping Announcement Drone', 'Unmanned Response Walker'], loot: ["Threshold District Access Card", 'A Loop That Never Resolved', "Sentry Unit Core"], xp: 2100, g: 1250, dg: 'impossible' },
+    { n: 'The Unpaid Ledger', lv: 220, elem: 'none', d: "A marketplace district, automated storefronts still processing orders nobody placed, payment systems still running on accounts long since emptied. Liang goes quiet here in a way San has not seen from him before \u2014 this was close to his old work, close enough that the wrongness of it actually lands.", en: ['Runaway Checkout Construct', 'Ghost Inventory Drone', 'Collections Enforcement Unit'], loot: ['A Receipt For Nothing', 'Frozen Account Ledger', "Enforcement Unit Directive"], xp: 2200, g: 1320, dg: 'impossible' },
+    { n: 'The Signal Dark', lv: 230, elem: 'none', d: "A collapsed relay complex, the actual source of half the district's malfunctioning systems finally starting to make sense \u2014 not malice, not even negligence exactly, just a failsafe that failed, cascading outward for longer than anyone left alive has been counting.", en: ['Cascading Failsafe', 'Relay Ghost', 'Static-Bound Sentinel'], loot: ['A Failsafe That Failed', 'Relay Core Fragment', "The Cascade's First Cause"], xp: 2300, g: 1380, dg: 'impossible' },
+    { n: 'Where the Bunnies Ran', lv: 240, elem: 'none', d: "The outer edge of it \u2014 makeshift shelter, tally marks, a supply cache someone maintained carefully and recently. Liang recognizes every single detail before he says a word. This is the first real trace of the people he left behind, not confirmation of anyone specific, just proof someone was still here.", en: ['Perimeter Drone', 'Salvage Construct', 'Abandoned Guard Unit'], loot: ['A Tally Someone Kept', "Liang's Old Cache Marker", 'Proof Someone Held This Line'], xp: 2400, g: 1440, dg: 'impossible' },
+    { n: 'The Last Warren', lv: 250, elem: 'none', d: "Deep inside it now, past every marker Liang half-remembers and several he clearly does not want to. Whatever actually happened here, it happened fast \u2014 and for the first time since the rabbits and the jokes, San watches him have to actually face it instead of talk around it.", en: ['Warren Sentinel', 'The Last Alarm', 'Something Still Guarding This'], loot: ['A Warren Left In A Hurry', "The Last Thing Anyone Wrote Down", 'Proof, Whatever It Turns Out To Mean'], xp: 2500, g: 1500, dg: 'impossible' },
+    { n: "The System That Won't Stop", lv: 260, elem: 'none', d: "The actual source, finally \u2014 not a villain, not a monster, just an automated core still executing an emergency protocol from a crisis that ended long ago and never got the order to stand down. It does not hate anyone. It is simply still running. That, somehow, makes it worse.", en: ['Emergency Protocol Drone', 'Directive Loop Construct', 'The System, In Pieces'], loot: ['A Protocol Nobody Cancelled', 'Core Access Fragment', 'The Order It Was Waiting For'], xp: 2600, g: 1560, dg: 'impossible' },
+    { n: 'The First Uncertainty', lv: 270, elem: 'none', d: "Not found by looking for it \u2014 found because Varel and Mimi's seam-work keeps listening even when no one asked it to, and something out here answered that was never on any map. The ground holds most of the time. Not all of the time. Nobody has explained why yet.", en: ['Unsettled Form', 'Flickering Presence', 'Something Still Deciding'], loot: ['A Footprint That Moved After', 'Ground That Remembered Being Asked', 'Proof Something Answered'], xp: 2700, g: 1620, dg: 'impossible' },
+    { n: 'Where the Map Gives Up', lv: 280, elem: 'none', d: "The same stretch of ground, twice, in one afternoon, arranged two different ways. Nobody's memory is wrong. The place itself has not decided what it actually is yet, and everyone is simply visiting it mid-decision.", en: ['Contradiction Walker', 'The Wrong Direction', 'A Place That Moved'], loot: ['A Map That Disagreed With Itself', 'Two Versions Of The Same Path', "Ground Still Arguing"], xp: 2800, g: 1680, dg: 'impossible' },
+    { n: 'The Half-Finished Hall', lv: 290, elem: 'none', d: "Architecture mid-arrival \u2014 columns that fade into unfinished suggestion a few feet off the ground, a ceiling that is only actually there in some of the places you look at it. Something is still building this. Nobody has found who, or what, yet.", en: ['Unfinished Guardian', 'Scaffold Wraith', 'Something Still Being Built'], loot: ['A Column Not Yet Decided On', 'Half a Doorway', 'Proof Someone Is Still Working'], xp: 2900, g: 1740, dg: 'impossible' },
+    { n: 'The Waiting Shape', lv: 300, elem: 'none', d: "Something enormous, almost finished, patient in a way that reads as worse than hostile would have. It has been forming for longer than anyone here has existed. Whatever it is becoming, it is very nearly ready to be it.", en: ['The Almost-Formed', 'Patient Shape', "What's Nearly Here"], loot: ['A Shape Still Settling', 'The Last Piece Not Yet Placed', 'Proof It Is Almost Time'], xp: 3000, g: 1800, dg: 'impossible' },
+    { n: 'What It Was Becoming', lv: 310, elem: 'none', d: "The reveal, finally \u2014 not a monster's lair, not a ruin. A possibility, mid-formation, still genuinely undecided about what it will end up being. Nothing here is fixed yet. That is, San is slowly starting to understand, exactly the point.", en: ['An Unwritten Thing', 'The Shape Before The Choice', 'Something Watching Itself Decide'], loot: ['A Future Not Yet Settled', 'Proof Nothing Here Is Fixed', "What It Chose, In The End"], xp: 3100, g: 1860, dg: 'impossible' },
+    { n: 'A Door Never Finished', lv: 320, elem: 'none', d: "Not a new discovery so much as an old one, revisited \u2014 the Architect's chamber, years later, and something in its unfinished blueprints has kept drafting itself in its absence. The plan lost its planner. It did not stop.", en: ['Drafting Remnant', 'Blueprint Echo', 'Something Still Sketching'], loot: ["A Line Drawn After The Architect Fell", 'Blueprint Fragment, Still Warm', 'Proof The Plan Outlived Its Planner'], xp: 3200, g: 1920, dg: 'impossible' },
+    { n: 'The Scaffold Behind Everything', lv: 330, elem: 'none', d: "Underneath the blueprints, structure \u2014 the actual architecture connecting world to world, laid as bare as scaffolding ever gets. Every seam Varel has ever opened traces back to something built here, first, by someone who never got to see what it would eventually hold up.", en: ['Structural Ward', 'Load-Bearing Ghost', 'Something Holding This Up'], loot: ["A Support Beam Older Than The Breaking", 'Scaffold Key', 'Proof This Was Load-Bearing All Along'], xp: 3300, g: 1980, dg: 'impossible' },
+    { n: "Every Door It Ever Drew", lv: 340, elem: 'none', d: "A hall of doors, more than anyone can count, each one leading somewhere \u2014 Liang's collapsing city among them, the still-forming world from before it, dozens more nobody has ever opened. The Architect was not building one door. It was building all of them.", en: ['Unopened Door', 'Something Behind It', 'A Door That Recognizes You'], loot: ['A Door Not Yet Opened', "The Architect's Full Index", 'Proof There Are More Worlds Than Anyone Has Counted'], xp: 3400, g: 2040, dg: 'impossible' },
+    { n: 'The Door With a Familiar Shape', lv: 350, elem: 'none', d: "The rest of the hall stops mattering the moment you find it again \u2014 one door, unremarkable in every visible way, that neither San nor Joel can look at directly for very long. Nobody has opened it yet. Nobody has quite worked up the nerve.", en: ['Something Guarding It Gently', 'A Door That Waits', 'The Weight Of Almost Knowing'], loot: ['A Handle Warm To The Touch', 'Proof This One Is Different', 'The Courage To Actually Open It'], xp: 3500, g: 2100, dg: 'impossible' },
+    { n: 'What the Architect Was Actually Drawing', lv: 360, elem: 'none', d: "The last blueprint, unfinished, and the reason for all of it laid out plainly at last: not chaos, not malice, a genuine, desperate attempt to connect everything the Breaking tore apart \u2014 including, San realizes, standing in front of one door in particular, doors that were never actually about worlds like Liang's at all.", en: ['The Last Draft', "What the Plan Was Actually For", 'The Architect\u2019s Final Intention'], loot: ["The Architect's Last Blueprint", 'A Door With A Familiar Shape', 'Proof The Plan Was Never Really Finished, Only Interrupted'], xp: 3600, g: 2160, dg: 'impossible' },
   ],
 
   // Zone hazards: environmental dangers that trigger during combat
@@ -532,7 +626,12 @@ const G = {
     { n: "Eliz's Gentle Mercy", m: { 'Herb Bundle': 3, 'Iron Ore': 1 }, res: { n: 'Gentle Mercy', slot: 'weapon', forCompanion: 'Eliz', ilvl: 6, r: 'uncommon', atk: 4, def: 3, d: 'Mace for Eliz.' }, d: 'ATK +4, DEF +3 (Eliz only)' },
     { n: "Senedra's Longbow of the Woods", m: { 'Iron Ore': 2, 'Herb Bundle': 2 }, res: { n: 'Longbow of the Woods', slot: 'weapon', forCompanion: 'Senedra', ilvl: 6, r: 'uncommon', atk: 6, spd: 3, d: 'Bow for Senedra.' }, d: 'ATK +6, SPD +3 (Senedra only)' },
     { n: "Zaki's Young Blade", m: { 'Iron Ore': 3, 'Bone Shard': 1 }, res: { n: 'Young Blade', slot: 'weapon', forCompanion: 'Zaki', ilvl: 6, r: 'uncommon', atk: 6, def: 2, d: 'Sword for Zaki.' }, d: 'ATK +6, DEF +2 (Zaki only)' },
-    { n: "Soel's Warm Ember Charm", m: { 'Fire Essence': 1, 'Gem Dust': 1 }, res: { n: 'Warm Ember Charm', slot: 'weapon', forCompanion: 'Soel', ilvl: 6, r: 'uncommon', atk: 4, spd: 3, d: 'Charm for Soel.' }, d: 'ATK +4, SPD +3 (Soel only)' }
+    { n: "Soel's Warm Ember Charm", m: { 'Fire Essence': 1, 'Gem Dust': 1 }, res: { n: 'Warm Ember Charm', slot: 'weapon', forCompanion: 'Soel', ilvl: 6, r: 'uncommon', atk: 4, spd: 3, d: 'Charm for Soel.' }, d: 'ATK +4, SPD +3 (Soel only)' },
+
+    // === DR. AA'S BOOKS — Borneo-folklore recipes, locked until the matching book is read ===
+    { n: "Pontianak's Ward", locked: true, m: { 'Void Thread': 2, 'Aether Shard': 1, 'Bone Shard': 3 }, res: { n: "Pontianak's Ward", slot: 'amulet', ilvl: 32, r: 'epic', def: 14, voidRes: 0.15, d: "A charm strung from old bone and thread the old-world stories insisted actually worked. Apparently, out here, it still does." }, d: 'DEF +14, +15% Void Resist' },
+    { n: "Toyol's Bitter Root Tonic", locked: true, m: { 'Herb Bundle': 4, 'Gem Dust': 2, 'Frost Gem': 1 }, res: { n: "Toyol's Bitter Root Tonic", t: 'pot', eff: 'cure_ailment', q: 1, r: 'epic', d: "Bitter enough that Dr. AA insists it is basically self-administering penance. Also cures whatever is actually wrong with you, which the villagers who first brewed it considered a fair trade." }, d: 'Cures all afflictions' },
+    { n: "The Hantu Raya's Bargain", locked: true, m: { 'Fire Essence': 2, 'Obsidian': 3, 'Aether Shard': 2, 'Chrono Sand': 1 }, res: { n: "The Hantu Raya's Bargain", slot: 'weapon', ilvl: 35, r: 'epic', atk: 20, critChance: 0.05, d: "Old-world folklore says a Hantu Raya grants strength to whoever feeds it enough tribute. This is either a very good replica or something worse wearing a replica's shape. Either way, it works." }, d: 'ATK +20, +5% Crit Chance' }
   ],
   quests: [
     { id: 1, n: 'First Steps', d: 'Defeat 3 monsters in Whispering Woods', t: 'kill', c: 0, need: 3, rw: { xp: 50, g: 20 }, done: false },
@@ -614,63 +713,96 @@ const G = {
     { id: 61, n: 'Brother Iss, the Unraveled', d: 'Hunt down Brother Iss, the Unraveled', t: 'boss_specific', target: 'Brother Iss, the Unraveled', c: 0, need: 1, rw: { xp: 8200, g: 4800, templeRep: 110 }, done: false, chain: 'scattered_choir', reqQuest: 60, hidden: true, revealed: false },
     { id: 62, n: 'The Splintered Two', d: 'Hunt down The Splintered Two', t: 'boss_specific', target: 'The Splintered Two', c: 0, need: 1, rw: { xp: 10200, g: 6000, templeRep: 170 }, done: false, chain: 'scattered_choir', reqQuest: 61, hidden: true, revealed: false },
     { id: 63, n: 'Sister Wren, the Last Believer', d: 'Hunt down Sister Wren, the Last Believer, and let the Cult of the Closed Eye finally end', t: 'boss_specific', target: 'Sister Wren, the Last Believer', c: 0, need: 1, rw: { xp: 13500, g: 8200, templeRep: 280 }, done: false, chain: 'scattered_choir', reqQuest: 62, hidden: true, revealed: false },
+    { id: 64, n: 'Signs in the Green', d: 'Reach Level 56 \u2014 Ser Aldric asks to help investigate rumors of an old temple, somewhere in the new region', t: 'reach_level', c: 0, need: 56, rw: { xp: 9000, g: 5200, templeRep: 80 }, done: false, chain: 'verdant_choir', reqQuest: 63, hidden: true, revealed: false },
+    { id: 65, n: 'The Reluctant Guide', d: 'Defeat 15 enemies in Verdant Reach while Sister Wren helps trace the signs', t: 'kill', c: 0, need: 15, rw: { xp: 11500, g: 6800, templeRep: 100 }, done: false, chain: 'verdant_choir', reqQuest: 64, hidden: true, revealed: false },
+    { id: 66, n: 'The Verdant Choir', d: 'Push into The Verdant Choir and find what the ruins are still guarding', t: 'kill_specific', target: 'Rootbound Acolyte', c: 0, need: 8, rw: { xp: 14000, g: 8400, templeRep: 130 }, done: false, chain: 'verdant_choir', reqQuest: 65, hidden: true, revealed: false },
+    { id: 67, n: 'The Last Vigil', d: 'Defeat The Last Vigil and let the guardian finally stand down', t: 'boss_specific', target: 'The Last Vigil', c: 0, need: 1, rw: { xp: 19000, g: 12500, templeRep: 220 }, done: false, chain: 'verdant_choir', reqQuest: 66, hidden: true, revealed: false },
+    { id: 68, n: 'What Sister Wren Knows', d: 'Reach Level 60 \u2014 Sister Wren recognizes what the ruins actually are, and what they could be again', t: 'reach_level', c: 0, need: 60, rw: { xp: 16000, g: 9500, templeRep: 180 }, done: false, chain: 'verdant_choir', reqQuest: 67, hidden: true, revealed: false },
+    { id: 69, n: 'The Mended Sanctum, Restored', d: 'Complete the restoration of the Mended Sanctum', t: 'reach_level', c: 0, need: 62, rw: { xp: 24000, g: 16000, item: { n: 'Mendstone', t: 'mat', q: 1, r: 'legendary', d: 'Formed from the region\'s own healing, not mined from anything that was ever broken. It hums, faintly, like something still deciding what to grow into.' } }, done: false, chain: 'verdant_choir', reqQuest: 68, hidden: true, revealed: false, unlockRestSite: 'mended_sanctum' },
+    { id: 70, n: "The Retainer's Hollow", d: 'Defeat Robin C. and let nine years finally, actually end', t: 'boss_specific', target: 'Robin C.', c: 0, need: 1, rw: { xp: 58000, g: 42000 }, done: false },
+    { id: 71, n: 'The Treeline Detail', d: 'Defeat Jeff, the SK* Son-in-Law, and give the Treeline Detail its first real day off', t: 'boss_specific', target: 'Jeff, the SK* Son-in-Law', c: 0, need: 1, rw: { xp: 55000, g: 40000 }, done: false },
+    { id: 72, n: 'What Soel Remembers', d: 'Reach Level 45 \u2014 follow Soel toward Frostspire Ruins, wherever he is actually trying to lead you', t: 'reach_level', c: 0, need: 45, rw: { xp: 12000, g: 7500 }, done: false, chain: 'kindling_line', hidden: true, revealed: true },
+    { id: 73, n: 'The Warmth That Waited', d: 'Find the frost-throne and learn who waits there', t: 'reach_level', c: 0, need: 46, rw: { xp: 15000, g: 9000 }, done: false, chain: 'kindling_line', reqQuest: 72, hidden: true, revealed: false },
+    { id: 74, n: 'What the Cold Never Took', d: 'Give the Kindling who came before Soel the peace it never let itself have', t: 'reach_level', c: 0, need: 47, rw: { xp: 20000, g: 13000, item: { n: 'Starlight Tear', t: 'mat', q: 1, r: 'epic', d: 'Cold to the touch and warm at the center, all at once \u2014 the specific, contradictory shape of a bond that mattered even though it did not survive.' } }, done: false, chain: 'kindling_line', reqQuest: 73, hidden: true, revealed: false },
+    { id: 75, n: 'The Thinning', d: 'Defeat The Unmade and prove the fraying can be pushed back', t: 'boss_specific', target: 'The Unmade', c: 0, need: 1, rw: { xp: 92000, g: 68000 }, done: false },
+    { id: 76, n: 'The Held Line', d: 'Defeat What Alone Becomes and make sure the line finally has backup', t: 'boss_specific', target: 'What Alone Becomes', c: 0, need: 1, rw: { xp: 108000, g: 80000 }, done: false },
+    { id: 77, n: 'Where Others Still Hold', d: 'Defeat Before It Wears Through and arrive while there is still time to matter', t: 'boss_specific', target: 'Before It Wears Through', c: 0, need: 1, rw: { xp: 118000, g: 87000 }, done: false },
+    { id: 78, n: "Someone Else's Watch", d: 'Defeat What Was Almost Enough and finish what someone else already started', t: 'boss_specific', target: 'What Was Almost Enough', c: 0, need: 1, rw: { xp: 128000, g: 94000 }, done: false },
+    { id: 79, n: 'The Farthest Kindling', d: 'Defeat The Line Neither Could Hold Alone, together with whoever else is already fighting it', t: 'boss_specific', target: 'The Line Neither Could Hold Alone', c: 0, need: 1, rw: { xp: 165000, g: 118000 }, done: false },
+
+    // Materials for the Vision Machine — Varel Farseer's request. These belong here,
+    // in quests (boss_specific completion is checked against G.quests), not bounties —
+    // this exact misplacement has recurred more than once, so if you're reading this
+    // while investigating a "Farseer quest won't complete" report again, check first
+    // whether these two entries have drifted back into the bounties array below.
+    { id: 80, n: "The Farseer's Request I: A Splinter of the Horizon", d: 'Defeat Skarrowyn, the Split Horizon, and recover a splinter of scale for the Vision Machine', t: 'boss_specific', target: 'Skarrowyn, the Split Horizon', c: 0, need: 1, rw: { xp: 3000, g: 2500 }, done: false, chain: 'vision_machine' },
+    { id: 81, n: "The Farseer's Request II: A Thread of the Wound", d: 'Defeat Nyxathorne, the Unmended Wound, and recover a thread for the Vision Machine', t: 'boss_specific', target: 'Nyxathorne, the Unmended Wound', c: 0, need: 1, rw: { xp: 3000, g: 2500 }, done: false, chain: 'vision_machine' },
 
   ],
 
    bounties: [
     // === PHASE 1: EARLY GAME (Lv 1-9) ===
-    { id: 'b1', n: 'Goblin Slayer', d: 'Defeat 5 Goblins', t: 'kill_specific', target: 'Goblin', c: 0, need: 5, rw: { xp: 40, g: 25 }, done: false, refreshDay: 0, minLv: 1 , maxLv: 13 },
-    { id: 'b2', n: 'Bone Collector', d: 'Defeat 5 Skeletons', t: 'kill_specific', target: 'Skeleton', c: 0, need: 5, rw: { xp: 60, g: 35 }, done: false, refreshDay: 0, minLv: 2 , maxLv: 14 },
-    { id: 'b3', n: 'Wolf Hunter', d: 'Defeat 3 Wolves', t: 'kill_specific', target: 'Wolf', c: 0, need: 3, rw: { xp: 30, g: 20 }, done: false, refreshDay: 0, minLv: 1 , maxLv: 13 },
-    { id: 'b4', n: 'Ghost Buster', d: 'Defeat 3 Ghosts', t: 'kill_specific', target: 'Ghost', c: 0, need: 3, rw: { xp: 80, g: 50 }, done: false, refreshDay: 0, minLv: 2 , maxLv: 14 },
-    { id: 'b5', n: 'Fire Purge', d: 'Defeat 4 Fire Imps', t: 'kill_specific', target: 'Fire Imp', c: 0, need: 4, rw: { xp: 100, g: 60 }, done: false, refreshDay: 0, minLv: 4 , maxLv: 16 },
-    { id: 'b6', n: 'Crystal Breaker', d: 'Defeat 3 Crystal Spiders', t: 'kill_specific', target: 'Crystal Spider', c: 0, need: 3, rw: { xp: 70, g: 40 }, done: false, refreshDay: 0, minLv: 3 , maxLv: 15 },
-    { id: 'b7', n: 'Storm Chaser', d: 'Defeat 3 Storm Wraiths', t: 'kill_specific', target: 'Storm Wraith', c: 0, need: 3, rw: { xp: 120, g: 75 }, done: false, refreshDay: 0, minLv: 5 , maxLv: 17 },
-    { id: 'b8', n: 'Ice Breaker', d: 'Defeat 3 Ice Elementals', t: 'kill_specific', target: 'Ice Elemental', c: 0, need: 3, rw: { xp: 150, g: 90 }, done: false, refreshDay: 0, minLv: 6 , maxLv: 18 },
-    { id: 'b9', n: 'Void Hunter', d: 'Defeat 2 Void Beasts', t: 'kill_specific', target: 'Void Beast', c: 0, need: 2, rw: { xp: 200, g: 120 }, done: false, refreshDay: 0, minLv: 8 , maxLv: 20 },
-    { id: 'b10', n: 'Dragon Slayer', d: 'Defeat 1 Elder Wyrm', t: 'kill_specific', target: 'Elder Wyrm', c: 0, need: 1, rw: { xp: 500, g: 300 }, done: false, refreshDay: 0, minLv: 9 , maxLv: 21 },
+    { id: 'b1', n: 'Goblin Slayer', d: 'Defeat 5 Goblins', t: 'kill_specific', target: 'Goblin', c: 0, need: 5, rw: { xp: 40, g: 25 }, done: false, refreshDay: 0, minLv: 1 , maxLv: 999 },
+    { id: 'b2', n: 'Bone Collector', d: 'Defeat 5 Skeletons', t: 'kill_specific', target: 'Skeleton', c: 0, need: 5, rw: { xp: 60, g: 35 }, done: false, refreshDay: 0, minLv: 2 , maxLv: 999 },
+    { id: 'b3', n: 'Wolf Hunter', d: 'Defeat 3 Wolves', t: 'kill_specific', target: 'Wolf', c: 0, need: 3, rw: { xp: 30, g: 20 }, done: false, refreshDay: 0, minLv: 1 , maxLv: 999 },
+    { id: 'b4', n: 'Ghost Buster', d: 'Defeat 3 Ghosts', t: 'kill_specific', target: 'Ghost', c: 0, need: 3, rw: { xp: 80, g: 50 }, done: false, refreshDay: 0, minLv: 2 , maxLv: 999 },
+    { id: 'b5', n: 'Fire Purge', d: 'Defeat 4 Fire Imps', t: 'kill_specific', target: 'Fire Imp', c: 0, need: 4, rw: { xp: 100, g: 60 }, done: false, refreshDay: 0, minLv: 4 , maxLv: 999 },
+    { id: 'b6', n: 'Crystal Breaker', d: 'Defeat 3 Crystal Spiders', t: 'kill_specific', target: 'Crystal Spider', c: 0, need: 3, rw: { xp: 70, g: 40 }, done: false, refreshDay: 0, minLv: 3 , maxLv: 999 },
+    { id: 'b7', n: 'Storm Chaser', d: 'Defeat 3 Storm Wraiths', t: 'kill_specific', target: 'Storm Wraith', c: 0, need: 3, rw: { xp: 120, g: 75 }, done: false, refreshDay: 0, minLv: 5 , maxLv: 999 },
+    { id: 'b8', n: 'Ice Breaker', d: 'Defeat 3 Ice Elementals', t: 'kill_specific', target: 'Ice Elemental', c: 0, need: 3, rw: { xp: 150, g: 90 }, done: false, refreshDay: 0, minLv: 6 , maxLv: 999 },
+    { id: 'b9', n: 'Void Hunter', d: 'Defeat 2 Void Beasts', t: 'kill_specific', target: 'Void Beast', c: 0, need: 2, rw: { xp: 200, g: 120 }, done: false, refreshDay: 0, minLv: 8 , maxLv: 999 },
+    { id: 'b10', n: 'Dragon Slayer', d: 'Defeat 1 Elder Wyrm', t: 'kill_specific', target: 'Elder Wyrm', c: 0, need: 1, rw: { xp: 500, g: 300 }, done: false, refreshDay: 0, minLv: 9 , maxLv: 999 },
 
     // === PHASE 2: ARCANE PLANAR TOWER (Lv 11-15) ===
-    { id: 'b11', n: 'Planar Wisp Hunter', d: 'Defeat 5 Planar Wisps', t: 'kill_specific', target: 'Planar Wisp', c: 0, need: 5, rw: { xp: 250, g: 150 }, done: false, refreshDay: 0, minLv: 11 , maxLv: 23 },
-    { id: 'b12', n: 'Rift Stalker Slayer', d: 'Defeat 3 Rift Stalkers', t: 'kill_specific', target: 'Rift Stalker', c: 0, need: 3, rw: { xp: 300, g: 180 }, done: false, refreshDay: 0, minLv: 11 , maxLv: 23 },
-    { id: 'b13', n: 'Aether Golem Breaker', d: 'Defeat 3 Aether Golems', t: 'kill_specific', target: 'Aether Golem', c: 0, need: 3, rw: { xp: 350, g: 200 }, done: false, refreshDay: 0, minLv: 11 , maxLv: 23 },
-    { id: 'b14', n: 'Chronomancer Nemesis', d: 'Defeat 3 Chronomancers', t: 'kill_specific', target: 'Chronomancer', c: 0, need: 3, rw: { xp: 400, g: 220 }, done: false, refreshDay: 0, minLv: 12 , maxLv: 24 },
-    { id: 'b15', n: 'Void Weaver Hunter', d: 'Defeat 3 Void Weavers', t: 'kill_specific', target: 'Void Weaver', c: 0, need: 3, rw: { xp: 450, g: 250 }, done: false, refreshDay: 0, minLv: 13 , maxLv: 25 },
-    { id: 'b16', n: 'Planar Leviathan Slayer', d: 'Defeat 2 Planar Leviathans', t: 'kill_specific', target: 'Planar Leviathan', c: 0, need: 2, rw: { xp: 550, g: 300 }, done: false, refreshDay: 0, minLv: 14 , maxLv: 26 },
-    { id: 'b17', n: 'The Planarch', d: 'Defeat The Planarch', t: 'kill_specific', target: 'The Planarch', c: 0, need: 1, rw: { xp: 1000, g: 600 }, done: false, refreshDay: 0, minLv: 15 , maxLv: 27 },
+    { id: 'b11', n: 'Planar Wisp Hunter', d: 'Defeat 5 Planar Wisps', t: 'kill_specific', target: 'Planar Wisp', c: 0, need: 5, rw: { xp: 250, g: 150 }, done: false, refreshDay: 0, minLv: 11 , maxLv: 999 },
+    { id: 'b12', n: 'Rift Stalker Slayer', d: 'Defeat 3 Rift Stalkers', t: 'kill_specific', target: 'Rift Stalker', c: 0, need: 3, rw: { xp: 300, g: 180 }, done: false, refreshDay: 0, minLv: 11 , maxLv: 999 },
+    { id: 'b13', n: 'Aether Golem Breaker', d: 'Defeat 3 Aether Golems', t: 'kill_specific', target: 'Aether Golem', c: 0, need: 3, rw: { xp: 350, g: 200 }, done: false, refreshDay: 0, minLv: 11 , maxLv: 999 },
+    { id: 'b14', n: 'Chronomancer Nemesis', d: 'Defeat 3 Chronomancers', t: 'kill_specific', target: 'Chronomancer', c: 0, need: 3, rw: { xp: 400, g: 220 }, done: false, refreshDay: 0, minLv: 12 , maxLv: 999 },
+    { id: 'b15', n: 'Void Weaver Hunter', d: 'Defeat 3 Void Weavers', t: 'kill_specific', target: 'Void Weaver', c: 0, need: 3, rw: { xp: 450, g: 250 }, done: false, refreshDay: 0, minLv: 13 , maxLv: 999 },
+    { id: 'b16', n: 'Planar Leviathan Slayer', d: 'Defeat 2 Planar Leviathans', t: 'kill_specific', target: 'Planar Leviathan', c: 0, need: 2, rw: { xp: 550, g: 300 }, done: false, refreshDay: 0, minLv: 14 , maxLv: 999 },
+    { id: 'b17', n: 'The Planarch', d: 'Defeat The Planarch', t: 'kill_specific', target: 'The Planarch', c: 0, need: 1, rw: { xp: 1000, g: 600 }, done: false, refreshDay: 0, minLv: 15 , maxLv: 999 },
 
     // === PHASE 3: PLANAR REALMS (Lv 16-20) ===
-    { id: 'b18', n: 'Veil Wraith Hunter', d: 'Defeat 5 Veil Wraiths', t: 'kill_specific', target: 'Veil Wraith', c: 0, need: 5, rw: { xp: 400, g: 220 }, done: false, refreshDay: 0, minLv: 16 , maxLv: 28 },
-    { id: 'b19', n: 'Shardling Slayer', d: 'Defeat 5 Shardlings', t: 'kill_specific', target: 'Shardling', c: 0, need: 5, rw: { xp: 420, g: 230 }, done: false, refreshDay: 0, minLv: 16 , maxLv: 28 },
-    { id: 'b20', n: 'Ember Drake Hunter', d: 'Defeat 3 Ember Drakes', t: 'kill_specific', target: 'Ember Drake', c: 0, need: 3, rw: { xp: 480, g: 260 }, done: false, refreshDay: 0, minLv: 17 , maxLv: 29 },
-    { id: 'b21', n: 'Ash Titan Slayer', d: 'Defeat 2 Ash Titans', t: 'kill_specific', target: 'Ash Titan', c: 0, need: 2, rw: { xp: 520, g: 280 }, done: false, refreshDay: 0, minLv: 17 , maxLv: 29 },
-    { id: 'b22', n: 'Frost Lich Nemesis', d: 'Defeat 3 Frost Liches', t: 'kill_specific', target: 'Frost Lich', c: 0, need: 3, rw: { xp: 550, g: 300 }, done: false, refreshDay: 0, minLv: 18 , maxLv: 30 },
-    { id: 'b23', n: 'Glacial Behemoth Hunter', d: 'Defeat 2 Glacial Behemoths', t: 'kill_specific', target: 'Glacial Behemoth', c: 0, need: 2, rw: { xp: 600, g: 330 }, done: false, refreshDay: 0, minLv: 18 , maxLv: 30 },
-    { id: 'b24', n: 'The Nexus Planarch', d: 'Defeat The Nexus Planarch', t: 'kill_specific', target: 'The Nexus Planarch', c: 0, need: 1, rw: { xp: 2000, g: 1200 }, done: false, refreshDay: 0, minLv: 20 , maxLv: 32 },
+    { id: 'b18', n: 'Veil Wraith Hunter', d: 'Defeat 5 Veil Wraiths', t: 'kill_specific', target: 'Veil Wraith', c: 0, need: 5, rw: { xp: 400, g: 220 }, done: false, refreshDay: 0, minLv: 16 , maxLv: 999 },
+    { id: 'b19', n: 'Shardling Slayer', d: 'Defeat 5 Shardlings', t: 'kill_specific', target: 'Shardling', c: 0, need: 5, rw: { xp: 420, g: 230 }, done: false, refreshDay: 0, minLv: 16 , maxLv: 999 },
+    { id: 'b20', n: 'Ember Drake Hunter', d: 'Defeat 3 Ember Drakes', t: 'kill_specific', target: 'Ember Drake', c: 0, need: 3, rw: { xp: 480, g: 260 }, done: false, refreshDay: 0, minLv: 17 , maxLv: 999 },
+    { id: 'b21', n: 'Ash Titan Slayer', d: 'Defeat 2 Ash Titans', t: 'kill_specific', target: 'Ash Titan', c: 0, need: 2, rw: { xp: 520, g: 280 }, done: false, refreshDay: 0, minLv: 17 , maxLv: 999 },
+    { id: 'b22', n: 'Frost Lich Nemesis', d: 'Defeat 3 Frost Liches', t: 'kill_specific', target: 'Frost Lich', c: 0, need: 3, rw: { xp: 550, g: 300 }, done: false, refreshDay: 0, minLv: 18 , maxLv: 999 },
+    { id: 'b23', n: 'Glacial Behemoth Hunter', d: 'Defeat 2 Glacial Behemoths', t: 'kill_specific', target: 'Glacial Behemoth', c: 0, need: 2, rw: { xp: 600, g: 330 }, done: false, refreshDay: 0, minLv: 18 , maxLv: 999 },
+    { id: 'b24', n: 'The Nexus Planarch', d: 'Defeat The Nexus Planarch', t: 'kill_specific', target: 'The Nexus Planarch', c: 0, need: 1, rw: { xp: 2000, g: 1200 }, done: false, refreshDay: 0, minLv: 20 , maxLv: 999 },
         // === PHASE 1: LV 22-23 BOUNTIES ===
-    { id: 'b25', n: 'Reality Weaver Hunter', d: 'Defeat 5 Reality Weavers', t: 'kill_specific', target: 'Reality Weaver', c: 0, need: 5, rw: { xp: 500, g: 300 }, done: false, refreshDay: 0, minLv: 22 , maxLv: 34 },
-    { id: 'b26', n: 'Fracture Hound Slayer', d: 'Defeat 5 Fracture Hounds', t: 'kill_specific', target: 'Fracture Hound', c: 0, need: 5, rw: { xp: 520, g: 310 }, done: false, refreshDay: 0, minLv: 22 , maxLv: 34 },
-    { id: 'b27', n: 'Astral Devourer', d: 'Defeat The Astral Devourer', t: 'kill_specific', target: 'The Astral Devourer', c: 0, need: 1, rw: { xp: 1200, g: 700 }, done: false, refreshDay: 0, minLv: 22 , maxLv: 34 },
-    { id: 'b28', n: 'Ember Wraith Hunter', d: 'Defeat 5 Ember Wraiths', t: 'kill_specific', target: 'Ember Wraith', c: 0, need: 5, rw: { xp: 550, g: 330 }, done: false, refreshDay: 0, minLv: 23 , maxLv: 35 },
-    { id: 'b29', n: 'Ash Phantom Slayer', d: 'Defeat 5 Ash Phantoms', t: 'kill_specific', target: 'Ash Phantom', c: 0, need: 5, rw: { xp: 570, g: 340 }, done: false, refreshDay: 0, minLv: 23 , maxLv: 35 },
-    { id: 'b30', n: 'Infernal Tyrant', d: 'Defeat The Infernal Tyrant', t: 'kill_specific', target: 'The Infernal Tyrant', c: 0, need: 1, rw: { xp: 1400, g: 800 }, done: false, refreshDay: 0, minLv: 23 , maxLv: 35 },
+    { id: 'b25', n: 'Reality Weaver Hunter', d: 'Defeat 5 Reality Weavers', t: 'kill_specific', target: 'Reality Weaver', c: 0, need: 5, rw: { xp: 500, g: 300 }, done: false, refreshDay: 0, minLv: 22 , maxLv: 999 },
+    { id: 'b26', n: 'Fracture Hound Slayer', d: 'Defeat 5 Fracture Hounds', t: 'kill_specific', target: 'Fracture Hound', c: 0, need: 5, rw: { xp: 520, g: 310 }, done: false, refreshDay: 0, minLv: 22 , maxLv: 999 },
+    { id: 'b27', n: 'Astral Devourer', d: 'Defeat The Astral Devourer', t: 'kill_specific', target: 'The Astral Devourer', c: 0, need: 1, rw: { xp: 1200, g: 700 }, done: false, refreshDay: 0, minLv: 22 , maxLv: 999 },
+    { id: 'b28', n: 'Ember Wraith Hunter', d: 'Defeat 5 Ember Wraiths', t: 'kill_specific', target: 'Ember Wraith', c: 0, need: 5, rw: { xp: 550, g: 330 }, done: false, refreshDay: 0, minLv: 23 , maxLv: 999 },
+    { id: 'b29', n: 'Ash Phantom Slayer', d: 'Defeat 5 Ash Phantoms', t: 'kill_specific', target: 'Ash Phantom', c: 0, need: 5, rw: { xp: 570, g: 340 }, done: false, refreshDay: 0, minLv: 23 , maxLv: 999 },
+    { id: 'b30', n: 'Infernal Tyrant', d: 'Defeat The Infernal Tyrant', t: 'kill_specific', target: 'The Infernal Tyrant', c: 0, need: 1, rw: { xp: 1400, g: 800 }, done: false, refreshDay: 0, minLv: 23 , maxLv: 999 },
 
     // === PHASE 3: LV 24-29 BOUNTIES ===
-    { id: 'b31', n: 'Magma Serpent Hunter', d: 'Defeat 5 Magma Serpents', t: 'kill_specific', target: 'Magma Serpent', c: 0, need: 5, rw: { xp: 700, g: 400 }, done: false, refreshDay: 0, minLv: 24, maxLv: 36 },
-    { id: 'b32', n: 'Scorch Titan Slayer', d: 'Defeat 3 Scorch Titans', t: 'kill_specific', target: 'Scorch Titan', c: 0, need: 3, rw: { xp: 780, g: 440 }, done: false, refreshDay: 0, minLv: 24, maxLv: 36 },
-    { id: 'b33', n: 'Frozen Kraken Hunter', d: 'Defeat 3 Frozen Krakens', t: 'kill_specific', target: 'Frozen Kraken', c: 0, need: 3, rw: { xp: 850, g: 480 }, done: false, refreshDay: 0, minLv: 25, maxLv: 37 },
-    { id: 'b34', n: 'Storm Sovereign Hunt', d: 'Defeat 3 Storm Sovereign Remnants', t: 'kill_specific', target: 'Storm Sovereign Remnant', c: 0, need: 3, rw: { xp: 920, g: 520 }, done: false, refreshDay: 0, minLv: 26, maxLv: 38 },
-    { id: 'b35', n: 'Throne Keeper Purge', d: 'Defeat 3 Throne Keepers', t: 'kill_specific', target: 'Throne Keeper', c: 0, need: 3, rw: { xp: 1000, g: 570 }, done: false, refreshDay: 0, minLv: 27, maxLv: 39 },
-    { id: 'b36', n: 'Spire Archon Hunter', d: 'Defeat 3 Spire Archons', t: 'kill_specific', target: 'Spire Archon', c: 0, need: 3, rw: { xp: 1100, g: 620 }, done: false, refreshDay: 0, minLv: 28, maxLv: 40 },
-    { id: 'b37', n: 'Apex Warden Slayer', d: 'Defeat 3 Apex Wardens', t: 'kill_specific', target: 'Apex Warden', c: 0, need: 3, rw: { xp: 1200, g: 680 }, done: false, refreshDay: 0, minLv: 29, maxLv: 41 },
+    { id: 'b31', n: 'Magma Serpent Hunter', d: 'Defeat 5 Magma Serpents', t: 'kill_specific', target: 'Magma Serpent', c: 0, need: 5, rw: { xp: 700, g: 400 }, done: false, refreshDay: 0, minLv: 24, maxLv: 999 },
+    { id: 'b32', n: 'Scorch Titan Slayer', d: 'Defeat 3 Scorch Titans', t: 'kill_specific', target: 'Scorch Titan', c: 0, need: 3, rw: { xp: 780, g: 440 }, done: false, refreshDay: 0, minLv: 24, maxLv: 999 },
+    { id: 'b33', n: 'Frozen Kraken Hunter', d: 'Defeat 3 Frozen Krakens', t: 'kill_specific', target: 'Frozen Kraken', c: 0, need: 3, rw: { xp: 850, g: 480 }, done: false, refreshDay: 0, minLv: 25, maxLv: 999 },
+    { id: 'b34', n: 'Storm Sovereign Hunt', d: 'Defeat 3 Storm Sovereign Remnants', t: 'kill_specific', target: 'Storm Sovereign Remnant', c: 0, need: 3, rw: { xp: 920, g: 520 }, done: false, refreshDay: 0, minLv: 26, maxLv: 999 },
+    { id: 'b35', n: 'Throne Keeper Purge', d: 'Defeat 3 Throne Keepers', t: 'kill_specific', target: 'Throne Keeper', c: 0, need: 3, rw: { xp: 1000, g: 570 }, done: false, refreshDay: 0, minLv: 27, maxLv: 999 },
+    { id: 'b36', n: 'Spire Archon Hunter', d: 'Defeat 3 Spire Archons', t: 'kill_specific', target: 'Spire Archon', c: 0, need: 3, rw: { xp: 1100, g: 620 }, done: false, refreshDay: 0, minLv: 28, maxLv: 999 },
+    { id: 'b37', n: 'Apex Warden Slayer', d: 'Defeat 3 Apex Wardens', t: 'kill_specific', target: 'Apex Warden', c: 0, need: 3, rw: { xp: 1200, g: 680 }, done: false, refreshDay: 0, minLv: 29, maxLv: 999 },
 
     // === ACT 1: THE SHATTERED NOW (LV 30-35) BOUNTIES ===
-    { id: 'b38', n: 'Fracture Wisp Hunt', d: 'Defeat 5 Fracture Wisps', t: 'kill_specific', target: 'Fracture Wisp', c: 0, need: 5, rw: { xp: 1300, g: 750 }, done: false, refreshDay: 0, minLv: 30, maxLv: 42 },
-    { id: 'b39', n: 'Ruin Stalker Purge', d: 'Defeat 5 Ruin Stalkers', t: 'kill_specific', target: 'Ruin Stalker', c: 0, need: 5, rw: { xp: 1400, g: 800 }, done: false, refreshDay: 0, minLv: 31, maxLv: 43 },
-    { id: 'b40', n: 'Market Looter Sweep', d: 'Defeat 5 Market Looters', t: 'kill_specific', target: 'Market Looter', c: 0, need: 5, rw: { xp: 1500, g: 860 }, done: false, refreshDay: 0, minLv: 32, maxLv: 44 },
-    { id: 'b41', n: 'Ledger Wraith Hunt', d: 'Defeat 4 Ledger Wraiths', t: 'kill_specific', target: 'Ledger Wraith', c: 0, need: 4, rw: { xp: 1600, g: 920 }, done: false, refreshDay: 0, minLv: 33, maxLv: 45 },
-    { id: 'b42', n: 'Rust Automaton Scrap', d: 'Defeat 4 Rust Automatons', t: 'kill_specific', target: 'Rust Automaton', c: 0, need: 4, rw: { xp: 1700, g: 980 }, done: false, refreshDay: 0, minLv: 34, maxLv: 46 },
-    { id: 'b43', n: 'Watching Echo Purge', d: 'Defeat 4 Watching Echoes', t: 'kill_specific', target: 'Watching Echo', c: 0, need: 4, rw: { xp: 1800, g: 1050 }, done: false, refreshDay: 0, minLv: 35, maxLv: 47 },
+    { id: 'b38', n: 'Fracture Wisp Hunt', d: 'Defeat 5 Fracture Wisps', t: 'kill_specific', target: 'Fracture Wisp', c: 0, need: 5, rw: { xp: 1300, g: 750 }, done: false, refreshDay: 0, minLv: 30, maxLv: 999 },
+    { id: 'b39', n: 'Ruin Stalker Purge', d: 'Defeat 5 Ruin Stalkers', t: 'kill_specific', target: 'Ruin Stalker', c: 0, need: 5, rw: { xp: 1400, g: 800 }, done: false, refreshDay: 0, minLv: 31, maxLv: 999 },
+    { id: 'b40', n: 'Market Looter Sweep', d: 'Defeat 5 Market Looters', t: 'kill_specific', target: 'Market Looter', c: 0, need: 5, rw: { xp: 1500, g: 860 }, done: false, refreshDay: 0, minLv: 32, maxLv: 999 },
+    { id: 'b41', n: 'Ledger Wraith Hunt', d: 'Defeat 4 Ledger Wraiths', t: 'kill_specific', target: 'Ledger Wraith', c: 0, need: 4, rw: { xp: 1600, g: 920 }, done: false, refreshDay: 0, minLv: 33, maxLv: 999 },
+    { id: 'b42', n: 'Rust Automaton Scrap', d: 'Defeat 4 Rust Automatons', t: 'kill_specific', target: 'Rust Automaton', c: 0, need: 4, rw: { xp: 1700, g: 980 }, done: false, refreshDay: 0, minLv: 34, maxLv: 999 },
+    { id: 'b43', n: 'Watching Echo Purge', d: 'Defeat 4 Watching Echoes', t: 'kill_specific', target: 'Watching Echo', c: 0, need: 4, rw: { xp: 1800, g: 1050 }, done: false, refreshDay: 0, minLv: 35, maxLv: 999 },
+    { id: 'b44', n: 'Another Shift, Another Soul', d: 'Defeat Jeff, the SK* Son-in-Law', t: 'kill_specific', target: 'Jeff, the SK* Son-in-Law', c: 0, need: 1, rw: { xp: 12000, g: 8500 }, done: false, refreshDay: 0, minLv: 80, maxLv: 999 },
+    { id: 'b45', n: "Can't Break the Retainer", d: 'Defeat Robin C.', t: 'kill_specific', target: 'Robin C.', c: 0, need: 1, rw: { xp: 13000, g: 9000 }, done: false, refreshDay: 0, minLv: 58, maxLv: 999 },
+    { id: 'b46', n: 'What the Roots Keep', d: 'Defeat The Verdant Heart', t: 'kill_specific', target: 'The Verdant Heart', c: 0, need: 1, rw: { xp: 18000, g: 13000 }, done: false, refreshDay: 0, minLv: 92, maxLv: 999 },
+    { id: 'b47', n: 'What Nothing Kindles, Again', d: 'Defeat The Unmade', t: 'kill_specific', target: 'The Unmade', c: 0, need: 1, rw: { xp: 22000, g: 16000 }, done: false, refreshDay: 0, minLv: 96, maxLv: 999 },
+    { id: 'b48', n: 'Still Holding', d: 'Defeat What Alone Becomes', t: 'kill_specific', target: 'What Alone Becomes', c: 0, need: 1, rw: { xp: 25000, g: 18500 }, done: false, refreshDay: 0, minLv: 97, maxLv: 999 },
+    { id: 'b49', n: 'Arrived in Time', d: 'Defeat Before It Wears Through', t: 'kill_specific', target: 'Before It Wears Through', c: 0, need: 1, rw: { xp: 27000, g: 20000 }, done: false, refreshDay: 0, minLv: 98, maxLv: 999 },
+    { id: 'b50', n: "Someone Else's Kindling", d: 'Defeat What Was Almost Enough', t: 'kill_specific', target: 'What Was Almost Enough', c: 0, need: 1, rw: { xp: 29000, g: 21500 }, done: false, refreshDay: 0, minLv: 99, maxLv: 999 },
+    { id: 'b51', n: 'Two Lines, One Fight', d: 'Defeat The Line Neither Could Hold Alone', t: 'kill_specific', target: 'The Line Neither Could Hold Alone', c: 0, need: 1, rw: { xp: 34000, g: 25000 }, done: false, refreshDay: 0, minLv: 100, maxLv: 999 },
+
 
   ],
 
@@ -695,6 +827,17 @@ const G = {
     { id: 'gc14', n: 'Remnant Guard Contract', d: 'Defeat 5 Remnant Guards for the Guild', t: 'kill_specific', target: 'Remnant Guard', c: 0, need: 5, rw: { xp: 8200, g: 5600 }, rep: 470, done: false, refreshWeek: -1, minLv: 44, maxLv: 50 },
     { id: 'gc15', n: 'Contract: Daybreak Incarnate', d: 'Defeat Daybreak Incarnate for the Guild', t: 'boss_specific', target: 'Daybreak Incarnate', c: 0, need: 1, rw: { xp: 10000, g: 7000 }, rep: 540, done: false, refreshWeek: -1, minLv: 48, maxLv: 53 },
     { id: 'gc16', n: 'Contract: The Horizon Keeper', d: 'Defeat The Horizon Keeper for the Guild', t: 'boss_specific', target: 'The Horizon Keeper', c: 0, need: 1, rw: { xp: 12500, g: 9000 }, rep: 620, done: false, refreshWeek: -1, minLv: 52, maxLv: 58 },
+    { id: 'gc17', n: 'Contract: The Vale Warden', d: 'Defeat The Vale Warden for the Guild', t: 'boss_specific', target: 'The Vale Warden', c: 0, need: 1, rw: { xp: 15000, g: 11000 }, rep: 700, done: false, refreshWeek: -1, minLv: 56, maxLv: 64 },
+    { id: 'gc18', n: 'Contract: Robin C.', d: 'Defeat Robin C. for the Guild', t: 'boss_specific', target: 'Robin C.', c: 0, need: 1, rw: { xp: 18000, g: 13000 }, rep: 750, done: false, refreshWeek: -1, minLv: 58, maxLv: 70 },
+    { id: 'gc19', n: 'Contract: The Last Vigil', d: 'Defeat The Last Vigil for the Guild', t: 'boss_specific', target: 'The Last Vigil', c: 0, need: 1, rw: { xp: 20000, g: 14500 }, rep: 800, done: false, refreshWeek: -1, minLv: 65, maxLv: 73 },
+    { id: 'gc20', n: 'Contract: The Sunreach Elder', d: 'Defeat The Sunreach Elder for the Guild', t: 'boss_specific', target: 'The Sunreach Elder', c: 0, need: 1, rw: { xp: 24000, g: 17500 }, rep: 880, done: false, refreshWeek: -1, minLv: 75, maxLv: 82 },
+    { id: 'gc21', n: 'Contract: Jeff, the SK* Son-in-Law', d: 'Defeat Jeff, the SK* Son-in-Law for the Guild', t: 'boss_specific', target: 'Jeff, the SK* Son-in-Law', c: 0, need: 1, rw: { xp: 28000, g: 20000 }, rep: 950, done: false, refreshWeek: -1, minLv: 80, maxLv: 90 },
+    { id: 'gc22', n: 'Contract: The Verdant Heart', d: 'Defeat The Verdant Heart for the Guild', t: 'boss_specific', target: 'The Verdant Heart', c: 0, need: 1, rw: { xp: 35000, g: 26000 }, rep: 1100, done: false, refreshWeek: -1, minLv: 92, maxLv: 999 },
+    { id: 'gc23', n: 'Contract: The Unmade', d: 'Defeat The Unmade for the Guild', t: 'boss_specific', target: 'The Unmade', c: 0, need: 1, rw: { xp: 42000, g: 31000 }, rep: 1250, done: false, refreshWeek: -1, minLv: 96, maxLv: 999 },
+    { id: 'gc24', n: 'Contract: What Alone Becomes', d: 'Defeat What Alone Becomes for the Guild', t: 'boss_specific', target: 'What Alone Becomes', c: 0, need: 1, rw: { xp: 48000, g: 35500 }, rep: 1380, done: false, refreshWeek: -1, minLv: 97, maxLv: 999 },
+    { id: 'gc25', n: 'Contract: Before It Wears Through', d: 'Defeat Before It Wears Through for the Guild', t: 'boss_specific', target: 'Before It Wears Through', c: 0, need: 1, rw: { xp: 52000, g: 38500 }, rep: 1480, done: false, refreshWeek: -1, minLv: 98, maxLv: 999 },
+    { id: 'gc26', n: 'Contract: What Was Almost Enough', d: 'Defeat What Was Almost Enough for the Guild', t: 'boss_specific', target: 'What Was Almost Enough', c: 0, need: 1, rw: { xp: 56000, g: 41500 }, rep: 1580, done: false, refreshWeek: -1, minLv: 99, maxLv: 999 },
+    { id: 'gc27', n: 'Contract: The Line Neither Could Hold Alone', d: 'Defeat The Line Neither Could Hold Alone for the Guild', t: 'boss_specific', target: 'The Line Neither Could Hold Alone', c: 0, need: 1, rw: { xp: 62000, g: 46000 }, rep: 1700, done: false, refreshWeek: -1, minLv: 100, maxLv: 999 },
   ],
 
 
@@ -720,7 +863,7 @@ const G = {
     { id: 'perfectionist', n: 'Perfectionist', d: 'Complete a 25-minute focus session', icon: '🧘', t: 'focus', need: 1, rw: { xp: 150, g: 75 }, done: false, secret: false },
     { id: 'secret_lover', n: 'Secret Admirer', d: 'Reach max affinity with a certain familiar...', icon: '❓', t: 'affinity', target: 'Soel', need: 100, rw: { xp: 500, g: 200 }, done: false, secret: true },
     { id: 'void_touched', n: 'Void Touched', d: 'Survive the deepest darkness', icon: '❓', t: 'kill_specific', target: 'Abyssal Horror', need: 1, rw: { xp: 500, g: 250 }, done: false, secret: true },
-    { id: 'planar_pioneer', n: 'Planar Pioneer', d: 'Enter the Arcane Planar Tower', icon: '🌀', t: 'reach_level', need: 11, rw: { xp: 90, g: 85 }, done: false, secret: false },
+    { id: 'planar_pioneer', n: 'Planar Pioneer', d: 'Enter the Arcane Planar Tower', icon: '🌀', t: 'level', need: 11, rw: { xp: 90, g: 85 }, done: false, secret: false },
     { id: 'rift_walker', n: 'Rift Walker', d: 'Defeat 20 enemies in the Arcane Planar Tower', icon: '🌌', t: 'kills', need: 20, rw: { xp: 500, g: 300 }, done: false, secret: false },
     { id: 'planarch_slayer', n: 'Planarch Slayer', d: 'Defeat The Planarch and claim the tower', icon: '👑', t: 'boss_specific', target: 'The Planarch', need: 1, rw: { xp: 420, g: 1500 }, done: false, secret: false },
     { id: 'planar_master', n: 'Planar Master', d: 'Reach Level 15', icon: '⭐', t: 'level', need: 15, rw: { xp: 1000, g: 600 }, done: false, secret: false },
@@ -789,7 +932,8 @@ const G = {
 
   npcs: [
     { n: 'Lewis', t: 'trader', title: 'Wandering Merchant', icon: '🧳', col: '#fbbf24', zone: 'Whispering Woods', zoneLv: 1,
-      d: 'A shrewd merchant who appears in Whispering Woods. Sells rare herbs and curious trinkets.',
+      d: "San's desk was two rows from his, back at the insurance office — the one colleague who always had something to sell out of a drawer, Tupperware one month, phone cases the next, whatever side hustle was currently paying better than the day job. Out here the inventory changed. The instinct never did.",
+      greeting: "Ah, San? You're back again? These woods'll wear a lesser adventurer down to nothing — good thing you're not one of them.",
       stock: [
         { n: 'Mystic Herb', t: 'mat', q: 1, r: 'uncommon', price: 15 },
         { n: 'Silver Thread', t: 'mat', q: 1, r: 'rare', price: 30 },
@@ -851,7 +995,8 @@ const G = {
       ],
       unlocked: false, visitCount: 0 },
     { n: 'Jonathan', t: 'trader', title: 'The Gearsmith', icon: '⚙️', col: '#f97316', zone: 'Ember Peak', zoneLv: 4,
-      d: 'A tinkerer who sets up shop near Ember Peak. Deals in mechanical parts and weapon upgrades.',
+      d: "Same department as San, Lewis, Mimi, and Aisy, back at the insurance office — though back there he was better known for chasing whatever car mod or trend was popular that month than for fixing anything on command. He never touched a wrench professionally in his life before all this. Out here, with different parts to work with and nobody left to tell him it wasn't his job, that same restless curiosity just turned into an actual trade.",
+      greeting: "San, back again already? Bring me anything interesting this time, or just here to poke at my gears?",
       stock: [
         { n: 'Gear Assembly', t: 'mat', q: 1, r: 'uncommon', price: 20 },
         { n: 'Reinforced Plate', t: 'mat', q: 1, r: 'rare', price: 35 },
@@ -859,7 +1004,8 @@ const G = {
       ],
       unlocked: false, zone: 'Ember Peak', zoneLv: 4, visitCount: 0 },
     { n: 'Jorvin', t: 'trader', title: 'The Mechanic', icon: '🔧', col: '#e11d48', zone: 'The Static Fields', zoneLv: 41,
-      d: "San's old colleague, before all this — the one who'd spend a whole lunch break arguing about engine specs nobody else at the table cared about. Out here, that same obsessive love for how things work is the only reason the phone stood a chance at all.",
+      d: "San's old workmate, before all this — back-office sat directly across from her admin desk, close enough that they were basically doing the same data-entry job with two different department names on the door. Out here, that same obsessive love for how things work is the only reason the phone stood a chance at all.",
+      greeting: "Back again? Good — hand me whatever's broken, I could use the excuse to stop pretending I understand this world's wiring.",
       stock: [
         { n: "Overclocked Amulet", slot: 'amulet', q: 1, r: 'rare', price: 180, spd: 5, atk: 2, d: 'He swears it used to belong to a car stereo. It works better as jewelry.' },
         { n: 'Pit Crew Gloves', slot: 'hands', q: 1, r: 'rare', price: 160, atk: 4, spd: 3, d: 'Built for changing a tire in under ten seconds. Repurposed for considerably higher stakes.' },
@@ -942,20 +1088,55 @@ const G = {
         { n: 'Collar of the Space Between', slot: 'amulet', forCompanion: 'Soel', q: 1, r: 'epic', price: 400, ilvl: 28, def: 12, atk: 10, d: 'Collar for Soel. +12 DEF, +10 ATK' }
       ],
       unlocked: true, zone: 'The Static Fields', zoneLv: 26, visitCount: 0 },
+    { n: 'Thessa', t: 'trader', title: 'The Fitter', icon: '\u2696\ufe0f', col: '#8b7355', zone: 'The Unbroken Vale', zoneLv: 56,
+      d: "She doesn't ask who it's for. \"Gear is gear until someone's actually wearing it,\" she says, laying out a rack that fits whoever needs it \u2014 no name stitched into any of it. Every newer face in the Guild ends up at her stall eventually, once they realize nobody built them a full kit yet.",
+      stock: [
+        { n: "Fitter's Circlet", slot: 'head', forCompanion: 'any', q: 1, r: 'rare', price: 340, ilvl: 28, def: 14, atk: 6, d: 'Universal head gear. +14 DEF, +6 ATK. Fits anyone.' },
+        { n: "Fitter's Wraps", slot: 'hands', forCompanion: 'any', q: 1, r: 'rare', price: 340, ilvl: 28, atk: 10, spd: 4, d: 'Universal hand gear. +10 ATK, +4 SPD. Fits anyone.' },
+        { n: "Fitter's Treads", slot: 'feet', forCompanion: 'any', q: 1, r: 'rare', price: 340, ilvl: 28, spd: 10, def: 4, d: 'Universal foot gear. +10 SPD, +4 DEF. Fits anyone.' },
+        { n: "Fitter's Band", slot: 'ring', forCompanion: 'any', q: 1, r: 'rare', price: 320, ilvl: 28, atk: 8, def: 4, d: 'Universal ring. +8 ATK, +4 DEF. Fits anyone.' },
+        { n: "Fitter's Charm", slot: 'amulet', forCompanion: 'any', q: 1, r: 'rare', price: 340, ilvl: 28, def: 10, spd: 6, d: 'Universal amulet. +10 DEF, +6 SPD. Fits anyone.' }
+      ],
+      unlocked: true, zone: 'The Unbroken Vale', zoneLv: 56, visitCount: 0 },
+    { n: 'Dr. AA', t: 'trader', title: "The Old-World Doctor", icon: '🩺', col: '#0d9488', zone: 'The Unbroken Vale', zoneLv: 56,
+      d: "A friend from San's old firm, of all people to turn up out here — the one who always had a ghost story ready between checkups and complained, only half-joking, that nobody ever wanted the vitamins as much as the stories. He still packs both. Proper medicine on one side of the cart, a stack of paperbacks on the other. He swears every one of them really happened.",
+      stock: [
+        { n: 'Antidote Vial', t: 'pot', eff: 'cure_ailment', q: 1, r: 'uncommon', price: 35, d: 'Clears whatever is currently ailing you. Dr. AA still insists on writing the dosage on the label, out of habit.' },
+        { n: 'Paracetamol', t: 'pot', eff: 'heal', v: 40, q: 1, r: 'common', price: 20, d: 'Restores 40 HP. "Take with food," he says, though out here that advice is mostly decorative. ' },
+        { n: 'Old-World Multivitamin', t: 'pot', eff: 'stat_boost', stat: 'atk', boostVal: 10, mins: 30, q: 1, r: 'uncommon', price: 45, d: '+10 ATK for 30 minutes. He used to hand these out to patients who swore they had no time to eat properly.' },
+        { n: 'Iron Tonic', t: 'pot', eff: 'perm_stat', stat: 'str', v: 1, q: 1, r: 'rare', price: 220, d: 'A permanent +1 STR. Not a miracle cure — just the kind of slow, unglamorous gain you only get from actually doing the work, the way the old Battle Square trials used to prove it.' },
+        { n: 'Vital Draught', t: 'pot', eff: 'perm_stat', stat: 'con', v: 1, q: 1, r: 'rare', price: 220, d: 'A permanent +1 CON. Dr. AA calls it "boring medicine that works," which he considers the highest compliment he gives anything.' },
+        { n: 'Real Ghost Stories of Borneo, Vol. 1', t: 'book', eff: 'learn_recipe', recipe: "Pontianak's Ward", q: 1, r: 'uncommon', price: 40, d: "Dr. AA collected these from patients over the years and swears not one word is invented. Buried in the third chapter, between two accounts of a woman in white, is a charm his patients' grandmothers used to actually make. Learn: Pontianak's Ward." },
+        { n: 'Real Ghost Stories of Borneo, Vol. 2', t: 'book', eff: 'learn_recipe', recipe: "Toyol's Bitter Root Tonic", q: 1, r: 'uncommon', price: 40, d: "He says this is the volume that actually kept him up at night. It also happens to include his own handwritten notes on the bitter-root tonic villagers used to keep the little thieving spirits away. Learn: Toyol's Bitter Root Tonic." },
+        { n: 'Real Ghost Stories of Borneo, Vol. 3', t: 'book', eff: 'learn_recipe', recipe: "The Hantu Raya's Bargain", q: 1, r: 'uncommon', price: 40, d: "He is already asking if anyone wants to hear about the one that did not make it into the book. This one did — an old account of what a Hantu Raya asks for in tribute, and what it gives back. Learn: The Hantu Raya's Bargain." }
+      ],
+      unlocked: false, zone: 'The Unbroken Vale', zoneLv: 56, visitCount: 0 },
     { n: 'Zul', t: 'driver', title: 'The Driver', icon: '🚗', col: '#1e293b',
-      d: 'Nobody quite remembers when Zul started showing up wherever the roads got long enough to matter. He drives something that shouldn\'t run anymore, on fuel nobody asks about, and he only ever wants one thing to know before he\'ll take you anywhere.',
+      d: "San recognized the walk before she recognized the face — Zul used to run documents over to Finance for the same insurance office San worked at, back and forth, every single day, rain or not. Nobody quite remembers when he started showing up out here wherever the roads got long enough to matter. He drives something that shouldn't run anymore, on fuel nobody asks about, and some habits, it turns out, survive the end of the world completely intact.",
       greeting: 'Kewangan?',
       unlocked: false, zoneLv: 41, visitCount: 0 },
     { n: 'Mimi', t: 'ally', title: 'The Whisperer', icon: '🦋', col: '#8b5cf6',
-      d: 'A mysterious ally who communicates through dreams. Grants visions and cryptic advice.',
+      d: "San's old insurance-office colleague, before all this — the one every department went to first, because Mimi always seemed to know exactly what was happening two floors away before official word ever came down. Out here that same uncanny knack for knowing things nobody told her shows up as something closer to actual sight.",
       ability: 'Dreamsight: Reveals hidden quest paths and secret loot locations.',
       unlocked: false, ul: 5, affinityReq: 40, reqMember: 'Mezstorm' },
     { n: 'Aisy', t: 'ally', title: 'The Shadow Walker', icon: '🌙', col: '#6366f1',
-      d: 'A wandering spirit who aids those she deems worthy. Enhances stealth and evasion.',
+      d: "Another old colleague from the same insurance office — the one who somehow never once ended up on the wrong end of a bad mood or a sudden reorg, simply by being impossible to properly notice when she didn't want to be. That same instinct for staying just out of reach of trouble follows her here, sharpened into something real.",
       ability: 'Shadow Step: 20% chance to avoid enemy attacks entirely.',
       unlocked: false, ul: 7, affinityReq: 50, reqMember: 'Aisyah' },
+    { n: 'Sister Wren', t: 'ally', title: 'The Last Believer', icon: '🕯️', col: '#d97706',
+      d: 'Once the last true believer of a doctrine built on a lie, now tending something small and honest instead. She knows the difference between real devotion and performed devotion better than almost anyone alive \u2014 and knows exactly what that knowledge cost her.',
+      ability: 'Hard-Won Faith: +8% Temple standing gained from every source.',
+      unlocked: false, ul: 62 },
+    { n: 'Ser Aldric', t: 'ally', title: 'The One Who Finds', icon: '⚔️', col: '#7c8a99',
+      d: "Rescued from the Cult of the Closed Eye rather than lost to it — and instead of walking away from what nearly took him, chose to be the one who finishes what it left scattered. Spent a long time being found by things. Decided, deliberately, to try finding one for himself instead. Fights alongside Sister Wren more often than not, the two of them carrying a weight neither pretends is fully gone.",
+      ability: "Properly: +6% party defense while fielded, a little steadier for everyone standing near him.",
+      unlocked: false, ul: 62 },
+    { n: 'Varel Farseer', t: 'ally', title: 'The One Who Watches the Distance', icon: '🔮', col: '#0ea5e9',
+      d: "A hermit scryer who has kept watch over the boundary between here and everywhere else for longer than he has bothered counting. He found Mimi's Dreamsight the way he finds most things worth finding \u2014 by accident, mid-conversation, and immediately recognized raw instinct that had never once been given any actual discipline. He does not perform wisdom. He mostly just says the true thing, at whatever volume it happens to arrive in, and lets you decide what to do with it.",
+      ability: "Steady Sight: keeps the Vision Machine's window from ever fully closing.",
+      unlocked: false, ul: 55 },
     { n: 'Amad', t: 'trader', title: 'Brunei Food Merchant', icon: '🍜', col: '#16a34a', zone: 'Whispering Woods', zoneLv: 1,
-      d: 'A warm-hearted vendor from Bandar Seri Begawan. Sells authentic Brunei comfort food and drinks. He will buy anything you have — drops, loot, used gear — at fair prices.',
+      d: "A warm-hearted vendor from Bandar Seri Begawan who used to bring lunch straight to San's office floor, regular as anything — until he simply stopped showing up, months before the world ended, for reasons San never found out and still cannot ask him about directly, not in a way that would not feel strange. Out here he is exactly as warm as he always was. She has decided, for now, not to need the rest of the answer. He will buy anything you have — drops, loot, used gear — at fair prices.",
       stock: [
         { n: 'Nasi Katok', t: 'food', eff: 'heal', v: 25, q: 1, r: 'common', price: 12, d: 'Bruneian rice with sambal and fried chicken. Restores 25 HP.' },
         { n: 'Nasi Lemak', t: 'food', eff: 'heal', v: 35, q: 1, r: 'common', price: 18, d: 'Coconut rice with anchovies, peanuts, egg and sambal. Restores 35 HP.' },
@@ -1115,6 +1296,40 @@ const G = {
   { n: 'The Infernal Tyrant', zone: 'Infernal Crucible', hp: 4500, mhp: 4500, atk: 75, def: 42, xp: 2000, g: 1100,
         mechanic: 'inferno_core', infernoTurn: 4, infernoDmg: 50, desc: 'The heart of the Crucible given form. Builds inferno energy for 4 turns — interrupt or be incinerated.' },
 
+    // === PERSONAL: ROBIN C. — not an echo of grief like the Reckoning bosses. A real
+    // transmigrator, same as Jorvin, Zul, and Dr. AA — he came through into this world
+    // same as anyone else did, and true to form, immediately found a way to run the
+    // exact same racket somewhere new. Because he's a living transmigrator and not a
+    // one-time story boss, he's a normal repeatable zone encounter — beatable as many
+    // times as San wants to. ===
+    { n: 'Robin C.', zone: "The Retainer's Hollow", hp: 120000, mhp: 120000, atk: 445, def: 272, xp: 58000, g: 42000,
+      mechanic: ['billable_hours', 'freeze'],
+      billableDmg: 70, billableMsg: "Another hour, another line item, another year you'll never get back.",
+      freezeChance: 0.22, freezeMsg: "\uD83D\uDCC4 Robin slides a clause across the desk — bound by the fine print, you can't act!",
+      desc: "Made it through same as everyone else did, and set up shop within a season — same firm, same rules, new sign out front. He does not remember San's name. He never needed to. Nine years of quiet, grinding cost, given a shape big enough to finally have to answer for all of it at once.",
+      taunts: [
+        "I can't break the retainer.",
+        "Are you working, or are you on your phone?",
+        "Everyone's replaceable. That's just how the firm works.",
+        "You should be grateful for the opportunity, honestly.",
+        "I don't recall approving overtime for complaining.",
+        "This conversation isn't billable. Get back to it.",
+        "I built this practice. You just worked in it.",
+        "Loyalty is nice. It doesn't show up on a balance sheet.",
+        "You'll thank me for this someday. Probably not today."
+      ],
+      defeatLine: "Robin goes down mid-sentence, and the ledger San has been carrying since the old world finally closes. Nine years for a hundred dollars was never a fair trade — this one is. He'll be back next season, the way he always is. San will be ready." },
+
+    // === PERSONAL: JEFF, THE SK* SON-IN-LAW — Joel's old warehouse manager at SK*, the
+    // one who called people in on off days and sent anyone who worked too efficiently
+    // out to clear the treeline as punishment. Same rule as Robin C.: a real
+    // transmigrator, not a grief-echo, so he's a normal repeatable zone encounter, not
+    // a one-time story kill. ===
+    { n: 'Jeff, the SK* Son-in-Law', zone: 'The Treeline Detail', hp: 115000, mhp: 115000, atk: 430, def: 260, xp: 55000, g: 40000,
+      mechanic: 'crush', crushTurn: 5, desc: "Made it through and found the same arrangement he always finds — a warehouse, a family name, and people too tired to argue. Goes by Jeff out here now, of all things. He remembers Joel perfectly well. That was always the worst part. Joel used to be his favorite, right up until he started hurting, and started having opinions about how he deserved to be treated. Jeff never forgave him for either.",
+      taunts: ["No more MC, or I'm not renewing your contract.", "Joel, your performance now is bad.", "Joel talked up during the meeting, is he stupid?", "Nothing to do? Go clean the forest.", "I'm the boss here. You will do as I say.", "Your stepfather ruined my reputation. I still want that public apology.", "The public apology is normal in Singapore."],
+      defeatLine: "He goes down still talking, mid-sentence, the way men like him always do — certain right up until the certainty runs out. Joel does not say anything for a while afterward. He does not need to. His shoulders, for once, are perfectly still." },
+
     // === GAP FILLER ===
     { n: 'The Drowned King', zone: 'Sunken Temple', hp: 1800, mhp: 1800, atk: 38, def: 22, xp: 350, g: 300,
       mechanic: 'drown', drownTurn: 4, desc: 'Floods the battlefield on turn 4. All must save or take massive damage.' },
@@ -1194,15 +1409,82 @@ const G = {
       mechanic: 'apocalypse', apocalypseTurn: 6, desc: "Everything the settlement above owed and never paid, finally surfacing at once. It is not cruelty. It is arithmetic that ran out of patience." },
     { n: 'The Horizon Keeper', zone: 'Where the Walk Leads', hp: 36000, mhp: 36000, atk: 260, def: 156, xp: 22000, g: 14000,
       mechanic: 'cosmic', desc: 'Not an ending. Just the edge of how far this particular road has been mapped. It guards nothing except the honest fact that there is more, always, past wherever you currently stand.' },
+    { n: 'The Ex-Mother-in-Law', zone: 'Where the Old Names Wait', hp: 62000, mhp: 62000, atk: 340, def: 205, xp: 34000, g: 22000,
+      mechanic: 'resurrect', resurrectHp: 0.15,
+      desc: "She never once raised her voice. Never had to. Cold judgment doesn't need volume to leave a mark that lasts this long \u2014 it just needs to be repeated often enough that you start repeating it yourself, long after she's gone." },
+    { n: 'The Ex-Husband', zone: 'Where the Old Names Wait', hp: 68000, mhp: 68000, atk: 365, def: 220, xp: 38000, g: 25000,
+      mechanic: 'phase', phases: 3, currentPhase: 1, phaseHp: 22667,
+      desc: "Every cage he ever built looked like a home from the inside \u2014 a little tighter each year, a little harder to name, right up until the day it finally had a shape she could actually see. It does not let go easily. It was never built to." },
+    { n: 'The Village Ex', zone: 'Where the Old Names Wait', hp: 74000, mhp: 74000, atk: 385, def: 232, xp: 42000, g: 28000,
+      mechanic: 'phase', phases: 4, currentPhase: 1, phaseHp: 18500,
+      desc: "Not cruel. Never cruel, not really \u2014 just endlessly, quietly certain that crying long enough would eventually be the same thing as being right. It does not attack like an enemy. It attacks like two years passing at a time, again and again, whether he is ready for the next one or not." },
+    { n: 'The Brunei Ex', zone: 'Where the Old Names Wait', hp: 80000, mhp: 80000, atk: 405, def: 244, xp: 46000, g: 31000,
+      mechanic: 'rampage', rampageTurn: 3, rampageDmg: 145,
+      desc: "It sends money the way she once did \u2014 generously, constantly, as if the sending itself could stand in for a border that would not reopen in time. Every gift it throws lands like help. Every one of them costs exactly what the real ones did." },
+    { n: 'The Stepfather', zone: 'Where the Old Names Wait', hp: 86000, mhp: 86000, atk: 420, def: 255, xp: 50000, g: 34000,
+      mechanic: 'resurrect', resurrectHp: 0.25,
+      desc: "It is not malicious. It is just young, and careless in the specific way people are when they have not yet had to carry very much \u2014 and somehow, infuriatingly, still worth standing up for anyway, every single time it falls." },
     { n: 'The Vale Warden', zone: 'The Unbroken Vale', hp: 40000, mhp: 40000, atk: 270, def: 162, xp: 24000, g: 16000,
       mechanic: 'rampage', rampageTurn: 4, rampageDmg: 105,
       desc: "Grown, not built — thorns thick as pillars around something that was never actually wounded in the first place. It does not attack out of malice. It attacks because it has never once had to explain itself to anyone before now." },
+    { n: 'The Last Vigil', zone: 'The Verdant Choir', hp: 58000, mhp: 58000, atk: 315, def: 195, xp: 31000, g: 21000,
+      mechanic: 'phase', phases: 3, currentPhase: 1, phaseHp: 19334,
+      desc: "It stopped being able to tell genuine devotion from performed devotion so long ago that it simply started guarding against both. Not cruelty. Exhaustion, calcified into a duty nobody ever told it was allowed to end." },
     { n: 'The Sunreach Elder', zone: 'Sunreach Fields', hp: 85000, mhp: 85000, atk: 380, def: 230, xp: 42000, g: 30000,
       mechanic: 'resurrect', resurrectHp: 0.20,
       desc: "The whole field rises with it when it stands — roots, harvest, and every quiet season this community spent surviving unnoticed. It does not forgive easily. It has spent a very long time protecting something it never once had to share." },
     { n: 'The Verdant Heart', zone: 'The Rootbound Sanctuary', hp: 165000, mhp: 165000, atk: 525, def: 320, xp: 78000, g: 58000,
       mechanic: 'phase', phases: 4, currentPhase: 1, phaseHp: 41250,
       desc: "As close to the actual source of the mending as anyone has ever gotten. It is not hostile so much as it is old, and rightly suspicious of anything that reaches this deep into what it has spent so long growing back. Getting past it will not be gentle. Very little worth reaching ever is." },
+    { n: 'The Unmade', zone: 'The Thinning', hp: 195000, mhp: 195000, atk: 570, def: 345, xp: 92000, g: 68000,
+      mechanic: 'cosmic',
+      desc: "Not a creature so much as a direction things fall in, once nothing is left actively holding them together. It does not hate what has been mended any more than water hates a shore. It simply keeps going, the way anything untended eventually does, and it has never once needed to be angry to be dangerous." },
+    { n: 'What Alone Becomes', zone: 'The Held Line', hp: 230000, mhp: 230000, atk: 672, def: 407, xp: 108000, g: 80000,
+      mechanic: 'phase', phases: 4, currentPhase: 1, phaseHp: 57500,
+      desc: "Something held this ground for longer than anything should have to hold anything alone. It is not clear anymore whether it remembers what it was defending, or who it was defending it for, or whether either of those things still exist. It just knows the line has not fallen yet, and some exhausted, structural part of it refuses to be the reason it finally does." },
+    { n: 'Before It Wears Through', zone: 'Where Others Still Hold', hp: 255000, mhp: 255000, atk: 705, def: 428, xp: 118000, g: 87000,
+      mechanic: 'phase', phases: 3, currentPhase: 1, phaseHp: 85000,
+      desc: "Younger than the last one, in whatever way something like this has an age at all — still certain, still fighting like certainty is going to be enough on its own. It has not yet reached the part where certainty stops mattering and only endurance is left. That part is still coming, unless someone actually arrives first." },
+    { n: 'What Was Almost Enough', zone: "Someone Else's Watch", hp: 265000, mhp: 265000, atk: 720, def: 440, xp: 128000, g: 94000,
+      mechanic: 'phase', phases: 2, currentPhase: 1, phaseHp: 132500,
+      desc: "Already cracked before you ever arrived, by hands that were not yours, in a fight nobody invited you to witness the start of. Whoever got here first did real damage. Almost enough to finish it alone. Almost has never once been the same thing as enough, and it did not need to be — not when it turns out backup was always going to be a thing more than one pair could show up and give." },
+    { n: 'The Line Neither Could Hold Alone', zone: 'The Farthest Kindling', hp: 340000, mhp: 340000, atk: 830, def: 495, xp: 165000, g: 118000,
+      mechanic: 'phase', phases: 4, currentPhase: 1, phaseHp: 85000,
+      desc: "Too much for one pair. It was always going to be too much for one pair — that was never a flaw in anyone's practice, just an honest fact about how large the Fraying can grow when it is finally allowed to concentrate somewhere undefended long enough. It does not know yet that it is not fighting one pair anymore. That is about to become the whole problem it never accounted for." },
+    // === THE PORTAL WORLD'S FINAL BOSS ===
+    // Not a villain — an emergency protocol from a crisis that ended, still executing
+    // because nobody left alive had the authority to cancel it. Fixed stat block, not
+    // scaled, since this is a one-time story climax at the end of a defined arc, not
+    // endless content. HP anchored against the same proven Frontier formula used
+    // elsewhere in this game (getFrayingFrontierScaledStats at level 265), so the
+    // number is grounded rather than picked arbitrarily.
+    { n: 'The Order That Never Stood Down', zone: "The System That Won't Stop", hp: 1040000, mhp: 1040000, atk: 2540, def: 1520, xp: 505000, g: 361000,
+      mechanic: 'phase', phases: 3, currentPhase: 1, phaseHp: 346667,
+      desc: "It does not hate anyone. It was never built to. Somewhere, a long time ago, something went wrong badly enough that this protocol was the correct answer — and it has simply never once been told the crisis is over. It is not malice. It is not even really a mind. It is just the last order still being followed, faithfully, by something that was only ever trying to help." },
+    // World 2's own climax boss. Same fixed, one-time stat-block approach as The
+    // Order That Never Stood Down above — HP scaled off the same proven Fraying
+    // Frontier formula at level 310, so it stays grounded rather than arbitrary.
+    { n: 'An Unwritten Thing', zone: 'What It Was Becoming', hp: 1248951, mhp: 1248951, atk: 3047, def: 1823, xp: 605741, g: 433385,
+      mechanic: 'phase', phases: 3, currentPhase: 1, phaseHp: 416317,
+      desc: "It is not hostile, exactly \u2014 it is undecided, and being watched while undecided seems to be the thing it can least tolerate. Every hit either of you lands seems to nudge it a little further toward some shape or another. Nobody is certain yet whether fighting it is actually choosing what it becomes, or just making it choose faster." },
+    // World 3's climax boss. Deliberately not a new villain — the Architect itself
+    // was already faced and defeated back in journal_034. This is what its unfinished
+    // plan left running unattended: the draft-process itself, still drawing doors with
+    // no one left to decide which ones should exist. Same grounded scaling approach,
+    // level 360 this time.
+    { n: 'The Draft That Kept Drawing', zone: 'What the Architect Was Actually Drawing', hp: 1483295, mhp: 1483295, atk: 3619, def: 2165, xp: 719398, g: 514703,
+      mechanic: 'phase', phases: 3, currentPhase: 1, phaseHp: 494431,
+      desc: "Not the Architect \u2014 the Architect is gone, and has been since journal_034. This is what it left running: the drafting process itself, ownerless now, still opening doors because nobody ever told it the plan had a planner, and the planner is not coming back to finish deciding which ones should stay shut." },
+    // The Endless Thinning's own boss — every zone boss above it is a fixed stat
+    // block, calibrated once and left to eventually fall behind the same way regular
+    // monsters used to. This one carries no hp/atk/def/xp/g of its own at all:
+    // `scaled: true` tells sc() to generate them fresh off the player's CURRENT level
+    // every single fight (see getEndlessThinningBossStats()), the same safe curve the
+    // Fraying Frontier already uses — so this fight never goes stale either, matching
+    // the zone's own "reads your level live" design instead of just its trash mobs.
+    { n: 'Whatever the Thinning Finally Grew', zone: 'The Endless Thinning', scaled: true,
+      mechanic: 'apocalypse', apocalypseTurn: 6,
+      desc: "Not sent here, not guarding anything, not defending a line the way everything else this deep has been. It grew here, out of however much was left over once the ground stopped bothering to have an edge — and it has never once stopped growing. It does not have a fixed size. It has whatever size meeting you required, exactly, and it made that decision the moment you walked in." },
 
     // === TEMPLE HUNTS: THE CULT OF THE CLOSED EYE ===
     // These are dedicated Temple-quest hunt targets, not tied to any zone's normal
@@ -1242,6 +1524,7 @@ const G = {
   secretArea: { active: false, zone: null, choice: null, result: null },
   playerSpec: { path: null, tiers: [], respecCount: 0, lastRespec: 0 },
   currentMiniStory: null,
+  knownRecipes: [], // recipe names unlocked via 'learn_recipe' books (e.g. Dr. AA's) — recipes without a `locked` flag are known from the start
 storyJournal: {
     unlocked: [],
     read: [],
@@ -1312,7 +1595,7 @@ storyJournal: {
           { speaker: 'Narrator', text: "Aisyah joins your party. Family is complicated. Family with knives is complicated and useful. Now she teaches you the dangerous paths of Aethon." }
         ]
       },
-            {
+      {
         id: 'journal_005',
         title: 'The Weight of Before',
         chapter: 5,
@@ -1325,7 +1608,7 @@ storyJournal: {
           { speaker: 'Joel', text: "\"Do you ever think about them?\" he asks, not looking up. You know who he means. You have always known." },
           { speaker: 'San', text: "You stare into the flames. \"Every day,\" you admit. \"The youngest was only one. He was learning to walk. I left before he learned my name.\"" },
           { speaker: 'Narrator', text: "The words hang in the air like smoke. You have never said this out loud. Not to Joel. Not to anyone. The shame has been a stone in your chest for years, growing heavier with each birthday you missed, each milestone you only heard about through strained silence." },
-          { speaker: 'San', text: "\"Her grandmother fed him lies,\" you say, and your voice is steadier than you feel. \"About me. About my family. She made me feel small in my own home. And I was — I was so tired, Joel. I was drowning in a house that was never mine, in a life that was never mine. I didn't know I was autistic then. I just knew I was broken somehow, and I couldn't fix it fast enough for them.\"" },
+          { speaker: 'San', text: "\"His grandmother fed him lies,\" you say, and your voice is steadier than you feel. \"About me. About my family. She made me feel small in my own home. And I was — I was so tired, Joel. I was drowning in a house that was never mine, in a life that was never mine. I didn't know I was autistic then. I just knew I was broken somehow, and I couldn't fix it fast enough for them.\"" },
                     { speaker: 'Joel', text: "\"My daughter,\" he says quietly. \"She is one year older than your eldest. She was born after we broke. Before that, I had already taken the job in Brunei. I didn't leave her mother — I left for work.\" He pauses, the fire catching the lines around his eyes. \"Her mother found someone new. Had another baby. I send money every month. My mother visits, gives it to her. Holds her. Tells her about me. I have never watched her first steps. Never heard her first word. I visit every two years, when my contract renews. It is not the same. It is never the same.\"" },
           { speaker: 'Narrator', text: "The fire pops. Sparks rise into a sky with two moons. You think of Brunei. You think of the small apartment where you tried to be a wife, a mother, a daughter-in-law, everything to everyone, until there was nothing left of you but exhaustion and the certainty that you were failing at all of it." },
           { speaker: 'San', text: "\"Mez left home young,\" you say, and the old grief surfaces, familiar as a scar. \"She was strong. She made money. She could give Mum and Dad things I never could. And I was — I was stuck. In the marriage. In my own head. In the fear that if I left, I would be proving them right. That I was never good enough.\"" },
@@ -1438,9 +1721,7 @@ storyJournal: {
           { speaker: 'Joel', text: "\"Breakfast,\" Joel says, like nothing happened. Like you did not almost end the world in your sleep. He squeezes your shoulder. His hand is warm. It has always been warm." },
           { speaker: 'Narrator', text: "The sun rises over Aethon. Two moons fade. Soel purrs on your chest, kneading soft circles into your heart. The story continues. Not ended. Just paused. And somewhere, in a small village in the Philippines, a mother wakes. In Brunei, two parents check their phones. The gravity still pulls. The orbit still holds. You are still a breadwinner. You are still choosing love. You are still — always — San." }
         ],
-      }
-            ,
-            
+      },
       {
         id: 'journal_013',
         title: 'The Astral Threshold',
@@ -1494,8 +1775,7 @@ storyJournal: {
           { speaker: 'Joel', text: "\"Thank you,\" Joel says to you, to the cat, to the daughter he will write to tomorrow. \"Thank you for letting me be more than a shield. Thank you for letting me be a person.\"" },
           { speaker: 'Narrator', text: "The magma hardens into stone. The fire becomes warmth. And somewhere, in a small village in the Philippines, a grandmother checks her phone for the message that does not come — not yet, but soon. A letter. In a handwriting her granddaughter will learn to recognize. In words that say: I am here. I have always been here. I am trying. I will keep trying. Until you believe me." }
         ]
-      }
-      ,
+      },
       {
         id: 'journal_015',
         title: 'The Shattered Veil',
@@ -1625,6 +1905,10 @@ storyJournal: {
           { speaker: 'Narrator', text: "Some magic, unnamed and unasked-for, has reached backward and pulled youth from wherever youth goes when it is spent, and given it back to the two of you specifically — the breadwinner and the steadfast man, the two who gave the most and rested the least. It is not a gift. It does not feel like a gift yet. It feels like falling." },
           { speaker: 'Narrator', text: "And then the falling stops. Not gently — it simply stops, like a held breath, like a clock with its hands snapped off. You are young again, and you are staying that way. Whatever is happening to time in this place, it has decided you are finished changing." },
           { speaker: 'Soel', text: 'Soel does not fall. Soel does not shift. He was already outside of aging — spirit-flame, reformed, never quite bound to years the way flesh is. He climbs into your lap anyway, the way he always has, the only steady thing in a moment that has none.' },
+          { speaker: 'Narrator', text: 'And then, as suddenly as she vanished somewhere on the road behind you — weeks ago now, gone between one camp and the next with no trace and no warning — Aisyah is simply there again, solid and real and blinking against the same wrongness in the light that all of you are.' },
+          { speaker: 'Aisyah', text: '"Do not ask me where I was," Aisyah says, already steadying herself, already reaching for a blade out of pure habit before she has even finished taking in the scene. "I do not fully know myself. Wherever the tear reached, it reached me too. It just decided to give me back."' },
+          { speaker: 'San', text: '"Aisyah—" Your voice breaks on her name, weeks of quiet, unspoken fear collapsing all at once into the relief of her actually standing in front of you.' },
+          { speaker: 'Aisyah', text: '"I am here," she says, gripping your shoulder hard, grounding you both. "I am here. Whatever this is, we will work out the rest of it together. That part has not changed."' },
           { speaker: 'Narrator', text: 'The world around you keeps moving, though. You can feel it — a wrongness in the air, like time is still running everywhere except inside your own chest. You do not know yet what that means for the others. You do not know yet what it means for you. But the ground beneath you is not the ground you stood on a moment ago, and the sky above is the color of something that has already ended.' }
         ]
       },
@@ -1650,12 +1934,16 @@ storyJournal: {
         unlockType: 'boss',
         unlockAt: 'Scavenger King',
         icon: '🏮',
-        summary: "The market Aisyah built is gone. Someone else rules it now.",
+        summary: "The market Aisyah built is gone, ruled by someone who never learned what any of it was worth \u2014 but this time, San does not have to face the ruins of it alone.",
         scenes: [
           { speaker: 'Narrator', text: "Ashfall Market was Aisyah's — her routes, her prices, her particular genius for turning dried goods into something people would cross kingdoms for. What stands here now is looted down to the stalls' bones, ash settling over everything like snow that forgot how to melt." },
           { speaker: 'San', text: '"She would hate this," you say, and you mean it literally — Aisyah hated waste more than almost anything, hated seeing value go unrecognized. This place is nothing but unrecognized value, picked apart by someone who never learned to see what she saw.' },
-          { speaker: 'Narrator', text: 'The Scavenger King wears armor stitched from a dozen fallen traders — not Aisyah\'s armor, you note, with a relief that surprises you in its intensity. Wherever she is, whenever she is, she is not here. That has to mean something. You choose to believe it means she is still out there, still counting gold twice, still teaching someone the trade routes.' },
-          { speaker: 'Joel', text: '"We will find her," Joel says, and it is not a question, and you let yourself believe him, because believing him has never once been the wrong choice.' }
+          { speaker: 'Narrator', text: "Aisyah is not missing this time. She is standing right beside you, close enough that you do not have to imagine her reaction — you can just watch it happen, her jaw tightening at every overturned stall, every ledger left to rot in the open." },
+          { speaker: 'Aisyah', text: '"I built every one of these routes myself," she says, quiet, something old and proprietary in it. "Whoever did this never learned to see what any of it was actually worth. That is the real theft. Not the goods. The not-knowing."' },
+          { speaker: 'San', text: '"I was so afraid, while you were gone," you admit, the words arriving easier now that she is actually here to hear them. "I did not let myself think about what it would mean if you did not come back the way you did."' },
+          { speaker: 'Narrator', text: 'The Scavenger King wears armor stitched from a dozen fallen traders — not Aisyah\'s armor, and this time the relief of that does not have to be a private, silent thing. You can simply reach for her hand instead, and she lets you.' },
+          { speaker: 'Aisyah', text: '"You do not have to be afraid of that anymore," Aisyah says, steady. "I came back. Whatever pulled me out there and put me back here, it did not manage to keep me. That has to count for something."' },
+          { speaker: 'Joel', text: '"It counts for everything," Joel says, and none of you argue with him.' }
         ]
       },
       {
@@ -1707,9 +1995,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The fight that follows is not really a fight — it is an argument given weapons, a man refusing to become the thing standing in front of him. Grief does not want an audience. It wants company. And your Joel, steadfast as ever, refuses to leave the Echo alone with it, even as sword meets sword.' },
           { speaker: 'Narrator', text: 'When the Echo finally falls, it does not vanish like the other bosses did. It settles — like static resolving into a clear signal — and for one unguarded moment, Joel and his Echo look at each other like two ends of the same unfinished sentence. Then the light of the tower goes out, and the future it was warning against goes with it. Act One is over. Whatever waits in the years further gone, you will face it having already refused to become this.' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_027',
         title: 'The Roads Senedra Walked',
         chapter: 27,
@@ -1725,8 +2012,8 @@ storyJournal: {
           { speaker: 'San', text: '"You always found the way back," you tell her, and you mean it as more than reassurance — you mean it as fact, as the thing you have watched her do a hundred times across a hundred zones.' },
           { speaker: 'Narrator', text: 'When the Vanished Guide finally stops flickering long enough to be struck true, it does not resist much. It seems, in the end, almost relieved to be found — the particular relief of something tired of being lost. Senedra marks the spot with her own waymarker before you leave. Just in case, she says. Just in case someone else needs the road to remember them too.' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_028',
         title: 'The Room That Waited',
         chapter: 28,
@@ -1742,8 +2029,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'She fights like she heals — precise, patient, refusing to let the Hollow version of herself convince either of you that gentleness and helplessness are the same thing. When it finally falls, Eliz does not look away. She watches it go, and something in her face settles, like a door quietly closing on a room she no longer needs to fear.' },
           { speaker: 'Eliz', text: '"I am here," she says, to the empty crib, to you, to no one and everyone. "I am always going to be here. That is the whole of what I am for."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_029',
         title: 'The Boy Who Stopped Checking',
         chapter: 29,
@@ -1759,8 +2046,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'He fights the Rustbound version of himself with something that looks almost like tenderness — not holding back, but never once losing the thing that makes him Zaki, the small constant worry that everyone around him makes it out fine. When it falls, he does not celebrate. He checks his own pack. Once. Just to be sure.' },
           { speaker: 'Zaki', text: '"Still here," he says, mostly to himself. "Still checking. Good."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_030',
         title: 'The Storm That Never Broke',
         chapter: 30,
@@ -1776,8 +2063,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'He fights the Unbound version of himself with the storm itself as his weapon — not suppressing it, but finally, finally directing it somewhere. The lightning that used to just happen around him starts, for the first time, to mean something.' },
           { speaker: 'Mezstorm', text: '"The storm can stay," he says, breathing hard, watching the Unbound echo dissolve into rain. "It just does not get to be the only thing I say anymore."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_031',
         title: 'What the Ember Remembers',
         chapter: 31,
@@ -1793,9 +2080,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The fight is short, almost gentle — less a battle than a held hand, San\'s staff and Soel\'s claws working together to remind the guttering ember what it means to be chosen, over and over, in every world, in every form. When the Fading Familiar finally rejoins the true Soel, it does not feel like a kill. It feels like a promise kept.' },
           { speaker: 'Soel', text: 'Soel climbs into your lap, purring like nothing happened, like he has always known you would come. He chose you. That is rare. That is everything. And now, so does the part of him that almost forgot how.' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_032',
         title: 'What the Ledger Never Said',
         chapter: 32,
@@ -1811,8 +2097,8 @@ storyJournal: {
           { speaker: 'San', text: '"You never had to ask," you tell her, and mean it more than you have meant almost anything. "Family with knives is complicated and useful — you taught me that. You did not have to earn a place I already gave you."' },
           { speaker: 'Narrator', text: 'The Echo does not fight so much as it finally, finally sets the ledger down — and when it dissolves, Aisyah exhales like she has been holding her breath since long before the world broke. She does not say anything else. She does not need to.' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_033',
         title: 'The Version That Stopped Pretending',
         chapter: 33,
@@ -1828,8 +2114,8 @@ storyJournal: {
           { speaker: 'Narrator', text: "You fight the Tired Version knowing, somewhere underneath the dice and the damage numbers, that this is the one echo you cannot simply defeat and walk away from. You have to actually answer it. So you do — not with certainty, but with the truth: you are tired, and you are still here, and those two things have always been allowed to sit in the same sentence." },
           { speaker: 'San', text: '"I do not feel brave," you say, to the echo, to yourself, to no one. "I feel tired. I am doing it anyway. That was always the whole point."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_034',
         title: 'The Door Someone Built on Purpose',
         chapter: 34,
@@ -1845,8 +2131,8 @@ storyJournal: {
           { speaker: 'San', text: '"That does not mean I let it finish," you say, and the fight that follows is not about hatred. It is about ending something that was always going to keep breaking the world unless someone chose, on purpose, to stop it.' },
           { speaker: 'Narrator', text: 'When The Architect falls, the chamber does not celebrate. It just goes quiet — the specific quiet of a plan that will never complete, and a world that finally gets to stop bracing for the next piece of it.' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_035',
         title: 'The Tribunal of Every Echo',
         chapter: 35,
@@ -1862,8 +2148,8 @@ storyJournal: {
           { speaker: 'Narrator', text: "The party fights as one, for the first time feeling less like individuals surviving separate griefs and more like what they actually are: people who chose each other, over and over, across every world this journey has thrown at them." },
           { speaker: 'San', text: '"We stay whole," you say, to the tribunal, to the echoes, to the part of yourself that still sometimes doubts it, "because every single one of you already showed me it was possible. That is the whole answer. That has always been the whole answer."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_036',
         title: 'The First Break',
         chapter: 36,
@@ -1879,9 +2165,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The fight is not a battle so much as an answer, finally given — San\'s staff, Joel\'s shield, Aisyah\'s blades, Mezstorm\'s storm, Eliz\'s light, Senedra\'s arrows, Zaki\'s sword, Soel\'s claws, all of it together, closing a door that has been open since before any of you arrived.' },
           { speaker: 'San', text: 'When The First Break finally quiets, the silence that follows is different from every silence before it. Not absence. Not grief. Just the world, for the first time in this whole shattered future, allowed to rest. "It can be mended," you say, to Joel, to all of them, to yourself. "We just proved it. Whatever comes next — we know that now."' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_037',
         title: 'The Slow Work',
         chapter: 37,
@@ -1897,8 +2182,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The fight is not fast either — a long, grinding thing, everyone taking turns bearing the weight so no one carries it alone. When The Unmended finally gives way, it does not feel like a victory so much as a first, small, real repair.' },
           { speaker: 'Aisyah', text: '"One seam," Aisyah says, marking it in a ledger that finally has something other than debt written in it. "One seam mended. Plenty more. But one is not nothing."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_038',
         title: 'A Setback Is Not a Failure',
         chapter: 38,
@@ -1914,8 +2199,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The party fights The Relapse the way they have learned to fight everything that matters — together, patiently, refusing to let one setback erase the whole record of showing up.' },
           { speaker: 'San', text: 'When it finally falls, no one celebrates too loudly. You have learned, by now, that some victories are quiet ones. "We are still here," you say. "That is the only score that actually counts."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_039',
         title: 'What Happens After',
         chapter: 39,
@@ -1931,8 +2216,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The fight ends not with an answer but with something better — permission. Permission to not know, and to want a future anyway. The Question of After does not need defeating so much as it needs, finally, an honest response.' },
           { speaker: 'Joel', text: '"Then let us find out together," Joel says, and for the first time since the first day he asked to stand beside you, his voice sounds like relief instead of resolve.' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_040',
         title: 'The Whole Family',
         chapter: 40,
@@ -1948,8 +2233,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The final phase breaks not because of any one hero\'s strike, but because eight people — San, Joel, Aisyah, Mezstorm, Eliz, Senedra, Zaki, Soel — commit to the same motion at the same moment, for the first time in the whole shattered future, completely undivided.' },
           { speaker: 'San', text: 'Soel presses against your leg as the Ward dissolves, purring, unkillable, chosen and choosing back. "Everyone," you say, looking around at all of them, "together." It is not a strategy anymore. It is just what is true.' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_041',
         title: 'Daybreak',
         chapter: 41,
@@ -1965,9 +2250,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'When Daybreak Incarnate finally, gently, comes apart, it does not feel like a kill. It feels like a held breath, released. The sky over Aethon — over every shattered zone you have ever walked through — opens, and for the first time in this entire journey, the light is not artificial, not desperate, not borrowed. It is just morning.' },
           { speaker: 'San', text: 'Everyone stands together in the new light — San, Joel, Aisyah, Mezstorm, Eliz, Senedra, Zaki, Soel. No one says anything grand. Aisyah counts something in her ledger and, for once, does not look worried. Zaki checks his pack, finds everything exactly where it should be, and smiles. Joel takes your hand. "Legends of Daybreak," you say, quiet, mostly to yourself, watching the sun actually rise. "I think that is us now." Whatever comes next, it will not be faced alone. It never really was.' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_042',
         title: 'Enough, Without Asking',
         chapter: 42,
@@ -1985,7 +2269,9 @@ storyJournal: {
           { speaker: 'Joel', text: '"What kind of person does not wait?" Joel asks, quiet, not rhetorical — he actually wants to know what you decided.' },
           { speaker: 'San', text: '"A tired one," you say. "A person who was already drowning and found somebody who could actually hold weight. I do not think that needed their permission. I just used to think it did."' },
           { speaker: 'Narrator', text: 'You are quiet for a moment, and Joel lets the quiet sit, because he has learned by now that your silences are not empty either — they are you deciding how much further into this you want to go tonight.' },
-          { speaker: 'San', text: '"My father has three daughters," you say, eventually. "All three of us have been divorced. I came close enough to it myself before things went the way they did that it barely counts as an exception. I think somewhere in him, watching that pattern, he stopped trusting that any relationship holds. Not because he does not love us. Because loving us and watching us get hurt, three times over, taught him to brace before anything even starts going wrong."' },
+          { speaker: 'San', text: '"My father had three daughters," you say, eventually.' },
+          { speaker: 'Narrator', text: 'A quiet pause, the fire doing most of the talking for a moment.' },
+          { speaker: 'San', text: '"All three of us watched our marriages fall apart," you say. "I think somewhere in him, watching that same shape happen three times over, he stopped trusting that any relationship holds. Not because he does not love us. Because loving us and watching us get hurt, three times over, taught him to brace before anything even starts going wrong."' },
           { speaker: 'San', text: '"And then I brought him you," you say, almost smiling, almost not. "Filipino, when our whole family is ethnic Chinese, roots going back through Brunei and Malaysia for generations. I do not think he is unkind about it. I think he is just — unsure. One more variable, stacked on top of a pattern that already scared him. He has never said a cruel word about it. He also has never quite said it is fine."' },
           { speaker: 'Joel', text: '"Does that hurt?" Joel asks, direct, the way he asks the questions that actually matter.' },
           { speaker: 'San', text: '"It used to," you admit. "I used to think if I just explained it well enough — the workplace, my father, all of it — someone would finally say the thing I wanted to hear. That I made the right call. That I am not the reckless daughter, the one who could not wait, the one who complicated an already-scared father\'s year."' },
@@ -1994,9 +2280,8 @@ storyJournal: {
           { speaker: 'Joel', text: '"Good," Joel says, simply, and takes your hand — not a grand gesture, just a steady one, exactly like him. "Because I was never going to wait for permission either. I asked to stand beside you. That was never conditional on anyone else agreeing it made sense."' },
           { speaker: 'San', text: 'You lean into him, and for once the old memories do not follow you into the quiet after. They just stay where they belong — true, and past, and no longer load-bearing. "Enough," you say, mostly to yourself. "I am enough, without anyone else signing off on it. That took a long time to actually believe."' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_043',
         title: 'The Question Neither of Them Answers',
         chapter: 43,
@@ -2025,9 +2310,8 @@ storyJournal: {
           { speaker: 'San', text: '"Priorities," you say, finally, sitting up, letting the morning actually start. "We focus on priorities. The rest finds us or it does not. Either way, we are still here for it."' },
           { speaker: 'Joel', text: '"Together," Joel says, like it was never actually in question. "Whatever the answer turns out to be."' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_044',
         title: 'The Weight Learns to Rest',
         chapter: 44,
@@ -2049,9 +2333,8 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The light thins, unhurried, the way morning itself arrived — not vanishing so much as simply becoming part of the day. You are alone again, staff in hand, the camp quiet around you. But the weight feels different now. Not gone. Just finally allowed to rest.' },
           { speaker: 'San', text: '"A walk, then," you say, to no one, and mean it as a promise as much as an observation.' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_045',
         title: 'The Two Before Me',
         chapter: 45,
@@ -2070,8 +2353,8 @@ storyJournal: {
           { speaker: 'San', text: '"Both things are true," you agree. "I needed room to become myself. They needed to believe I would still be there to become it. We were both right, and it still took most of my life to stop being angry about it."' },
           { speaker: 'Narrator', text: 'You think of your parents now — an ocean and several realities away — and for the first time in a long while, the thought does not come with resentment attached. Just two people who loved carefully because they had already learned, twice, exactly what it cost to lose someone before they even got a name.' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_046',
         title: 'Before He Learned to Guard',
         chapter: 46,
@@ -2090,8 +2373,8 @@ storyJournal: {
           { speaker: 'San', text: '"You did not become that," you tell him, certain of it in a way you rarely let yourself be certain of anything.' },
           { speaker: 'Joel', text: '"Not yet," Joel says, quiet, almost a joke, almost not. "I am trying very hard to keep it that way."' }
         ]
-      }
-      ,{
+      },
+      {
         id: 'journal_047',
         title: 'What Family Costs',
         chapter: 47,
@@ -2112,12 +2395,41 @@ storyJournal: {
           { speaker: 'San', text: '"You are allowed to worry about your family from here," you tell him. "It does not make you any less present for this one."' },
           { speaker: 'Joel', text: '"I know," Joel says. "Knowing does not always make the worry smaller. But it helps, having somewhere to actually say it out loud instead of carrying it alone." He looks at you, steady as always. "Thank you for asking. Really asking, not just being polite about it."' }
         ]
-      }
-
-      ,{
+      },
+      {
         id: 'journal_048',
-        title: 'The First Step Beyond',
+        title: 'Never Really a Loan',
         chapter: 48,
+        unlockType: 'level',
+        unlockAt: 50,
+        icon: '🪙',
+        summary: 'San and Joel trade stories of quiet generosity and quiet debt — the customer, the friend, the boyfriend allowances, the dread of payday — and find real relief in realizing Aethon never asked either of them to keep score.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It comes up sideways, the way most real conversations do — not planned, just surfacing while you are both doing something else entirely, mending gear by firelight.' },
+          { speaker: 'Joel', text: '"You do this a lot," Joel says, watching you set aside coin for someone at camp who clearly needed it more than either of you did. "Help people. Quietly. Like it does not occur to you not to."' },
+          { speaker: 'San', text: '"I have always been like that," you say, not quite denying it, more turning it over. "There was a customer once, back when I still worked the counter, before the firm. She was mute. Needed her sister with her every time, just to actually talk to me, to make herself understood at all."' },
+          { speaker: 'San', text: '"She owed eighteen dollars, in the end. Never paid it. Their father had taken the money meant for it and put it into car repairs instead. I could have chased it. I did not. Eighteen dollars was never going to fix whatever was actually wrong in that house."' },
+          { speaker: 'Joel', text: '"You just let it go," Joel says, not a question, more confirming something he already suspected about you.' },
+          { speaker: 'San', text: '"I let a lot of things go, over the years," you admit. "There was a closer friend too. Someone I relied on for rides, actually — I paid her for the transport, and when she needed help back, I gave it without really thinking twice. She was broke. Could not find work, no matter how hard she tried. It got critical for her, the kind of critical where you stop pretending you can handle it alone."' },
+          { speaker: 'San', text: '"And then her husband got held, for something criminal. A mistake, the kind he regretted the second it was already done and too late to undo. I do not know if that makes it better or worse. I just knew she needed someone steady while it was happening, and I could be that, so I was."' },
+          { speaker: 'Joel', text: 'He is quiet a moment, something working behind his eyes. "You did the same thing for me," he says. "I do not think I ever properly said that back to you."' },
+          { speaker: 'San', text: '"You mean the money," you say, gentle, already knowing exactly which part he means.' },
+          { speaker: 'Joel', text: '"The three thousand," Joel says. "From Robin\'s payout. Getting my stepfather to Brunei, the deposits, the debts that were already sitting there before he even arrived. I do not think I ever would have managed it without you."' },
+          { speaker: 'San', text: '"I gave you boyfriend allowances too, back when I was still at the firm," you say, something fond and a little wry creeping into it. "When the salary was bigger, when the bonuses landed. Not because you asked. Because you mattered, and I could, and those two things together always felt like reason enough."' },
+          { speaker: 'Joel', text: '"I remember," Joel says quietly. "I remember exactly how much it helped, and exactly how much I did not know how to say thank you for it properly at the time."' },
+          { speaker: 'San', text: '"I wrote it off," you tell him, plainly. "Not just the number. The whole idea of it being a debt at all. You proved who you actually were, over and over, long before I ever needed the proof. That settled it for me. It was never really a loan to begin with, if I am honest. I just did not have the right word for what it actually was yet."' },
+          { speaker: 'Narrator', text: 'He reaches for your hand, quiet, and you let him hold it while the fire does the rest of the talking for a while.' },
+          { speaker: 'Joel', text: '"I used to dread payday," Joel admits eventually, something raw surfacing in it. "Every single time. The debts were always bigger than whatever landed in the account. I do not think I was ever once excited to get paid, not really, not the whole time I worked there. I just felt broke, permanently, no matter how much came in."' },
+          { speaker: 'San', text: '"I know that feeling," you say. "Different shape, same weight. Watching money arrive and already knowing exactly which parts of it were never really yours to keep."' },
+          { speaker: 'Joel', text: '"We do not have to think about any of that here," Joel says, like he is only now fully letting himself believe it. "No debts. No dread on payday. No math I have to do before I am even allowed to feel relieved about anything."' },
+          { speaker: 'San', text: '"No," you agree, quiet, something settling in your chest that has been unsettled for as long as you can remember. "Whatever else Aethon has cost either of us, it did not cost us that. For the first time in longer than I can measure, help just gets to be help. Not a debt either of us is quietly keeping score of."' },
+          { speaker: 'Joel', text: '"Good," Joel says simply, and pulls you a little closer against the cold. "I would like to keep it that way."' },
+        ]
+      },
+      {
+        id: 'journal_049',
+        title: 'The First Step Beyond',
+        chapter: 49,
         unlockType: 'boss',
         unlockAt: 'The Wayfinder',
         icon: '🗺️',
@@ -2131,11 +2443,11 @@ storyJournal: {
           { speaker: 'Narrator', text: 'The Wayfinder seems to accept that. When it finally yields, it does not vanish like an enemy defeated — it simply steps aside, the way a door opens rather than breaks.' },
           { speaker: 'San', text: '"A walk, then," you say again, quieter this time, remembering exactly where you first said it. "Let us see how far it actually goes."' }
         ]
-      }
-      ,{
-        id: 'journal_049',
+      },
+      {
+        id: 'journal_050',
         title: 'Every Name the Tide Kept',
-        chapter: 49,
+        chapter: 50,
         unlockType: 'boss',
         unlockAt: 'The Tidereaver',
         icon: '🌊',
@@ -2148,11 +2460,11 @@ storyJournal: {
           { speaker: 'Narrator', text: 'When it finally recedes, the coast is quieter than before, and Senedra adds one more mark to the rocks — small, deliberate, not a name so much as a note. You were here. You left on purpose. That part matters.' },
           { speaker: 'Senedra', text: '"First carving I have ever made that was not just marking a path," she says, almost smiling. "Feels different, doing it for its own sake."' }
         ]
-      }
-      ,{
-        id: 'journal_050',
+      },
+      {
+        id: 'journal_051',
         title: 'A Debt With No Owner',
-        chapter: 50,
+        chapter: 51,
         unlockType: 'boss',
         unlockAt: 'The Ledgerbound',
         icon: '📒',
@@ -2166,11 +2478,11 @@ storyJournal: {
           { speaker: 'Aisyah', text: '"I spent years teaching people that numbers do not lie," Aisyah says, breathing hard once it finally falls. "I did not always say the follow-up. Numbers do not lie. The people who design the system around them do, constantly."' },
           { speaker: 'Narrator', text: 'The ledgers across the settlement go quiet, at least for now — not erased, not forgiven, just no longer being actively enforced by something that never had a stake in fairness to begin with.' }
         ]
-      }
-      ,{
-        id: 'journal_051',
+      },
+      {
+        id: 'journal_052',
         title: 'What Was Owed, Surfacing',
-        chapter: 51,
+        chapter: 52,
         unlockType: 'boss',
         unlockAt: 'The Undertow',
         icon: '🌊',
@@ -2183,11 +2495,11 @@ storyJournal: {
           { speaker: 'Narrator', text: 'When it finally quiets, the silence after feels less like victory and more like relief — not a debt erased, but at least, finally, acknowledged out loud instead of buried and left to fester.' },
           { speaker: 'San', text: '"Some debts cannot be paid," you say, quiet, thinking of far more than the settlement above. "They can only be witnessed, and carried differently after that."' }
         ]
-      }
-      ,{
-        id: 'journal_052',
+      },
+      {
+        id: 'journal_053',
         title: 'Proof the Road Continues',
-        chapter: 52,
+        chapter: 53,
         unlockType: 'boss',
         unlockAt: 'The Horizon Keeper',
         icon: '🌅',
@@ -2200,12 +2512,11 @@ storyJournal: {
           { speaker: 'San', text: '"A walk," you say again, looking at everyone — Joel, Aisyah, Mezstorm, Eliz, Senedra, Zaki, Soel, all of them still here, still choosing this. "Not a sprint. Just a very, very long walk. I think I can live with that."' },
           { speaker: 'Narrator', text: 'The horizon does not close. It never really does. But for the first time, that feels less like an unfinished sentence and more like an open one — the good kind, the kind you get to keep writing instead of the kind that was forced on you.' }
         ]
-      }
-
-      ,{
-        id: 'journal_053',
+      },
+      {
+        id: 'journal_054',
         title: 'What the Hollow Prophet Believed',
-        chapter: 53,
+        chapter: 54,
         unlockType: 'boss',
         unlockAt: 'The Hollow Prophet',
         icon: '👁️',
@@ -2217,11 +2528,11 @@ storyJournal: {
           { speaker: 'Eliz', text: '"That is the saddest reason for any of this I have ever heard," Eliz says quietly, and means it as a diagnosis, not an accusation.' },
           { speaker: 'Narrator', text: 'The Cult of the Closed Eye ends there — not with a monster defeated, but with a grieving man finally out of reasons to keep lying to the people who trusted him with their pain. The temple will call it a victory. It feels, mostly, like a very long, very late funeral.' }
         ]
-      }
-      ,{
-        id: 'journal_054',
+      },
+      {
+        id: 'journal_055',
         title: 'The Knight Who Came Back Different',
-        chapter: 54,
+        chapter: 55,
         unlockType: 'level',
         unlockAt: 34,
         icon: '🗡️',
@@ -2234,12 +2545,11 @@ storyJournal: {
           { speaker: 'Ser Aldric', text: '"I know the difference, intellectually," he says. "Give me time to know it the rest of the way too."' },
           { speaker: 'Narrator', text: 'You bring him back to the temple less like a rescued hostage and more like someone returning from a long illness — alive, which was never guaranteed, and changed, which was never going to be avoidable either. The temple marks the investigation closed. Ser Aldric, privately, does not consider himself finished with it at all.' }
         ]
-      }
-
-      ,{
-        id: 'journal_055',
+      },
+      {
+        id: 'journal_056',
         title: "What Faith Does Without Anyone to Follow",
-        chapter: 55,
+        chapter: 56,
         unlockType: 'level',
         unlockAt: 38,
         icon: '🕯️',
@@ -2253,11 +2563,11 @@ storyJournal: {
           { speaker: 'San', text: '"Then we finish it together," you tell him. "Properly, this time. Not scattered pieces left to whoever finds them first."' },
           { speaker: 'Ser Aldric', text: '"Properly," he agrees, and for the first time since you found him, he sounds like he means to be the one doing the finding instead of the one who has to be found.' }
         ]
-      }
-      ,{
-        id: 'journal_056',
+      },
+      {
+        id: 'journal_057',
         title: 'The Last of the Believing',
-        chapter: 56,
+        chapter: 57,
         unlockType: 'boss',
         unlockAt: 'Sister Wren, the Last Believer',
         icon: '🕯️',
@@ -2271,12 +2581,11 @@ storyJournal: {
           { speaker: 'San', text: '"The Cult of the Closed Eye is over," you say, quietly, to Joel, to Ser Aldric, to no one in particular. "Not because we won. Because there is finally no one left who needs it to keep going."' },
           { speaker: 'Narrator', text: 'The temple will record it as a victory. It feels, more than anything, like the end of a very long, very sad conversation — the kind that never needed a monster to defeat, just someone willing to finally say the honest thing out loud.' }
         ]
-      }
-
-      ,{
-        id: 'journal_057',
+      },
+      {
+        id: 'journal_058',
         title: 'What Soel Actually Is',
-        chapter: 57,
+        chapter: 58,
         unlockType: 'level',
         unlockAt: 45,
         icon: '🐱',
@@ -2291,11 +2600,11 @@ storyJournal: {
           { speaker: 'Eliz', text: '"It is not just a phrase," Eliz says. "It is the truest thing about him. He decided you were worth staying for. I do not think that decision has an expiration on it."' },
           { speaker: 'Narrator', text: 'Soel opens one eye, entirely unbothered by being the subject of the conversation, and goes back to sleep in his patch of impossible light. Some things, apparently, do not need to be explained to be true. They just need someone willing to finally ask.' }
         ]
-      }
-      ,{
-        id: 'journal_058',
+      },
+      {
+        id: 'journal_059',
         title: 'The One He Chose Before',
-        chapter: 58,
+        chapter: 59,
         unlockType: 'level',
         unlockAt: 45,
         icon: '❄️',
@@ -2311,12 +2620,11 @@ storyJournal: {
           { speaker: 'Eliz', text: '"I think that is exactly what it is," Eliz agrees quietly. "Every time he holds on, somewhere, something very old finally gets to stop grieving. That is not a small thing to be part of. I do not think either of you should treat it like one."' },
           { speaker: 'Narrator', text: 'Soel, still pretending to be asleep, presses closer against your leg — not a spirit, not a mystery, in that particular moment. Just warm, and chosen, and staying. The Breaking took so much from so many. It is a strange kind of grace, that the smallest things sometimes get to be the ones who finally hold on.' }
         ]
-      }
-
-      ,{
-        id: 'journal_059',
+      },
+      {
+        id: 'journal_060',
         title: 'The Cellphone',
-        chapter: 59,
+        chapter: 60,
         unlockType: 'level',
         unlockAt: 41,
         icon: '📱',
@@ -2340,39 +2648,72 @@ storyJournal: {
           { speaker: 'San', text: '"Then it doesn\'t work," you say, and mean it, mostly. "But I\'d rather know than spend the rest of this wondering." You tuck it carefully into your pack, next to nothing else, like it deserves the space to itself. "Someone out here has to know how to actually fix something like this properly. We just have to find them first."' },
           { speaker: 'Narrator', text: 'Zaki checks his pack one more time on the walk back, mostly out of habit now, not fear. Whatever is ahead — the search, the boss fights standing in the way of wherever this leads, the very real chance that all of this comes to nothing — none of it changes what\'s already true: for the first time since any of you arrived here, the old world does not feel entirely gone. Just quiet. Waiting to see if anyone still knows how to call it back.' },
         ]
-      }
-      ,{
-        id: 'journal_060',
+      },
+      {
+        id: 'journal_061',
         title: 'The Mechanic',
-        chapter: 60,
+        chapter: 61,
         unlockType: 'zone',
         unlockAt: 'The Static Fields',
         icon: '🔧',
         summary: 'The search for someone who can fix the phone leads somewhere San did not expect — and reveals just how many familiar faces made it into this world.',
         scenes: [
           { speaker: 'Narrator', text: 'The workshop, if it can be called that, is a lean-to built from salvaged panels and a generator that should not still be running. A man is bent over a workbench inside it, muttering at something in a language that is mostly just frustration, and San stops walking so suddenly that Joel nearly runs into her.' },
-          { speaker: 'San', text: '"Jorvin?" The name comes out before you have decided to say it, disbelief doing all the work.' },
-          { speaker: 'Narrator', text: 'The man looks up. Recognition arrives on his face slower than it did on yours, and then all at once, the way it always seems to happen out here — like the world needs a second to confirm a person is real before it lets you actually see them.' },
-          { speaker: 'Jorvin', text: '"San?" He sets down whatever he was holding, wipes his hands on a rag that has clearly given up on ever being clean again. "San from ops. I used to sit two desks down from you. You once spent an entire lunch break trying to convince me a Honda would outlast a Toyota and I have never forgiven you for how close you came to winning that argument."' },
-          { speaker: 'San', text: '"You still owe me for that debate," you say, and it comes out half-laughing, half something closer to tears. "I can\'t believe it\'s you. Out of everyone, out here —"' },
-          { speaker: 'Jorvin', text: '"Believe it. I have been fixing whatever crawls out of that field for longer than I want to admit. Turns out the thing I was best at back home — caring way too much about how things work — is apparently exactly what this place needed from somebody." He nods at Joel. "And you\'re the boyfriend. I remember San complaining about you exactly as much as she complained about traffic on the way to Muara."' },
+          { speaker: 'San', text: '"Jorvin?!" It comes out closer to a shout than you mean it to, and you are already moving before you have decided to.' },
+          { speaker: 'Narrator', text: 'The man looks up, and whatever he was about to say gets lost completely.' },
+          { speaker: 'Jorvin', text: '"San — oh, thank god, an actual person I already like." He sets down whatever he was holding, wipes his hands on a rag that clearly gave up on being clean a long time ago. "Do you have any idea how much effort it takes being nice to strangers all day out here? I am exhausted. I have missed being rude to you specifically."' },
+          { speaker: 'San', text: '"You are still exactly this dramatic, good to know some things survived the end of the world intact," you say, half-laughing, half something closer to tears.' },
+          { speaker: 'Jorvin', text: '"Back-office faced straight across at Admin, San. I watched you do data entry through that glass wall for years — technically we had the same job with two different department names on it." He nods at Joel. "And you\'re the boyfriend. I have heard about you exactly as often as I heard San complain about her ride running late every single morning."' },
           { speaker: 'Joel', text: '"That checks out," Joel says, and something in his shoulders loosens — the particular relief of meeting someone who knew you both before any of this, who has nothing to compare you to except who you actually were.' },
           { speaker: 'San', text: '"I need your help," you say, and you pull the phone out carefully, like it might dissolve if you are not gentle enough with it. "It\'s mine. From before. I don\'t know if it can even be fixed, but I need to know."' },
           { speaker: 'Narrator', text: 'Jorvin takes it the way you took it — careful, reverent, turning it over like it might answer a question just by being held correctly. He does not promise anything. That, more than anything else, is what makes you trust him with it.' },
-          { speaker: 'Jorvin', text: '"I won\'t tell you I can fix this," he says honestly. "I don\'t know yet. But I know two people who might actually be useful here, and it turns out they both made it too." He raises his voice toward the back of the lean-to. "Dudin! Wahyu! Come see who wandered in."' },
+          { speaker: 'Jorvin', text: '"I won\'t tell you I can fix this," he says honestly. "I don\'t know yet. But I know two people who might actually be useful here, and it turns out they both made it too." He raises his voice toward the back of the lean-to, switching languages without seeming to notice he has. "Dudin! Wahyu! Lihat siapa yang nyasar ke sini!"' },
           { speaker: 'Narrator', text: 'Joel makes a sound that is not quite a word — somewhere between his own name and theirs, all at once. Two more people step out from behind a stack of salvaged parts, and for a moment nobody says anything at all, because some reunions do not actually need the words yet.' },
-          { speaker: 'Dudin', text: '"Joel." Just that, at first. Then, quieter: "We used to split rations at the dorm when neither of our paychecks quite stretched to the end of the month. I did not think I would ever get to do that again."' },
-          { speaker: 'Wahyu', text: '"I still owe you for covering my half of the electric bill that one month," he adds, and it is such a small, specific, ordinary thing to say after everything, that it somehow lands harder than anything grander could have.' },
+          { speaker: 'Dudin', text: '"Joel?! JOEL." Dudin gets there first, already crossing the distance, the rest coming out too fast to catch cleanly. "Anjir, gue kira lo udah mati, serius." *(I swear I thought you were dead.)*' },
+          { speaker: 'Wahyu', text: '"Kita cariin lo ke mana-mana," Wahyu says, arriving a half-step behind, quieter. *(We looked for you everywhere.)* Then he spots the small shape curled against Joel\'s pack and visibly forgets whatever he was about to say next. "Tunggu. ITU APA?!" *(Wait. WHAT IS THAT?!)*' },
+          { speaker: 'Narrator', text: 'Soel lifts his head at the sudden attention, entirely unbothered by being the center of it, the way he always is.' },
+          { speaker: 'Dudin', text: '"Kucing lo bersinar, Joel," he says flatly, like he needs that confirmed before he is allowed to get excited about it. *(Your cat is glowing, Joel.)* Then he is crouched down anyway, hand held out, delighted despite himself. "Boleh gue pegang, nggak?" *(Can I hold him? Please?)*' },
+          { speaker: 'Joel', text: '"Namanya Soel," Joel says, easy, like the question barely needs thinking about. *(His name\'s Soel.)* "Dia yang milih San sendiri. Cerita panjang." *(He chose San himself. Long story.)*' },
+          { speaker: 'Wahyu', text: '"Semuanya di sini kayaknya cerita panjang," Wahyu says, still crouched by the cat, grinning helplessly. *(Everything out here seems to be a long story.)* "Gapapa. Kita ada waktu." *(That\'s fine. We\'ve got time.)*' },
+          { speaker: 'Dudin', text: '"Inget nggak, dulu kita suka bagi jatah pas gajian belum cair?" he adds, quieter, still not quite looking up from Soel. *(Remember how we used to split rations before payday came through?)* "Nggak nyangka bakal ngelakuin itu lagi."' },
+          { speaker: 'Wahyu', text: '"Gue masih utang lo bayar listrik bulan itu," he says, and it is such a small, specific, ordinary thing to say after everything, that it somehow lands harder than anything grander could have. *(I still owe you for the electric bill that month.)*' },
           { speaker: 'Narrator', text: 'You think, standing there, of everyone else this world has already given back in pieces — Mimi in her dreams, Aisy in the shadows she chooses to walk in, Lewis and Jonathan setting up shop before either of you had a name for any of this. The world took almost everything. It is only now, slowly, that you are starting to understand it did not take everyone.' },
           { speaker: 'Jorvin', text: '"I\'ll see what I can do with the phone," he says, setting it down on the workbench with more care than the workbench probably deserves. "No promises. But if there\'s a way to get something like this running again, I would rather it be someone who already knows exactly what it\'s worth to you."' },
           { speaker: 'San', text: '"Thank you," you say, and it is not nearly enough, and he seems to understand that anyway. "For all of it. Not just the phone."' },
-          { speaker: 'Narrator', text: 'Dudin has already started unpacking something that looks suspiciously like field rations, insisting everyone eat before "whatever comes next." Wahyu is holding up a scrap of fabric to the light, already halfway through describing an idea for a jacket nobody asked for. And Jorvin bends back over the phone, muttering at it the exact same way he used to mutter at engines that would not turn over — like it is a puzzle worth being stubborn about, not because it is easy, but because it matters to someone he has already decided is worth the trouble.' },
+          { speaker: 'Narrator', text: 'Dudin has not put Soel down. Wahyu is holding up a scrap of fabric to the light, already halfway through describing an idea for a jacket nobody asked for. And Jorvin bends back over the phone, muttering at it the exact same way he used to mutter at engines that would not turn over — like it is a puzzle worth being stubborn about, not because it is easy, but because it matters to someone he has already decided is worth the trouble.' },
         ]
-      }
-      ,{
-        id: 'journal_061',
+      },
+      {
+        id: 'journal_062',
+        title: 'Proof of Where You Were Standing',
+        chapter: 62,
+        unlockType: 'level',
+        unlockAt: 41,
+        icon: '🦋',
+        summary: 'San finally says out loud that she once believed her own isolation at Robin\'s firm was her own fault — and finds, in the sheer number of real colleagues who made it through with her, proof that it never was.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It is Mimi who finally makes you say it out loud — not by asking, just by being exactly as warm and unbothered to see you as she always used to be, like no time at all had passed since the last time she leaned over your desk with something she was not supposed to know yet.' },
+          { speaker: 'San', text: '"I used to think it was me," you say, quiet, watching her across the fire. "At Robin\'s office. The distance. I told myself if people were cold, or careful around me, it was because I had pulled away first. That I had made myself difficult to be close to, and the prejudice was just people responding to that, fairly, in their own way."' },
+          { speaker: 'Mimi', text: '"That was never fair," Mimi says, gentle but certain, no hesitation in it at all. "You were surviving something. People built like Robin\'s office do not usually earn the benefit of the doubt just because they finally get the withdrawal they trained into someone."' },
+          { speaker: 'San', text: '"I know that now," you say. "I did not always. I spent a long time believing I had caused my own isolation, like it was some character flaw instead of the only reasonable response to how I was actually being treated."' },
+          { speaker: 'Narrator', text: 'You think of the specific shape that isolation took — not dramatic, never dramatic, just a slow retreat into yourself that felt, at the time, like the only room left where you were still allowed to exist without being assessed for it.' },
+          { speaker: 'San', text: '"I did not expect any of you to be here," you admit. "Not really. I hoped, the way you hope about anything you have already lost. But hoping and expecting are different things."' },
+          { speaker: 'Aisy', text: 'Aisy appears the way she always does, unhurried, like she was standing there the whole time and simply waited for the right moment to be noticed. "Lewis is two zones over," she says. "Jonathan too. Zul still does the same job, more or less, just with worse roads. Jorvin never really stopped being Jorvin."' },
+          { speaker: 'San', text: '"The whole department," you say slowly, the shape of it only now fully landing. "Not one or two of you. All of it. Whatever brought people through, it did not just save me a handful of strangers. It saved me the actual people."' },
+          { speaker: 'Mimi', text: '"We looked out for you back then too," Mimi says. "Quietly, mostly. You did not always let it land, and that was alright — you had enough coming at you already without needing to also perform being grateful for the small things. We knew. We are not surprised you did not always see it."' },
+          { speaker: 'San', text: '"I see it now," you say, and mean it completely. "I do not think I understood, until right now, how much I had convinced myself that Robin\'s office was the honest version of how people actually treat each other, and this" — you gesture at all of them, the fire, the whole unlikely gathering — "was the exception. It was never the exception. It was just further away."' },
+          { speaker: 'Narrator', text: 'You think of Amad too, the specific ache of one person you have not fully gotten back — the food he used to bring right to your floor, and the months before the world even ended when he simply stopped, for reasons you never learned and still cannot quite bring yourself to ask him about directly.' },
+          { speaker: 'San', text: '"Amad is out here too," you say, quieter. "I have not asked him why he stopped coming, before everything. I do not know if I ever will. Some things I think I am allowed to just not need the answer to."' },
+          { speaker: 'Aisy', text: '"That is allowed," Aisy agrees. "Not every gap needs closing to still be survivable."' },
+          { speaker: 'Narrator', text: 'You sit with all of them a while, the fire, the unlikely reunion of an entire department scattered across a broken world and somehow, mostly, found again — and understand, finally, completely, that the isolation was never proof of anything true about you. It was only ever proof of where you had been standing.' },
+          { speaker: 'San', text: '"Thank you," you say, to all of them, plainly. "For being exactly who you already were. I do not think I ever properly said that, back when it mattered just as much."' },
+          { speaker: 'Mimi', text: '"You can say it now," Mimi says, warm. "We are not in a hurry anywhere. We have got time."' },
+        ]
+      },
+      {
+        id: 'journal_063',
         title: 'The Charge',
-        chapter: 61,
+        chapter: 63,
         unlockType: 'level',
         unlockAt: 42,
         icon: '🔌',
@@ -2401,11 +2742,11 @@ storyJournal: {
           { speaker: 'Mimi', text: 'Something shifts behind her eyes — not hope exactly, you have all learned to be careful with that word, but something adjacent to it. "Then we keep looking," she says. "And we keep an eye out for whoever comes through next."' },
           { speaker: 'Narrator', text: 'No way home yet. No voice on the other end of a phone that still cannot hold a charge. But the world keeps handing you pieces of what you lost anyway, one stubborn, unlikely arrival at a time, and for tonight you decide to let that be enough.' },
         ]
-      }
-      ,{
-        id: 'journal_062',
+      },
+      {
+        id: 'journal_064',
         title: 'The Asset',
-        chapter: 62,
+        chapter: 64,
         unlockType: 'level',
         unlockAt: 43,
         icon: '🔗',
@@ -2428,39 +2769,52 @@ storyJournal: {
           { speaker: 'San', text: '"I do," you tell him, and mean it in a way that still occasionally surprises you, two years in. "That is the part that took the longest to believe. That wanting someone and needing to control them are not actually the same instinct, even when they can look identical from the outside."' },
           { speaker: 'Narrator', text: 'The night settles around you both, unremarkable and safe, and you let yourself notice — the way you are trying to teach yourself to notice, deliberately, on purpose — that nothing about this moment requires you to be useful in order to be allowed to stay in it.' },
         ]
-      }
-      ,{
-        id: 'journal_063',
-        title: 'What the Scammer Never Meant to Give',
-        chapter: 63,
+      },
+      {
+        id: 'journal_065',
+        title: 'What I Was Actually Running From',
+        chapter: 65,
         unlockType: 'level',
         unlockAt: 44,
         icon: '💔',
-        summary: 'San tells Joel the real reason she finally left — and it is not the story anyone assumed.',
+        summary: 'San tells Joel the real reason she finally left — and admits, for the first time, that she still does not actually know if any of it was true.',
         scenes: [
           { speaker: 'Narrator', text: 'You do not tell Joel this part right away. It takes another evening, a different kind of quiet, before you find the shape of it.' },
           { speaker: 'San', text: '"I have never told anyone the actual reason I finally left," you say. "Not the real one. People assume it was something dramatic. A fight, an ultimatum, something clean enough to explain in one sentence at a dinner party."' },
           { speaker: 'Joel', text: '"What was the real one?" he asks, careful, the way he always is when a door opens somewhere he was not expecting one.' },
-          { speaker: 'San', text: '"A scammer," you say, and almost laugh at how absurd it still sounds, years later. "Some stranger online, pretending to care about me, long enough and well enough that I believed it. I sent money I did not have to spare. Hundreds of dollars, gone, to someone who was never real to begin with."' },
+          { speaker: 'San', text: '"It started in August 2022, if I am being exact about it," you say. "Just someone I talked to online. Friends, at first. Nothing more than that, not yet."' },
+          { speaker: 'San', text: '"Then I caught COVID, and during that stretch of isolation is when it actually turned into something more — hours of just talking, because there was nothing else to fill the days and no one else around to fill them with."' },
+          { speaker: 'San', text: '"My ex caught it around the same time. So it was me — working, a lot of work, more than usual — entirely remotely, while also taking care of our second baby, completely alone. My mother-in-law took our eldest off somewhere during all of it. My ex did not work. He stayed in the guest room and let me carry the rest of it by myself."' },
           { speaker: 'Narrator', text: 'You watch his face carefully, bracing for something — pity, maybe, or the particular embarrassment people feel on your behalf when they hear a story like this. It does not come.' },
           { speaker: 'Joel', text: '"That is not the part that matters to me," he says simply. "Go on."' },
-          { speaker: 'San', text: '"The money almost destroyed me, honestly. But underneath the panic about the money, there was this other thing I could not stop looking at once I had seen it." You take a breath. "I had been so hungry for someone to actually pay attention to me — real attention, not the kind that came with a price attached — that I let a total stranger convince me he loved me in about two weeks. That is what finally scared me. Not the money. The hunger."' },
-          { speaker: 'San', text: '"I remember sitting there afterward, humiliated and broke, and thinking: I am married. I share a house with a person. And I was still that starved for someone to actually see me, that a lie from a stranger felt more real than my own home."' },
-          { speaker: 'Narrator', text: 'You have never said it out loud quite this plainly before, and something in your chest loosens slightly at finally hearing it exist outside your own head.' },
-          { speaker: 'San', text: '"That was the thing that actually got me out. Not one dramatic fight. Just that specific, humiliating clarity — realizing how starved I had let myself become, and understanding that the man I had built a life around was never going to be the one who fixed that. I had to leave to find out if I even remembered how to be wanted honestly."' },
-          { speaker: 'Joel', text: '"So someone trying to take something from you," Joel says slowly, working through it, "accidentally gave you the one thing he never meant to."' },
-          { speaker: 'San', text: '"I have never put it that cleanly," you say, "but yes. I do not forgive him for it. I do not think I need to. But I also cannot pretend it was not the actual hinge everything turned on. Life is not always tidy about where the important moments come from."' },
+          { speaker: 'San', text: '"That is the version of me who kept talking to a stranger online every single day, for hours. Video calls. Photos. It felt real, Joel. It felt like the only real thing left in my life at that point. We did not actually become anything — not officially — until November that year. By then I already knew what I was doing, and I already knew I should stop. I did not."' },
+          { speaker: 'San', text: '"I moved out in December 2022." A pause, harder this time. "Before I did — out of guilt, because of everything I was already carrying about what I was doing on the other side of a phone screen — I let my ex use my body. He watched a great deal of pornography by then, and I had become the release valve for whatever that left in him. I felt disgusted every single time. Not only at him. At myself, for allowing it, for somehow convincing myself I owed him that."' },
+          { speaker: 'San', text: '"I watched my son turn one. His first birthday. And the very next day, I left. I could not live inside that confusion for one more day — what I felt for a stranger online, what was happening to my own body in that house, and how worthless I had let myself believe I was, underneath both of those things at once."' },
+          { speaker: 'San', text: '"I still do not actually know if he was lying to me," you say, slower now, something raw and unresolved in it that has clearly never been said out loud in quite this shape before. "I looked, later. Tried to check the things he told me against the things that were supposedly true. Some of it lined up. Some of it did not. I do not have real proof either way, and I do not think I ever will."' },
+          { speaker: 'Joel', text: '"What did he tell you?" Joel asks, careful, giving you room to go exactly as far into it as you actually want to.' },
+          { speaker: 'San', text: '"That he was a felon. He told me that early on — sitting in a cell somewhere in California, waiting for me. I heard him cry once, actually cry, recalling an assault he said he had survived. That part never felt performed. It was only in the last few months of it that he told me he wanted to build an entire program around helping other survivors of it, and wanted my help researching it — actual hours of my time, tracking down resources for something I still do not know was ever going to become real." A short breath. "Somewhere in that same stretch, he also told me he had shot two rival gang members dead once, because they had laughed at him. I do not know what to do with that, even now. I am not sure it changes anything either way."' },
+          { speaker: 'Narrator', text: 'His jaw tightens, not at you, at the shape of what you are describing.' },
+          { speaker: 'San', text: '"But the truth is, whether or not any of that was real, none of it was actually the thing that hurt me most," you continue. "It was how much he needed me to agree with him. His ideals, his opinions, constantly, on everything — and if I did not fall in line fast enough, there was always a reason it was somehow my fault. He called it \\"tough love.\\" Asked more of me than I had left to give, most days. And underneath all of it, his own insecurities, so loud I ended up managing them instead of ever getting to have my own. I could not always place why it felt so familiar. Then I realized. He reminded me of Robin sometimes. That same total confidence in his own importance, like the rest of us existed mainly to keep up."' },
+          { speaker: 'San', text: '"I could not breathe, some days, near the end of it. I felt trapped in something I could not fully explain to anyone, including myself."' },
+          { speaker: 'San', text: '"I carried the guilt for two years after that. Missing my kids constantly. Still telling myself I loved him, because it was easier than the alternative."' },
+          { speaker: 'San', text: '"Eventually I found the strength to actually walk away from it, real or not. I picked up other games, made real friends inside them, slowly filled the space he had been occupying with people who were actually there. Then I cut him off completely — treated the money and the time as a loss and stopped looking back. That was September 2024."' },
+          { speaker: 'San', text: '"I met you two months after that. November 2024. On an app called Litmatch, of all things." A small, genuine laugh, the first real one since you started this. "And it has been the best thing that has ever happened to me. I need you to hear that this was never a rebound, whatever it might have looked like from the outside given the timing. You grew into the best partner I have ever had. Responsible. Actually take accountability out loud, the moment something goes wrong, instead of making me guess at it. And not once — not once — have you looked down at me for any of it. Not that relationship. Not the mistakes I made when I was younger and did not know better yet."' },
+          { speaker: 'Narrator', text: 'You have never said any of it out loud quite this plainly before, and something in your chest loosens slightly at finally hearing it exist outside your own head.' },
+          { speaker: 'San', text: '"I have had a long time to think about why I stayed two years in something that confusing," you say. "And I do not think it was ever love, if I am finally honest about it. I think I just needed a reason not to go running back to my ex. Something else to point to, so I would not have to face how much I still, some days, wanted to go back to something familiar and terrible simply because it was familiar."' },
+          { speaker: 'San', text: '"That is the actual thing that scares me most, looking back. Not whether he was lying. Whether I was."' },
+          { speaker: 'Joel', text: '"You were surviving," Joel says quietly. "Sometimes the story you tell yourself while you are surviving something is not really a lie. It is just the only shape the truth could take, at the time, that you could actually stand to carry."' },
+          { speaker: 'San', text: '"I have never put it that gently," you say. "But yes. I do not know if he was ever real, in the way he said he was. I do not think it changes what I actually needed to learn from the whole thing."' },
           { speaker: 'Narrator', text: 'Joel is quiet for a while, turning it over the way he turns over most things that matter to him — slowly, without rushing to make it smaller than it is.' },
-          { speaker: 'Joel', text: '"I am glad you got out," he says finally. "I wish it had not needed to cost you that much to get there. But I am not going to pretend I am not glad, selfishly, that it happened exactly the way it did. It is the reason there was a you left to find, by the time I got here."' },
+          { speaker: 'Joel', text: '"I am glad you got out," he says finally. "Of the marriage, of whatever that was, of both. I am not going to pretend I am not glad, selfishly, that it happened exactly the way it did. It is the reason there was a you left to find, by the time I got here."' },
           { speaker: 'San', text: '"That is either the least romantic or the most honest thing anyone has ever said to me," you tell him, and this time you do laugh, a little wet around the edges but real.' },
           { speaker: 'Joel', text: '"Probably both," Joel admits. "I have never been good at picking just one."' },
-          { speaker: 'Narrator', text: 'You let the story rest there, finally spoken all the way through instead of carried silently, and notice — the way you are still learning to notice — that it feels lighter now, having said it out loud to someone who did not flinch.' },
+          { speaker: 'Narrator', text: 'You let the story rest there, finally spoken all the way through instead of carried silently, and notice — the way you are still learning to notice — that it feels lighter now, having said it out loud to someone who did not flinch, uncertainty and all.' },
         ]
-      }
-,{
-        id: 'journal_064',
+      },
+      {
+        id: 'journal_066',
         title: 'Nine Years, One Hundred Dollars',
-        chapter: 64,
+        chapter: 66,
         unlockType: 'level',
         unlockAt: 45,
         icon: '📋',
@@ -2468,28 +2822,51 @@ storyJournal: {
         scenes: [
           { speaker: 'Narrator', text: 'It is Zaki, of all people, who triggers it — insisting, entirely unprompted, on splitting the last of the trail rations evenly even though he caught none of it himself, just because that is what you do for people you actually consider yours. You watch him do it and feel something old and sour rise up before you can stop it.' },
           { speaker: 'Joel', text: '"You went somewhere," he says quietly, once Zaki has wandered off, pleased with himself. "Just now."' },
-          { speaker: 'San', text: '"Nine years," you say, before you have decided to say anything at all. "I gave a firm nine years. Robin\'s firm — she was one of the most well-regarded lawyers in the field, and I was good at my job. Genuinely good. I want that on the record before I say the rest of it."' },
+          { speaker: 'San', text: '"Nine years," you say, before you have decided to say anything at all. "I gave a firm nine years. Robin\'s firm — he was one of the most well-regarded lawyers in the field, and I was good at my job. Genuinely good. I want that on the record before I say the rest of it."' },
           { speaker: 'Joel', text: '"Noted," Joel says, gentle, giving you room.' },
-          { speaker: 'San', text: '"After almost a decade, I got a hundred dollars," you say. "One increment. A hundred dollars, Joel, for nine years of never once being late, never once dropping something, covering for people who did not cover for me. I did the math obsessively for weeks afterward, like the number itself might change if I stared at it long enough. It never did."' },
+          { speaker: 'San', text: '"After almost a decade, I got a hundred dollars," you say. "A hundred dollars, Joel, for nine years of doing the job properly, covering for people who did not cover for me. I did the math obsessively for weeks afterward, like the number itself might change if I stared at it long enough. It never did."' },
           { speaker: 'Narrator', text: 'Joel does not say anything yet. You can tell he is doing the same math you did, and arriving at the same place.' },
-          { speaker: 'San', text: '"But the money was not even the part that broke me," you continue. "I thought I had friends there. A whole circle. Lunches, birthdays, the group chat, all of it. I told myself that was worth more than the salary, some months. That I had people."' },
+          { speaker: 'San', text: '"You have to understand the culture of that office first," you say. "Robin did not care if you were sick. He would rather you dragged yourself in running a fever than took the day to actually rest — showing up mattered more than whether you could function once you got there. He had a phrase for it when he thought you were not giving enough: you were not \\"mentally there.\\" As if being present in body meant nothing without also performing being fine."' },
+          { speaker: 'San', text: '"And if you actually left on time — not even early, just on time — he had a way of making it sound obscene. He told his own staff, more than once, loudly enough that whole lunch tables went quiet, that leaving on time just meant you were going home to open your legs for your husband. That was the culture. That was normal, there."' },
+          { speaker: 'San', text: '"It was not all grim, if I am honest," you add, something almost rueful creeping into it. "Some of it was genuinely ridiculous, in a way that almost made the rest easier to survive. He would turn up in full sports equipment for no occasion anyone could identify. Went on an actual land trip with Dr. AA once wearing tights, like the outing itself was a triathlon. Dyed his hair dark blue once, completely on purpose, because he genuinely thought it looked cool. Then the allergic reactions started, and he had to stop — but not before he had already committed fully enough to look thoroughly ridiculous in front of an entire courtroom first."' },
+          { speaker: 'Joel', text: 'Something that is almost a laugh escapes him despite himself. "That is deeply unserious for a lawyer."' },
+          { speaker: 'San', text: '"He also considered himself an expert in nutrition and exercise," you continue. "Supplements, meal plans, all of it, completely unprompted and completely convinced. I cannot tell you the exact date this next part happened, but I know it was after I had already been asked back — because of who he said it in front of. A new colleague. A fresh graduate who had only been hired after I returned. At some point he made a joke about my weight, in front of all of them, without knowing anything real about why my body worked the way it did. I have PCOS. He never once asked. It was easier for him to just call it obesity and move on to the punchline."' },
+          { speaker: 'Narrator', text: 'You watch something in Joel go very still, the specific stillness of a man deciding whether interrupting would help or just take the moment away from you.' },
+          { speaker: 'San', text: '"Then he pulled up a photo," you say, quieter now, the comedy draining out of it entirely. "Some bigger man from his exercise group. Showed it to my colleagues and called him my future husband. Right there, in front of everyone. I tried to laugh it off, the way you learn to when the alternative is making a scene. It was not funny. It was never funny. I just did not have anywhere to put that feeling at the time, so I swallowed it, the way I swallowed most things there."' },
+          { speaker: 'Narrator', text: 'His jaw goes tight in a way you have learned to recognize — not surprise, something closer to controlled fury, banked down out of respect for the fact that this is your story to tell, not his to rage through.' },
+          { speaker: 'San', text: '"I do not think there was one single day I could point to and say, that is where it started," you continue, quieter now. "It was slower than that. I just kept drifting a little further from myself every month, until some mornings I genuinely could not have told you if I still existed outside of that office at all. Pain from every direction at once, all the time, and no single wound big enough on its own to explain how tired I was of all of it added together."' },
+          { speaker: 'San', text: '"But the money was not even the part that broke me," you go on. "I thought I had friends there. A whole circle. Lunches, birthdays, the group chat, all of it. I told myself that was worth more than the salary, some months. That I had people."' },
           { speaker: 'San', text: '"It was around the same time I was finally trying to get some space from my marriage. Trying to be someone with a life outside it, even a small one. That circle at work felt like proof I still had that. Proof I was still someone, outside of being someone\'s wife."' },
+          { speaker: 'San', text: '"There were two moments, actually, where I genuinely believed I had value there," you say, slower now, working through something you have clearly not said out loud in this exact order before. "Two times a big case closed, or finally got billed properly, and I got an actual bonus for it. Thousands of dollars, both times. Real money. The kind that makes you think, for a while, that maybe you had been wrong about how little you mattered there."' },
+          { speaker: 'Joel', text: '"What happened both times," Joel asks, already braced for the shape of the answer.' },
+          { speaker: 'San', text: '"The first one came right after they asked me back," you say. "I let myself believe that meant something. The second was a genuinely fat bonus, bigger than the first. I did not know yet that it was going to be followed by being let go. I do not think I was supposed to know."' },
+          { speaker: 'San', text: '"And there was a third thing, except I did not even find out about it until half a year after I had already left for good. Money quietly placed into a retirement fund on my behalf, the whole time, that I could not touch until actual retirement. I only saw it because I happened to check the statement. Nobody ever told me directly. I do not know if that was generosity or just another way of making sure nothing he gave me could ever actually help me leave."' },
+          { speaker: 'San', text: '"The money itself was nothing to him, from what he earned. A rounding error. But it was enough to make people around me jealous, enough to shift how colleagues treated me in small, cold ways I could not always point to directly. Enough to cost me quietly, even while it was supposedly a reward."' },
+          { speaker: 'San', text: '"He bought me a gym membership once too," you add, something wry and unresolved in it. "I have never been able to decide if it was meant to tie my job performance to my weight, or just to humiliate me outright. I never got a straight answer out of myself about it, let alone him. So I used every bit of it. If it was going to cost me something either way, I decided it may as well cost him instead."' },
+          { speaker: 'San', text: '"As for the bonus money — a real piece of it went to the man I was talking to online at the time, whoever he actually was. The rest went to the lawyer who handled my separation, because Robin was too \\"busy\\" to help, or even to introduce me to someone who could. That is where nine years of thousands-of-dollars generosity actually ended up. Not saved. Not spent on myself. Just quietly absorbed by the two other things breaking me at the exact same time."' },
           { speaker: 'Joel', text: '"What happened," Joel asks, though something in his voice says he already suspects.' },
-          { speaker: 'San', text: '"It was not one thing," you say slowly. "That is the part people never believe, when I try to explain it. They want a single clean reason. There was not one. There were about five, stacked on top of each other, and I am honestly not sure I have ever said all five out loud in order before."' },
+          { speaker: 'San', text: '"It was not one thing," you say slowly. "That is the part people never believe, when I try to explain it. They want a single clean reason. There was not one. There were a few, stacked on top of each other, and I am honestly not sure I have ever said all of it out loud in order before."' },
           { speaker: 'Joel', text: '"Take your time," he says. "I am not going anywhere."' },
-          { speaker: 'San', text: '"I overlooked something at work," you say first. "A real mistake, not an imagined one. I will own that part completely. But I was drowning at the time — the marriage falling apart, and underneath that, still reeling from the scam, still ashamed of my own hunger for someone to actually see me. I was not at my best. I do not think anyone would have been."' },
-          { speaker: 'San', text: '"Robin laughed at me for it," you continue, quieter now. "Not privately. In front of people. I do not think I need to describe exactly what that felt like. You have heard enough of my other stories to fill in that particular blank yourself."' },
-          { speaker: 'Narrator', text: 'His jaw tightens, but he stays quiet, letting you keep the thread.' },
-          { speaker: 'San', text: '"I wrote a resignation letter that same week," you say. "Out of pure hurt, if I am honest. I do not think I thought it through so much as I needed to prove to myself I still had the power to walk away from something, after feeling powerless in every other part of my life at the same time."' },
-          { speaker: 'San', text: '"Then reality caught up with me. I could not actually afford to leave — no savings cushion, no plan, nothing. So I tried to walk it back. Asked if I could stay after all."' },
-          { speaker: 'Joel', text: '"And?" he asks, though his voice already suspects the answer is not going to be kind.' },
-          { speaker: 'San', text: '"They let me stay, for a while. Then terminated me anyway, not long after, over the same kind of mistake — a missed deadline, the kind that happens when you are barely holding yourself together and no one around you knows or cares to ask why." A short, humorless breath. "Then, a little while after that, they actually asked me to come back. After I had already served my last day and cleared my desk. As if none of it had happened."' },
-          { speaker: 'San', text: '"I went back," you admit. "Same reason as always. I needed the income, and some worn-down part of me still wanted to believe it meant they valued me after all, that maybe asking me back was proof of something."' },
+          { speaker: 'San', text: '"The first time I actually tried to leave was February of 2023," you say. "Robin accused me, to my face, in front of other people, of having \\"something\\" going on with one of the agents we dealt with — a Bangladeshi agent, specifically, like he needed the nationality in there to make the insult land harder. It was not true. It was never meant to inform anyone of anything. It was only ever meant to humiliate me, and it worked."' },
+          { speaker: 'San', text: '"I wrote a resignation letter that same week. Pure hurt, if I am honest — I do not think I thought it through so much as I needed to prove to myself I still had the power to walk away from something, after feeling powerless everywhere else in my life at the same time."' },
+          { speaker: 'San', text: '"But the timing was its own trap. I was still deep in a long-distance relationship with someone online I genuinely believed, back then, was sitting in a jail cell somewhere, waiting for me. And I had no savings cushion whatsoever to fall back on if I actually walked. So I asked to take it back."' },
+          { speaker: 'Joel', text: '"And he let you," Joel says. Not really a question.' },
+          { speaker: 'San', text: '"He let me. He happened to be in a good mood that particular day, so it cost him nothing to be generous about it. I told myself that meant it did not count against me — that it had just quietly disappeared. I did not understand yet that with a man like that, nothing is ever actually free. It just gets collected later, on his terms, whenever it becomes convenient for him."' },
+          { speaker: 'Narrator', text: 'You watch him absorb that, filing it away carefully, the way he files away most injustices done to you — like evidence he is quietly keeping, for no trial that will ever actually be held.' },
+          { speaker: 'San', text: '"Then in May, that same year, I made an actual mistake. A real one. I will own that part completely — I was drowning at the time, the marriage falling apart, and underneath that, still giving pieces of myself to someone online I still fully believed was real. I did not know yet what it actually was. I was not at my best. I do not think anyone would have been."' },
+          { speaker: 'San', text: '"It got me terminated, officially, with my last working day at the end of August."' },
+          { speaker: 'San', text: '"Except they let me stay on past that, informally, until the end of November. Then asked me to come back properly in December, after I had gone home and settled things." A small, complicated almost-laugh. "Mez and Eliz visit every December — they live in Singapore, they always come to me, I never have to go to them — so I spent that stretch with them instead of at that office, for once. Then I went back to work in December anyway, because some part of me still could not walk away clean."' },
+          { speaker: 'Joel', text: '"You went back," he says. Not judgment. Just naming it, the way he has learned to.' },
+          { speaker: 'San', text: '"I went back. Same reason as always. I needed the income, and some worn-down part of me still wanted to believe that being asked back meant something."' },
           { speaker: 'Narrator', text: 'You watch something shift in Joel\'s expression — not surprise exactly, more like watching a shape finally resolve into focus.' },
-          { speaker: 'San', text: '"I worked there two more years after that," you say. "Then one day, out of absolutely nowhere, they told me to leave. Because of the resignation letter. The one from two years earlier. Still sitting in some file, technically never fully withdrawn on paper even though I had kept showing up to that job every single day since. They used a piece of paper from two years prior to decide, after everything, that I had already quit and just had not noticed yet."' },
-          { speaker: 'Joel', text: '"That is not justice," Joel says, low and hard. "That is just paperwork wearing the costume of justice."' },
-          { speaker: 'San', text: '"That is exactly what it was," you agree. "The mistake was real. My part in all of it, I own. But the rest of it — the laughing, the whiplash of being let go and asked back and let go again, and finally the sheer absurdity of being erased by a letter from two years before — none of that was about the mistake anymore. That was just about how easily some people decide a person is disposable, once they have decided it even once."' },
-          { speaker: 'Narrator', text: 'You watch his jaw tighten, the specific way it does when he is holding something back out of respect for the fact that this is your story, not his to be angry on behalf of, even though he clearly wants to be.' },
+          { speaker: 'San', text: '"The workplace did not change just because I came back," you say. "If anything I started falling again almost immediately — same drift, same pain from everywhere at once, just with less left in me to fight it the second time around."' },
+          { speaker: 'San', text: '"I worked there two more years after that. Then in September of 2025, they actually let me go. Officially, over money — big cuts, tied to cases that had not closed the way the firm needed them to."' },
+          { speaker: 'Joel', text: '"Officially," he repeats, catching the word immediately.' },
+          { speaker: 'San', text: '"Officially. What I pieced together after is that Robin himself was going through some kind of financial trouble around then, the details of which were never entirely clear to any of us. A man like that, used to a certain kind of lifestyle, does not absorb a loss like that quietly. Someone has to pay for it eventually. It was never going to be him."' },
+          { speaker: 'San', text: '"He has the kind of reputation that makes people careful around him without ever being told to be, Joel. Whatever he actually lost, it was never his dignity, because he never spent any currency on that to begin with. Not his own. Not mine."' },
+          { speaker: 'Joel', text: '"That is not justice," Joel says, low and hard — the same line as before, meant twice as hard this time. "That is just paperwork wearing the costume of justice."' },
+          { speaker: 'San', text: '"That is exactly what it was," you agree. "No amount of severance was ever going to buy back nine years, or the things he said, or any of it. Money was never actually the thing missing. Respect was. And that was never for sale, as far as he was concerned — not at any price, to anyone."' },
+          { speaker: 'Narrator', text: 'You watch his jaw tighten again, the specific way it does when he is holding something back out of respect for the fact that this is your story, not his to be angry on behalf of, even though he clearly wants to be.' },
           { speaker: 'San', text: '"I found somewhere new eventually. Insurance — claims admin. Less money than I had made in years. But the people there actually meant it when they asked how you were doing. I did not know how much I had been missing that until I had it again."' },
           { speaker: 'San', text: '"I think that is the part that actually undid me, if I am honest. Not the money, not even really Robin. Just realizing I had spent nine years mistaking proximity for friendship, and I could not tell you the exact day the difference stopped mattering to me, only that it had."' },
           { speaker: 'Joel', text: '"You can tell the difference now," Joel says. Not a question.' },
@@ -2498,22 +2875,22 @@ storyJournal: {
           { speaker: 'San', text: '"You have been," you say. "For almost two years now. I am starting to actually believe it might just keep being true."' },
           { speaker: 'Narrator', text: 'Zaki, oblivious to all of it, calls over to ask if anyone wants the last of the rations after all, since apparently he counted wrong and there is more than he thought. You laugh, quiet and real, and let yourself just be somewhere you are allowed to stay.' },
         ]
-      }
-      ,{
-        id: 'journal_065',
+      },
+      {
+        id: 'journal_067',
         title: 'The Job That Never Says Enough',
-        chapter: 65,
+        chapter: 67,
         unlockType: 'level',
         unlockAt: 46,
         icon: '📦',
         summary: 'San recognizes an old, familiar wince, and Joel finally talks about the warehouse job that taught his body to keep carrying weight long after it should have stopped.',
         scenes: [
           { speaker: 'Narrator', text: 'You notice it before he says a word — the particular way he rolls his shoulder after a long fight, wincing at the top of the motion, then smoothing his face over before he thinks you have seen. You have seen that exact motion before. Years before any of this.' },
-          { speaker: 'San', text: '"You used to do that at SKH," you say, quiet, not quite a question.' },
+          { speaker: 'San', text: '"You used to do that at SK*," you say, quiet, not quite a question.' },
           { speaker: 'Joel', text: 'He goes still for a second, caught. "The warehouse job," he says. "I did not think you remembered the specifics."' },
           { speaker: 'San', text: '"I remember all of it," you tell him. "I just never made you talk about it while it was happening. You never wanted to, back then."' },
           { speaker: 'Narrator', text: 'He is quiet for a while, and you let him take the time he needs to decide whether tonight is different.' },
-          { speaker: 'Joel', text: '"The son-in-law ran that warehouse like he was owed something for existing," Joel says eventually. "Called people in on their off days like it cost him nothing to ask. Cut breaks short if he felt like it. And if you actually finished your work fast — properly, efficiently, the way I always tried to — he would send you out to clear brush from the treeline instead of letting you rest. Being good at the job just meant more of it, dressed up as punishment."' },
+          { speaker: 'Joel', text: '"The son-in-law ran that warehouse like he was owed something for existing," Joel says eventually. "Called people in on Sundays like it cost him nothing to ask, like the whole point of having a day off was up to him to decide. Cut breaks short if he felt like it. And if you actually finished your work fast — properly, efficiently, the way I always tried to — he would send you out to clear brush from the treeline instead of letting you rest. Being good at the job just meant more of it, dressed up as punishment."' },
           { speaker: 'San', text: '"I remember you coming home barely able to lift your arms some nights," you say. "And still getting up for the next shift like nothing had happened."' },
           { speaker: 'Joel', text: '"I told him once. About the pain. Told him straight, no exaggeration, just — this is what carrying that much weight that many hours is doing to my body." A short, humorless laugh. "He called it laziness. Told me to my face he was not sure my contract was worth renewing if I could not \'keep up.\' As if the keeping up was the thing breaking me in the first place."' },
           { speaker: 'Narrator', text: 'Something in you goes very still and very cold, recognizing the shape of it even though the details are different from your own.' },
@@ -2526,37 +2903,39 @@ storyJournal: {
           { speaker: 'Joel', text: '"I am trying to believe that," Joel says. "It is a slower habit to unlearn than I expected."' },
           { speaker: 'San', text: '"I know," you say. "Mine too."' },
         ]
-      }
-      ,{
-        id: 'journal_066',
+      },
+      {
+        id: 'journal_068',
         title: 'What the Numbers Actually Meant',
-        chapter: 66,
+        chapter: 68,
         unlockType: 'level',
         unlockAt: 47,
         icon: '🩺',
-        summary: 'San remembers the cholesterol scare, the kidney complication that made treatment uncertain, and what it felt like to be the one watching instead of the one being watched over.',
+        summary: 'San remembers the cholesterol scare, resolved through Dr. AA\'s directness rather than a stranger\'s chart, and the specific relief of ruling the kidneys out.',
         scenes: [
           { speaker: 'Narrator', text: 'It comes back to you in pieces, the way frightening things sometimes do — not all at once, but circling closer each time you let yourself think about it.' },
-          { speaker: 'San', text: '"Do you remember the bloodwork," you say, "right before everything changed. Your cholesterol."' },
-          { speaker: 'Joel', text: 'He nods slowly. "Abnormally high. High enough that the doctor did not bother softening how she said it."' },
-          { speaker: 'San', text: '"I remember sitting in that waiting room doing math I did not want to be doing," you say. "Wondering how many years that number was quietly taking off things, without ever once asking permission."' },
+          { speaker: 'San', text: '"Do you remember the text," you say, "the one from Dr. AA. About your cholesterol."' },
+          { speaker: 'Joel', text: 'He nods slowly. "Abnormally high. He did not soften it much, even over WhatsApp. Just sent the numbers and told you straight what they meant."' },
+          { speaker: 'San', text: '"I remember sitting there doing math I did not want to be doing," you say. "Wondering how many years that number was quietly taking off things, without ever once asking permission."' },
           { speaker: 'Narrator', text: 'You had been the one who needed tending, for so much of your life together up to that point. This was the first time you understood, fully, what it felt like from the other side — watching someone you love turn out to be more breakable than you had let yourself believe.' },
-          { speaker: 'Joel', text: '"The medication should have been simple," Joel says. "Standard treatment, standard dose. Except my kidneys have never quite behaved the way kidneys are supposed to. So nothing about it was simple. No one could tell us for certain what the medication would do to me instead of for me."' },
-          { speaker: 'San', text: '"I remember looking it up at two in the morning," you admit. "Reading every version of the worst case I could find. Terrified of the cholesterol, and just as terrified of the thing that was supposed to fix it."' },
+          { speaker: 'San', text: '"It was strange, finding out that way," you admit. "Dr. AA was never your doctor. He was mine, in a manner of speaking — someone I knew from the firm, back when I still worked there. A friend who happened to also be a physician. I only asked Dad to get his bloods done at his clinic because I already knew him well enough to ask directly, instead of waiting on someone we had never met."' },
+          { speaker: 'Joel', text: '"And I ended up going to the same clinic," Joel says, "since it was already familiar to you. It just happened that Dr. AA was the one who actually looked at my numbers himself, before whoever was technically assigned to my case even called me in."' },
+          { speaker: 'San', text: '"He has always done that," you say, something fond creeping into the exhaustion of the memory. "For Dad, for you. Every result, straight to me first, over text, like he still half remembers being the one who used to help me untangle a stuck sentence when I could not find the next line of a brief."' },
+          { speaker: 'Narrator', text: 'You remember the fear clearly — the specific terror of a kidney that had never quite behaved the way kidneys were supposed to, and a cholesterol medication that assumed it would.' },
+          { speaker: 'Joel', text: '"We did the full workup, in the end," Joel says. "No direct implication to the kidneys at all, as it turned out. Whatever discomfort I had been carrying around there was most likely just old damage — NSAIDs, taken carelessly enough in my twenties that my body was still quietly billing me for it years later."' },
+          { speaker: 'San', text: '"I remember how relieved I was," you say. "And how strange the relief felt, given it meant the actual problem — the cholesterol itself — was still sitting there, unresolved, just no longer tangled up with something worse."' },
+          { speaker: 'Joel', text: '"One fear at a time," Joel says. "That is all anyone can really ask for."' },
+          { speaker: 'San', text: '"I did not tell you how frightened I was, at two in the morning, reading every version of the worst case I could find," you admit. "I did not want you carrying my fear on top of your own body already doing enough to you."' },
           { speaker: 'Joel', text: '"You never told me that," he says, something shifting in his expression.' },
-          { speaker: 'San', text: '"I did not want you carrying my fear on top of your own body already doing enough to you," you say. "You had enough on your plate being the one it was actually happening to."' },
           { speaker: 'Narrator', text: 'He reaches over, quiet, and you let him take your hand the way you have let him take it a hundred times since, except this time you notice, really notice, how much you needed exactly this.' },
-          { speaker: 'Joel', text: '"I never got a real answer, in the end," Joel says. "Not before everything here happened. Just a number that scared us both, and a treatment nobody could promise was safe, and no time to find out which fear was going to turn out to be the bigger one."' },
-          { speaker: 'San', text: '"No," you agree quietly. "We never got to find out."' },
-          { speaker: 'Narrator', text: 'You do not know, sitting here now, whether that particular unfinished thing followed you into this world the way so much else did, or whether it stayed behind entirely, unresolved, in a life neither of you can currently reach. You do not say that part out loud. Some fears are not ready to be spoken as questions yet — only carried, a little longer, until they are.' },
-          { speaker: 'San', text: '"I am glad you are here," you say instead, simple, true, sidestepping the bigger question because tonight is not the night for it. "However that math actually worked out."' },
-          { speaker: 'Joel', text: '"Me too," Joel says, and squeezes your hand once, like a period at the end of a sentence neither of you is ready to finish yet.' },
+          { speaker: 'San', text: '"I am glad it was Dr. AA who found it," you say. "I do not think I would have trusted the number the same way, coming from someone who did not already know how to talk to me plainly."' },
+          { speaker: 'Joel', text: '"Me too," Joel says, and squeezes your hand once, warm, certain — not a fear finished, exactly, but one that finally has a shape small enough to hold.' },
         ]
-      }
-      ,{
-        id: 'journal_067',
+      },
+      {
+        id: 'journal_069',
         title: 'Not an Asset. Family.',
-        chapter: 67,
+        chapter: 69,
         unlockType: 'level',
         unlockAt: 48,
         icon: '🍵',
@@ -2580,11 +2959,11 @@ storyJournal: {
           { speaker: 'San', text: '"I do," you say, and for once the words come without any of the old bracing underneath them. "It took a while. But I do, now. Completely."' },
           { speaker: 'Narrator', text: 'He goes back to the stove, humming again, and you let yourself simply watch him for a while — not assessing, not bracing, not waiting to find out what you are worth. Just here, in a kitchen that finally, actually, belongs to both of you.' },
         ]
-      }
-,{
-        id: 'journal_068',
+      },
+      {
+        id: 'journal_070',
         title: 'No Service',
-        chapter: 68,
+        chapter: 70,
         unlockType: 'level',
         unlockAt: 49,
         icon: '🔋',
@@ -2609,23 +2988,29 @@ storyJournal: {
           { speaker: 'San', text: '"\'Do not worry about sending extra this month. We are managing. Just come visit when you can. That is worth more to us than the money ever was.\' She sent that three days before the Breaking. I never got the chance to actually believe her."' },
           { speaker: 'Joel', text: '"Do you believe her now?" he asks, careful, not pushing.' },
           { speaker: 'San', text: '"I want to," you say. "I do not know if wanting to is the same thing yet."' },
-          { speaker: 'Aisyah', text: '"For what it is worth," Aisyah says, quieter than you are used to hearing from her, "I sent money too, when I could. Not as much as you. But I remember Mother saying almost the exact same thing to me, once. I did not believe her either, at the time."' },
+          { speaker: 'Aisyah', text: '"For what it is worth," Aisyah says, quieter than you are used to hearing from her, "I sent more than you did, most months. Two hundred to each of them, every month, more on top of that for Dad\'s treatment. Eldest daughter, fattest bank account — that was always going to end up being my job whether I volunteered for it or not."' },
+          { speaker: 'San', text: '"I paid for the utilities. Wifi, electricity, water, both their phone lines, for both of them." A small, wry exhale. "Though when Mum ran the living room AC too hard some months — she has a 3.0hp unit in there, eats electricity worse than anything else in that house — I would have to go ask Mez to help cover the gap. She never once made that feel like a big ask."' },
+          { speaker: 'Aisyah', text: '"Groceries came out of my allowance, mostly, and some out of Mez\'s too — though let us be honest, mostly mine, since I am the one currently earning off the trade routes. Senedra would sometimes put money toward Dad\'s treatment instead, when she remembered to. Paramedic pay is not nothing, better than what I make some months if I am honest, but that woman has never met a payday she did not immediately spend. So it was not often."' },
+          { speaker: 'Joel', text: '"And Zaki?" Joel asks, already half-smiling, like he knows the shape of the answer before she gives it.' },
+          { speaker: 'Aisyah', text: '"Zaki brought treats. Snacks, small things, whenever he could manage it." Her voice softens slightly. "He is freelance — juggling whatever work he can piece together, and it shows some months. Fresh out of a local Bruneian university, top of his class, only just entered the working world last year. Still young, still finding his footing. No one ever asked him for more than that. No one would have dared."' },
+          { speaker: 'San', text: '"I never actually knew the whole shape of it until right now," you admit. "I knew my own piece. I never once sat down and looked at everyone else\'s."' },
+          { speaker: 'Aisyah', text: '"None of us did, probably. That was rather the point of it. Nobody was keeping score, and if we had been, none of it would have added up to anything either of us could have carried alone anyway."' },
           { speaker: 'San', text: '"Do you believe her now?" you ask, turning the question back.' },
           { speaker: 'Aisyah', text: '"Some days," Aisyah says. "Other days I just decide to act like I do, because the alternative is carrying a fear I cannot do anything about, forever, for no reason except that carrying it feels like some kind of proof I still love them. It does not have to be the only proof. I have decided that, mostly."' },
           { speaker: 'Narrator', text: 'You sit with that for a while, the phone warm in your palm, no service and no way to ever confirm what actually happened to two people you cannot reach and cannot help and cannot stop loving in the specific, useless way distance makes love feel sometimes.' },
-          { speaker: 'San', text: '"I cannot send them anything from here," you say slowly, the shape of it settling as you say it. "Not money, not a message, not even proof I am alive. For the first time since I was old enough to earn a wage, there is genuinely nothing I can do for them. Not one thing."' },
+          { speaker: 'San', text: '"None of us can send them anything from here," you say slowly, the shape of it settling as you say it. "Not money, not a message, not even proof any of us are alive. For the first time since any of us started earning, there is genuinely nothing any of us can do for them. Not one thing, from any direction."' },
           { speaker: 'Joel', text: '"How does that feel," he asks, and it is not rhetorical, he actually wants to know.' },
-          { speaker: 'San', text: '"Terrible," you say honestly. "And underneath the terrible, something I feel guilty even naming. A little bit like relief. Like I finally get to just love them, without it costing anything I do not have to give."' },
+          { speaker: 'San', text: '"Terrible," you say honestly. "And underneath the terrible, something I feel guilty even naming. A little bit like relief. Like I finally get to just love them, without any of us needing to prove it by what we send."' },
           { speaker: 'Aisyah', text: '"That is not a betrayal," Aisyah says, before you can spiral on it. "That is just what it feels like when a weight actually lifts. You are allowed to notice that it is lighter, even if you did not choose how it happened."' },
           { speaker: 'Narrator', text: 'You lock the phone again, gently, and slide it into your pack — not answered, not resolved, no service and no certainty and no way to ever fully know. But held, now. Read, now. Carried forward instead of left behind in silence.' },
           { speaker: 'San', text: '"Thank you," you say, to Jorvin for the wiring, to Aisyah for staying, to Joel for simply being there while you read words you were terrified might not exist anymore.' },
           { speaker: 'Jorvin', text: '"Anytime," Jorvin says, already turning back to his workbench, pretending not to have noticed his own eyes were wet. "That is what the shop is for, apparently. Turns out I am in the business of small miracles now, not just carburetors."' },
         ]
-      }
-,{
-        id: 'journal_069',
+      },
+      {
+        id: 'journal_071',
         title: 'What the World Let Go Of',
-        chapter: 69,
+        chapter: 71,
         unlockType: 'level',
         unlockAt: 55,
         icon: '🌅',
@@ -2649,7 +3034,7 @@ storyJournal: {
           { speaker: 'San', text: '"That is annoyingly well put," you say.' },
           { speaker: 'Aisyah', text: '"I have had practice," Aisyah says, and does not elaborate, and you do not ask her to, because some things get said exactly as much as they need to be and no further.' },
           { speaker: 'Narrator', text: 'You look out at the unmapped stretch ahead of you — no ruins out there that you can see from here, no obvious wreckage, none of the scars the rest of this broken world has worn since the day it broke. Just green, going on further than you can see, and something in your chest that has not felt this unguarded in longer than you can remember.' },
-          { speaker: 'San', text: '"I do not think I get to say all of it is resolved," you say finally. "The scam still happened. Nine years still cost me nine years. Your kidneys are still your kidneys, and we still do not know. My parents are still out there, and I still cannot reach them, not really, not beyond one saved message from before everything."' },
+          { speaker: 'San', text: '"I do not think I get to say all of it is resolved," you say finally. "Whatever that relationship online actually was, it still happened, and I still do not fully know the truth of it. Nine years still cost me nine years. Your kidneys are still your kidneys, and we still do not know. My parents are still out there, and I still cannot reach them, not really, not beyond one saved message from before everything."' },
           { speaker: 'San', text: '"But I do not have to carry all of it at the same weight anymore either. Some of it the world took off my hands entirely, whether I earned that or not. And I think — I am still deciding, but I think — I am allowed to just let that be true, instead of finding a way to feel guilty about it too."' },
           { speaker: 'Joel', text: '"That sounds like progress to me," Joel says. "Even the complicated kind."' },
           { speaker: 'Narrator', text: 'The three of you stand there a while longer, at the edge of the last thing any of you have ever known, before whatever comes after it.' },
@@ -2657,19 +3042,1675 @@ storyJournal: {
           { speaker: 'Aisyah', text: '"And now?" Aisyah asks.' },
           { speaker: 'San', text: '"Now it just feels like the road," you say, and step forward, past the last thing that was ever mapped, into everything that has not been yet.' },
         ]
+      },
+      {
+        id: 'journal_072',
+        title: 'Same Firm, New Sign',
+        chapter: 72,
+        unlockType: 'zone',
+        unlockAt: 'The Unbroken Vale',
+        icon: '📎',
+        summary: "Dr. AA \u2014 a friend from San's old firm, a physician who once talked her through writer's block as easily as bloodwork, somehow also standing in the Vale \u2014 recognizes a name San mentions in passing, and tells her Robin made it through into this world too.",
+        scenes: [
+          { speaker: 'Narrator', text: 'You almost walk past the cart before your brain catches up to what your eyes already know — the particular slouch of it, the hand-lettered sign, the smell of antiseptic fighting a losing battle against old paperback glue.' },
+          { speaker: 'San', text: '"Dr. AA?" you say, and it comes out smaller than you mean it to, more like the colleague who used to text him at midnight about a stuck paragraph than the person who has since killed things twice this size.' },
+          { speaker: 'Dr. AA', text: '"San!" He looks up like you are a chart he has been meaning to review. "Good, you\'re upright. Would\'ve liked more warning before whatever apocalypse this was, but I\'ll take upright."' },
+          { speaker: 'Narrator', text: "He has not changed at all — still shorter than you by a good few inches, still built soft and cheerful rather than sharp, still talking before he has fully decided what he is going to say. It was always the easiest thing in the world, talking to him. It still is." },
+          { speaker: 'San', text: '"How are you even here," you ask. "How is any of this — you were supposed to be three exam rooms down from a vending machine, not standing in a magic forest."' },
+          { speaker: 'Dr. AA', text: '"Same as everyone else who turns up, apparently," he says, shrugging like it is a minor administrative detail. "One day it\'s a waiting room full of coughs. Next day it\'s this. I brought what I had on the cart. Turns out paracetamol travels well."' },
+          { speaker: 'Narrator', text: 'It is such an absurdly practical answer that something in your chest, braced for a wound, relaxes instead.' },
+          { speaker: 'San', text: '"You would not believe the year I have had," you tell him, and start to explain — Joel, the Breaking, nine impossible years compressed into one exhausted sentence — and somewhere in the middle of it, out of habit more than anything, you say Robin\'s name.' },
+          { speaker: 'Narrator', text: 'Dr. AA does not need a second to place him. There is no pause, no double-checking — just the particular, weary certainty of a man who has known exactly who you meant since the second syllable.' },
+          { speaker: 'Dr. AA', text: '"Robin," he says, already resigned to it. "Never particularly tall to begin with, if I\'m remembering right, but shorter than that now, unless my eyes have gone. Insists he hasn\'t changed at all, if you ever bring it up. That Robin."' },
+          { speaker: 'Narrator', text: 'Something surfaces, unbidden — Robin, once, in a good mood for reasons nobody in the office ever identified, thanking your father completely out of nowhere. No greeting first, no context, just suddenly, briefly effusive at a man standing in the wrong lobby at the wrong time, thanking him for "having her stay," like the sentence had already been running for an hour before your father ever arrived to hear the start of it. It took you a full week to work out it was about the unpaid overtime. Robin was never generous on purpose. He was just, occasionally, comically, generous by accident.' },
+          { speaker: 'San', text: '"That is him," you say slowly. "He made it through too."' },
+          { speaker: 'Dr. AA', text: '"Set up somewhere past the Vale, if the traders are to be believed," Dr. AA goes on, missing whatever just crossed your face. "Started running it exactly like he ran the last one, from what I hear. Contracts. A retainer. The whole apparatus, rebuilt from scratch in a world that did not ask for it."' },
+          { speaker: 'San', text: '"You signed off on half my reports back then," you say, not really a question. "The common law claims. Drafting the documents was mine, but I liaised with doctors constantly — reports, appointments, all of it. That was always you, half the time."' },
+          { speaker: 'Dr. AA', text: '"More than half," he says, something rueful in it. "I signed off on more injuries for that firm than I care to remember. Robin never once thanked me for a report either. Just complained if I was late, like the paperwork owed him something personal." A short, humorless laugh. "He genuinely believed it was everyone else\'s job to remind him of anything he might forget. Never his own. If he missed a deadline, someone under him simply had not reminded him properly."' },
+          { speaker: 'Narrator', text: 'You feel something old and familiar rise in you — not fear this time. Recognition, and underneath it, something sharper.' },
+          { speaker: 'San', text: '"Of course he did," you say. "Of course the one thing that survived the end of the entire world was Robin finding new people to bill, and new people to blame for his own memory."' },
+          { speaker: 'Dr. AA', text: '"For what it\'s worth," he says, gentler now, sliding a small paper bag across the cart without being asked, "you are allowed to go find out for yourself whether he still gets to be that person here. You were never the only one he did this to. You will not be the only one glad to see it end, either."' },
+          { speaker: 'Narrator', text: 'You look down at the bag — vitamins, of all things, and one battered paperback tucked in beside them, a ghost story he insists really happened — and feel the particular, specific relief of an old world reaching back through the cracks not to hurt you this time, but to hand you exactly what you need before you walk toward the Hollow.' },
+          { speaker: 'San', text: '"Thank you," you say, meaning the bag, and the warning, and the ten years of appointments before any of this, all at once.' },
+          { speaker: 'Dr. AA', text: '"Go be upright at him," Dr. AA says, already turning back to his cart. "Preferably from a safe distance and with excellent form."' },
+          { speaker: 'Narrator', text: 'Joel has been quiet through most of this, hanging back at the edge of the conversation the way he does when something is turning over in him that he has not decided how to say yet. He does not let it go unsaid for long.' },
+          { speaker: 'Joel', text: '"You said people from before keep turning up," he says carefully. "Would that include a warehouse manager? SK*, out past the old highway. Married into the family that owned the place."' },
+          { speaker: 'Dr. AA', text: 'Dr. AA does not need nearly as long to place this one as he did Robin. "The son-in-law," he says, and something in his voice goes flat and careful. "Heard about him too. Goes by Jeff out here now, if you can believe that. Set up some kind of work detail past Sunreach, from what the traders say — though nobody who signs onto it seems to describe it that way afterward."' },
+          { speaker: 'Joel', text: '"That sounds exactly right," Joel says quietly, and something old settles back into his shoulders — not fear. The specific, familiar weariness of a body bracing out of habit, remembering exactly how much weight it used to carry.' },
+          { speaker: 'Dr. AA', text: '"For what it\'s worth," Dr. AA says, gentler now, looking between the two of you, "whatever made men like that untouchable back home does not come through with them. Out here, it is just him. No contract. No family name that holds up." A small shrug. "Sounds like this family collects debts. Might as well go collect a couple more."' },
+          { speaker: 'San', text: '"We will," you say, and mean both names when you say it.' },
+        ]
+      },
+      {
+        id: 'journal_073',
+        title: 'Signs in the Green',
+        chapter: 73,
+        unlockType: 'level',
+        unlockAt: 56,
+        icon: '🌿',
+        summary: 'Ser Aldric asks San and Joel to help him find something himself, for once, instead of needing to be found.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Ser Aldric finds you at the edge of the Vale, not summoned, not assigned — the same way he found you once before, except this time there is no hesitation in how he walks toward you.' },
+          { speaker: 'Ser Aldric', text: '"I have been hearing things," he says, no preamble. "Old things. A temple, somewhere out past the green, older than the Cult, older maybe than the temple I actually serve. Nobody has been able to find it. I would like to be the one who does."' },
+          { speaker: 'San', text: '"You would like to," you repeat. "Not \'the temple has asked me to.\'"' },
+          { speaker: 'Ser Aldric', text: '"No," he agrees, and there is something almost pleased in how plainly he says it. "This one is mine to chase. I spent a long time being found by things. I would like to try finding one, for once, on my own terms."' },
+          { speaker: 'Joel', text: '"What do you need from us?" Joel asks, already the kind of question that assumes the answer is yes.' },
+          { speaker: 'Ser Aldric', text: '"Company," Ser Aldric says. "And whatever this vale throws at anyone who goes looking for something it has not decided to show yet."' },
+          { speaker: 'Narrator', text: 'You fall into step beside him without much more discussion than that. It occurs to you, walking, that this is the first time he has asked you to come with him instead of asking you to come get him.' },
+        ]
+      },
+      {
+        id: 'journal_074',
+        title: 'What Sister Wren Still Knows',
+        chapter: 74,
+        unlockType: 'level',
+        unlockAt: 58,
+        icon: '🕊️',
+        summary: 'Ser Aldric asks the one person who might actually recognize real devotion from the inside of something that mostly was not.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The trail runs cold twice before Ser Aldric admits, quietly, that he knows exactly one person who might actually recognize what they are looking for — and that asking her is going to cost him something to do.' },
+          { speaker: 'Ser Aldric', text: '"Sister Wren spent years learning to recognize real devotion from the inside of something that mostly was not," he says. "I do not enjoy needing that particular skill. I need it anyway."' },
+          { speaker: 'Narrator', text: 'She comes when he asks. Not eagerly — carefully, the way someone moves when they are still finding out whether they are actually welcome anywhere, or just tolerated.' },
+          { speaker: 'Sister Wren', text: '"You want to know if it is real," she says, before anyone explains anything, looking at the first weathered column half-buried in root. "That is always the actual question, with places like this. I got very good at answering it wrong, for a long time."' },
+          { speaker: 'San', text: '"Can you answer it right, now?" you ask, not unkindly.' },
+          { speaker: 'Sister Wren', text: '"I can try," she says. "It is the most honest thing I have to offer anyone these days. Trying, instead of certainty. I used to think certainty was the whole point of faith. I do not think that anymore."' },
+          { speaker: 'Ser Aldric', text: '"Neither do I," Ser Aldric says, and something passes between the two of them that is not quite forgiveness and not quite absolution — just two people who know exactly the same weight, agreeing to carry a little of it together instead of each alone.' },
+          { speaker: 'Narrator', text: 'She studies the columns a long moment, fingers finally resting on a symbol worn almost smooth. "This is real," she says. "I do not know what it wants yet. But this — whoever built this actually meant it."' },
+        ]
+      },
+      {
+        id: 'journal_075',
+        title: 'The Last Vigil',
+        chapter: 75,
+        unlockType: 'boss',
+        unlockAt: 'The Last Vigil',
+        icon: '⚔️',
+        summary: 'The guardian of the Verdant Choir is not hostile so much as exhausted — a duty that outlived its reason, kept anyway because stopping felt like betrayal.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It does not attack when you find it. It simply stands, ancient and patient, in the center of the ruined circle, and waits to see what you are before it decides whether you need stopping.' },
+          { speaker: 'San', text: '"It is not hostile," you say, lowering your staff slightly. "It is just — checking."' },
+          { speaker: 'Sister Wren', text: '"It has been checking for longer than any of us have been alive," she says quietly. "I recognize this too. A duty that outlived the reason for it, kept anyway because stopping felt like betrayal."' },
+          { speaker: 'Narrator', text: 'The Last Vigil moves then — not in anger, but in the exhausted, mechanical way of something that has performed the same motion so many times it no longer remembers choosing to.' },
+          { speaker: 'Ser Aldric', text: '"I am sorry," he tells it, mid-fight, and means it completely. "I know exactly how long a person can keep doing something out of nothing but momentum. Let us show you it is allowed to stop."' },
+          { speaker: 'Narrator', text: 'When it finally falls still, there is no triumphant collapse, no shattering. Just a long exhale — stone and root and old grief, all finally permitted to rest.' },
+          { speaker: 'Sister Wren', text: '"Thank you," she says to it, or to the space where it stood, or maybe to herself. "For however long you had to hold this alone."' },
+          { speaker: 'San', text: '"Come on," you say gently, to all of them. "Let\'s see what it was actually guarding."' },
+        ]
+      },
+      {
+        id: 'journal_076',
+        title: 'Forever and Ever',
+        chapter: 76,
+        unlockType: 'level',
+        unlockAt: 58,
+        icon: '🌙',
+        summary: 'The night before whatever comes next, San finds the one certainty this world has never once tried to take from her.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The camp is quiet by the time you finally sit still. Everyone else has drifted off to their own corners of the fire — Aisyah sharpening something that does not need sharpening, Soel curled against Joel\'s pack, the whole party breathing slow around you. Joel finds you last, the way he always does, like he waits on purpose so it is just the two of you by the time he arrives.' },
+          { speaker: 'Joel', text: '"These battles are endless," he says, quiet, not a complaint, just true. He sits close enough that his shoulder finds yours without either of you deciding it should. "But I am here with you. Forever and ever."' },
+          { speaker: 'Narrator', text: 'You do not answer with words. You close your eyes instead, and let yourself lean the rest of the way into him — into the steady weight of him, the warmth that has never once, not on the worst nights, felt like something you had to earn.' },
+          { speaker: 'Narrator', text: 'His hand finds your jaw, tilts your face up to his, careful the way he is careful with everything he has decided is worth protecting. You feel his breath before his mouth reaches yours — unhurried, like he has all the time in the world to get to you, like the endless battles outside this moment do not exist at all.' },
+          { speaker: 'Narrator', text: 'He holds you like something he has waited a long time to be allowed to hold. You kiss him back like someone who has finally stopped bracing for the ground to disappear. What follows, you keep — the warmth of him, the low sound of your own name in his voice, the fire burning down to embers while the rest of the world holds its breath and waits.' },
+          { speaker: 'Narrator', text: 'Later — much later, on the edge of sleep, his arm still around you — your mind does not go to tomorrow\'s fight. It has not, in a long time. It goes instead to the people you love, and the people who love you back, and the simple, ordinary miracle of all of them being safe, tonight, in whichever world happened to hold you.' },
+          { speaker: 'San', text: '"Forever and ever," you murmur back, half-asleep, and mean it the way you have only ever meant the truest things — without needing to prove it to anyone, least of all yourself.' },
+          { speaker: 'Narrator', text: 'The battles will keep coming. They always do. But that is a problem for the road ahead, not for tonight — and tonight, for once, is enough all on its own.' }
+        ]
+      },
+      {
+        id: 'journal_077',
+        title: 'The Mended Sanctum',
+        chapter: 77,
+        unlockType: 'level',
+        unlockAt: 62,
+        icon: '🕯️',
+        summary: 'Small, quiet, and honest about what it is — the Mended Sanctum opens, tended by people who actually mean it.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The Sanctum, once the growth is finally cleared away, is smaller than any of you expected — a single circular chamber, roof long since given way to open sky, moss soft enough to kneel on without meaning to.' },
+          { speaker: 'Sister Wren', text: '"This was never about scale," she says, turning slowly in the center of it. "The Cult built everything enormous, everything loud. This is the opposite of that. Whoever kept this place understood something we never did."' },
+          { speaker: 'Ser Aldric', text: '"What did they understand?" Joel asks.' },
+          { speaker: 'Sister Wren', text: '"That devotion does not need an audience to be real," she says. "I spent years performing mine for a room full of people. This place was built for exactly the opposite reason."' },
+          { speaker: 'Narrator', text: 'You help clear the last of the debris together — San, Joel, Ser Aldric, Sister Wren, no hierarchy to it, just four people doing the actual work of restoring something rather than just claiming it.' },
+          { speaker: 'San', text: '"The Mended Sanctum," you say, testing the name out loud, and it settles into the space like it was always going to be called that. "Somewhere real. Small enough to be honest about what it is."' },
+          { speaker: 'Narrator', text: 'As the last stone settles into place, something in the chamber floor catches the light — a vein of ore, warm to the touch, humming faintly with the same quiet persistence as everything else this region has quietly kept growing back.' },
+          { speaker: 'Sister Wren', text: '"Mendstone," she says, crouching beside it, something like wonder in her voice for the first time since any of you have known her. "I have heard the old stories. I did not think I would ever actually see it form."' },
+          { speaker: 'Ser Aldric', text: '"Seems fitting," Ser Aldric says, looking around at all of you. "A stone that only grows where something actually finished healing. This whole vale is made of it, in one form or another. We just happened to be standing here when it caught up to us."' },
+          { speaker: 'Narrator', text: 'The Mended Sanctum opens its doors — such as they are — properly, for the first time in longer than anyone can say. Not loud. Not enormous. Just real, and finally, quietly, tended by people who mean it.' },
+        ]
+      },
+      {
+        id: 'journal_078',
+        title: 'Where the Old Names Wait',
+        chapter: 78,
+        unlockType: 'level',
+        unlockAt: 68,
+        icon: '🕯️',
+        summary: 'Ser Aldric names what neither San nor Joel has been willing to say out loud — that some names never got set down with everything else, and the Vale seems to know it.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It is Ser Aldric, again, who names the thing nobody else has been willing to say out loud — that the Vale keeps offering peace, and none of you have actually finished deciding whether you are allowed to take it.' },
+          { speaker: 'Ser Aldric', text: '"I have watched all of you set down pieces of the old world since we crossed into this one," he says. "The job. That relationship online, whatever it truly was. Robin. My own long list of things I finally said out loud. But some names never got said. I think the Vale knows that too."' },
+          { speaker: 'San', text: '"What are you saying," you ask, already half-certain you know.' },
+          { speaker: 'Ser Aldric', text: '"That there is a place, further in, that does not open for just anyone. Only for people who are finally ready to face the names they have been carrying instead of setting down. I do not think it is an accident that it opened now, for both of you, at the same time."' },
+          { speaker: 'Joel', text: 'He goes very quiet, the particular quiet that means he already knows exactly which names Ser Aldric is talking about, for himself as much as for you.' },
+          { speaker: 'San', text: '"I do not know if I am ready," you say honestly. "I do not think readiness is really the question anymore. I think the question is whether I want to keep carrying this any further than I already have."' },
+          { speaker: 'Joel', text: '"Same," Joel says, low. "There are names on my side too. More than one. I have been quietly hoping nobody would ever ask me to actually look at them directly."' },
+          { speaker: 'Narrator', text: 'You look at each other for a long moment — not for permission, exactly, but for the specific reassurance of not having to do this without the other one standing there.' },
+          { speaker: 'San', text: '"Together, then," you say. "One old name at a time, until there are none left waiting for us."' },
+          { speaker: 'Joel', text: '"Together," he agrees, and for the first time since Ser Aldric said any of this, some of the dread in his shoulders eases into something closer to resolve.' },
+        ]
+      },
+      {
+        id: 'journal_079',
+        title: 'What Doesn\'t Stay Buried',
+        chapter: 79,
+        unlockType: 'boss',
+        unlockAt: 'The Ex-Mother-in-Law',
+        icon: '❄️',
+        summary: 'San faces the wraith of the woman who never once called her a daughter-in-law — and finds she no longer flinches first.',
+        scenes: [
+          { speaker: 'Narrator', text: 'She does not look like herself, not exactly — the Vale builds these confrontations out of memory, not accuracy, and memory has sharpened every cold edge of her rather than softening any of them.' },
+          { speaker: 'The Ex-Mother-in-Law', text: '"There you are," the wraith says, and the voice lands exactly where it always used to land, precise and unhurried. "Still playing house with someone new, I see. Still convincing yourself this one is different."' },
+          { speaker: 'San', text: '"He is different," you say, and your voice does not shake nearly as much as you expected it to. "You never once gave me the chance to find that out about anyone, because you had already decided what I was before I ever walked through your door."' },
+          { speaker: 'The Ex-Mother-in-Law', text: '"An asset," the wraith says, almost fond, almost cruel, exactly the way she always said it. "Something worth keeping. I taught you your place because someone needed to."' },
+          { speaker: 'San', text: '"You taught me to shrink," you say. "That is not the same thing as a place. That was just the size of room you were willing to let me have."' },
+          { speaker: 'Narrator', text: 'The fight, when it comes, is not really about the fight. It is about the fact that you no longer flinch first.' },
+          { speaker: 'Joel', text: '"You do not have to win the argument," Joel calls, steady beside you. "You just have to survive her long enough for her to run out of ways to say the same cruelty."' },
+          { speaker: 'San', text: '"I know," you say, and mean it completely, casting with a clarity that has nothing left to prove to the woman in front of you.' },
+          { speaker: 'Narrator', text: 'When the wraith finally falls, it does not scream or shatter dramatically. It just goes quiet, the way something does when it has finally run out of power over someone who stopped supplying it.' },
+          { speaker: 'San', text: '"I am not an asset," you say to the space where she stood, quiet, final. "I never was. You were just the first person who taught me to doubt that."' },
+          { speaker: 'Joel', text: '"You are not," he agrees, close now, his hand finding yours without needing to ask. "You never were. I am sorry it took a wraith and a magic sword to prove that to the part of you that still needed proving."' },
+          { speaker: 'San', text: '"Me too," you say, and let yourself, finally, completely, believe it.' },
+        ]
+      },
+      {
+        id: 'journal_080',
+        title: 'What You Chose Instead',
+        chapter: 80,
+        unlockType: 'boss',
+        unlockAt: 'The Ex-Husband',
+        icon: '🔒',
+        summary: 'San faces the wraith of the marriage that looked like a home from the inside — and learns that finished does not require forgiven, only done.',
+        scenes: [
+          { speaker: 'Narrator', text: 'This one is quieter than the last, and somehow that makes it worse — no cruelty in his voice at all, just the same patient, reasonable tone he always used while building walls disguised as walls of a house.' },
+          { speaker: 'The Ex-Husband', text: '"You left," the wraith says, not accusing, almost gentle. "After everything I gave you. A home. Stability. A life most people would have been grateful for."' },
+          { speaker: 'San', text: '"A cage," you say. "Beautifully furnished. Still a cage. I do not think you ever once asked yourself why keeping me required so much architecture."' },
+          { speaker: 'The Ex-Husband', text: '"I loved you," the wraith says, and the terrible thing is that some small, old part of you still is not entirely sure that is a lie.' },
+          { speaker: 'San', text: '"Maybe you did," you say slowly, working through it out loud, the way you have learned to work through hard things with Joel beside you. "In whatever way you understood loving someone. But loving someone and needing to control them are not the same instinct, even when they wear the same face for years at a time."' },
+          { speaker: 'Narrator', text: 'He does not rage in the fight, the way you almost expected. He just keeps calmly, reasonably, trying to explain why you should not be doing this — and the sheer familiarity of that tactic is almost more dangerous than anger would have been.' },
+          { speaker: 'Joel', text: '"San." Just your name, grounding, when you hesitate for half a second too long against an argument that used to work on you. "You do not owe him a debate. You already left. That was the whole answer."' },
+          { speaker: 'San', text: '"Right," you say, steadying. "I already left. I do not have to keep re-litigating why."' },
+          { speaker: 'Narrator', text: 'The wraith does not get a dramatic final word. It simply stops being reasonable-sounding enough to keep standing, and then it is not standing at all.' },
+          { speaker: 'San', text: '"I do not forgive you," you say into the quiet afterward, not looking for absolution, just stating a fact. "I do not think I need to, to be finished with you."' },
+          { speaker: 'Joel', text: '"You do not," he agrees. "Finished does not require forgiven. It just requires done."' },
+          { speaker: 'San', text: '"Done," you say, testing the word, and it fits better than you expected it to.' },
+        ]
+      },
+      {
+        id: 'journal_081',
+        title: 'The Roads Not Taken',
+        chapter: 81,
+        unlockType: 'boss',
+        unlockAt: 'The Village Ex',
+        icon: '🛣️',
+        summary: 'Joel faces the wraith of the relationship he ended cleanly — and the two-year cycle of his daughter\'s childhood that no blessing could ever fully soften.',
+        scenes: [
+          { speaker: 'Narrator', text: 'This wraith does not raise its voice either. It cries, instead, the specific practiced crying of someone who learned a long time ago exactly how far it could get her.' },
+          { speaker: 'The Village Ex', text: '"You are really choosing to just leave," the wraith says, wet-eyed, wounded. "After everything. After her."' },
+          { speaker: 'Joel', text: '"I gave you my blessing," he says, and his voice does not waver even though something underneath it clearly wants to. "You did not want it back then. You wanted me to change my mind. I did not."' },
+          { speaker: 'Narrator', text: 'You watch him fight something that looks less like an enemy and more like two solid years of guilt given a shape and a familiar, tearful face.' },
+          { speaker: 'Joel', text: '"You found someone new so fast," Joel adds, quieter now, almost to himself as much as to the wraith. "I used to wonder if any of the crying was ever really about losing me, or just about losing the plan."' },
+          { speaker: 'San', text: '"You do not have to answer that for it," you tell him, steady beside him. "You already know. That is why you are not hesitating."' },
+          { speaker: 'Joel', text: '"I am not," he agrees. "I am just tired. Not of this fight. Of the shape of it. Two years at a time, San. That is the part that actually still gets me. Not her. The two years."' },
+          { speaker: 'Narrator', text: 'The wraith shifts, mid-battle, into something that stops performing hurt and starts simply repeating a number, over and over — a contract renewal cycle given a voice, relentless in its own quiet way.' },
+          { speaker: 'Joel', text: '"I know exactly how long it has been," Joel says to it, finally letting something raw into his voice. "August, twenty twenty-four. My mother brought her out. I do not get to just decide to see my daughter whenever I miss her. I get whatever window the paperwork allows, and I have made my peace with that being enough, because it has to be."' },
+          { speaker: 'Narrator', text: 'When the wraith finally falls, it does not weep on its way down. It simply goes still, the performance finally out of material.' },
+          { speaker: 'Joel', text: '"I do not resent her for moving on quickly," he says quietly, into the silence after. "I resent the two years. I resent that my daughter grows up in increments I do not get to choose. That was never something a blessing could fix."' },
+          { speaker: 'San', text: '"No," you agree, taking his hand. "But you are still in her life. That counts for something, even in increments."' },
+          { speaker: 'Joel', text: '"It does," Joel says. "I am trying to let it be enough, instead of measuring it against everything it is not."' },
+        ]
+      },
+      {
+        id: 'journal_082',
+        title: 'What the Pandemic Took',
+        chapter: 82,
+        unlockType: 'boss',
+        unlockAt: 'The Brunei Ex',
+        icon: '💊',
+        summary: 'Joel faces the wraith of the engagement a border closed on — and finally says out loud how much he hated needing rescuing.',
+        scenes: [
+          { speaker: 'Narrator', text: 'This one arrives already mid-sentence, the way the worst memories sometimes do — no introduction needed, because some wounds never actually finished happening in the first place.' },
+          { speaker: 'The Brunei Ex', text: '"I sent you everything I had," the wraith says, and there is real hurt underneath the accusation, which is somehow worse than if there had not been. "Every month. And you just kept drinking it away like it meant nothing."' },
+          { speaker: 'Joel', text: 'His jaw tightens, and for a moment you watch him have to decide, visibly, whether to let the old shame answer for him or the truth.' },
+          { speaker: 'Joel', text: '"It meant something," he says finally. "That was the problem. Every transfer felt like proof I could not even do the one thing I was supposed to be out here doing. No income of my own, no way to actually provide, just money coming in from you while I sat in my father\'s house doing nothing useful with any of my days."' },
+          { speaker: 'The Brunei Ex', text: '"We were supposed to get married," the wraith says. "The moment you came home to visit. Everything was arranged."' },
+          { speaker: 'Joel', text: '"And then the border closed," Joel says, quieter now. "And stayed closed. And I do not think either of us ever actually figured out how to be engaged to someone across a travel ban that had no announced end date. I am not blaming the pandemic for all of it. But I am not pretending it was nothing either."' },
+          { speaker: 'Narrator', text: 'You watch him fight it honestly, without flinching from the parts that implicate him too — the drinking, the months he could not have told you were bad ones even if you had asked.' },
+          { speaker: 'San', text: '"You survived that," you say, steady. "That is not the same as it not costing you something. Both things can be true."' },
+          { speaker: 'Joel', text: '"I know," Joel says. "I just do not think I ever said out loud how much I hated needing rescuing that way. I wanted to be the one holding things together. Instead I was the reason someone else had to."' },
+          { speaker: 'The Brunei Ex', text: '"I never resented sending it," the wraith says, softer now, something almost pleading underneath the old hurt.' },
+          { speaker: 'Joel', text: '"Maybe not," Joel says. "But I resented needing it. That is mine to carry, not yours to apologize for."' },
+          { speaker: 'Narrator', text: 'When it finally falls, there is no triumph in his face. Just the particular exhaustion of a man who has been carrying something heavy long enough that setting it down feels almost like losing his balance.' },
+          { speaker: 'Joel', text: '"My father let me stay the whole time," he says quietly, after. "Never once asked when I was leaving. I do not think I ever properly thanked him for that, before he was gone too."' },
+          { speaker: 'San', text: '"You can still thank him," you say gently. "Just not to his face anymore."' },
+          { speaker: 'Joel', text: '"I know," Joel says, and something in his voice suggests he already does, often, quietly, in ways he has never described out loud until just now.' },
+        ]
+      },
+      {
+        id: 'journal_083',
+        title: 'Loyalty and Its Cost',
+        chapter: 83,
+        unlockType: 'boss',
+        unlockAt: 'The Stepfather',
+        icon: '⚖️',
+        summary: 'Joel faces the wraith of the stepfather he defends and resents in the same breath — and learns some relationships just stay complicated, permanently, and get shown up for anyway.',
+        scenes: [
+          { speaker: 'Narrator', text: 'This wraith does not loom, the way the others did. It just stands there, a little too casually, like it has not entirely grasped the weight of the room it is standing in.' },
+          { speaker: 'The Stepfather', text: '"You are still mad at me," the wraith says, not quite a question, not quite guilty enough either.' },
+          { speaker: 'Joel', text: '"Sometimes," Joel admits, and there is something almost relieved in finally saying it plainly. "You are younger than both of us. You act like it, more often than I would like. And I still stood up for you at work every single time it mattered, because that is what family does, even when family is exhausting."' },
+          { speaker: 'The Stepfather', text: '"I did not ask you to fight my battles," the wraith says, a little defensive now.' },
+          { speaker: 'Joel', text: '"No," Joel agrees. "But I did it anyway. Because Mama loves you, and because being petty about that felt smaller than I wanted to be, even on the days you made it very, very tempting."' },
+          { speaker: 'Narrator', text: 'You watch him fight something that is not quite an enemy and not quite family either — something in the uncomfortable, ongoing space between the two, the way real relatives sometimes actually are.' },
+          { speaker: 'San', text: '"You do not have to resolve all of it today," you tell him. "Some people you just keep choosing, imperfectly, one exhausting day at a time."' },
+          { speaker: 'Joel', text: '"I know," Joel says. "I am not trying to end this. I do not think it is the kind of thing that ends. I am just trying to stop pretending the resentment is not also real, alongside the loyalty."' },
+          { speaker: 'The Stepfather', text: '"I try," the wraith says, quieter now, something almost young and uncertain in it. "I do try."' },
+          { speaker: 'Joel', text: '"I believe that," Joel says, and means it, even mid-swing. "Trying and being easy are not the same thing. You do not have to be easy for me to keep showing up for you."' },
+          { speaker: 'Narrator', text: 'When it falls, it does not vanish so much as simply step back — not defeated exactly, more like a difficult conversation finally, mutually, allowed to pause.' },
+          { speaker: 'Joel', text: '"He is not going anywhere," Joel says afterward, matter-of-fact. "Neither am I. I think that is just what this is going to keep being. Family, the complicated kind, where you get frustrated and you still show up."' },
+          { speaker: 'San', text: '"That sounds exactly like family to me," you say, and he laughs, a little tired, a little fond, entirely real.' },
+        ]
+      },
+      {
+        id: 'journal_084',
+        title: 'What Was Never Meant to Be Fought',
+        chapter: 84,
+        unlockType: 'level',
+        unlockAt: 70,
+        icon: '🕊️',
+        summary: 'No wraith waits for this one. Joel finally speaks his father\'s death out loud, and finds his way toward an uneasy, ongoing peace with the stepfather he both resents and defends.',
+        scenes: [
+          { speaker: 'Narrator', text: 'There is no wraith waiting for this one. Some things, it turns out, were never meant to be fought — only finally, properly felt.' },
+          { speaker: 'San', text: '"You said his name back there," you say gently, that evening. "In the last fight. That you never got to thank him properly."' },
+          { speaker: 'Joel', text: 'He is quiet a long moment, turning something over that has clearly been sitting unturned for a while. "He let me stay the whole pandemic. Never once asked when I was leaving, even when I am sure the house was smaller for it. Never once made me feel like a burden, even during the worst of the drinking."' },
+          { speaker: 'San', text: '"How did he go," you ask, carefully, giving him every opportunity to not answer if he is not ready.' },
+          { speaker: 'Joel', text: '"Quietly," Joel says. "That is the part I am still not over. He was sick for longer than any of us knew. Hid it well enough that I found out the same week I left to work at SK* — like his body waited until I finally had somewhere to be, before it let go of holding on."' },
+          { speaker: 'Narrator', text: 'You do not say anything to fill the silence. You have learned, with him, that some silences are not gaps to be closed, just space someone needs in order to keep going.' },
+          { speaker: 'Joel', text: '"I keep thinking there should have been a sign," he says eventually. "Something I missed because I was too busy being grateful he let me stay, instead of actually looking at him. I do not know if that guilt is fair. I carry it anyway."' },
+          { speaker: 'San', text: '"Grief rarely asks permission to be fair," you say quietly. "I do not think you missed anything, Joel. I think some people are just very good at carrying things alone, and he sounds like he had a lot of practice."' },
+          { speaker: 'Joel', text: '"He did," Joel agrees, something easing slightly in his shoulders. "I think that is where I learned it from, honestly. Carrying things quietly. I am trying to unlearn it. Slowly."' },
+          { speaker: 'Narrator', text: 'The conversation drifts, gently, toward something lighter, the way grief sometimes needs to breathe before it can keep being looked at directly.' },
+          { speaker: 'San', text: '"And your mother," you ask. "How are things, actually, with him?"' },
+          { speaker: 'Joel', text: '"Better than they were," Joel admits. "I did not like him, at first. Younger than both of us, a little careless, a little too comfortable letting Mama handle things he should have handled himself. I called him childish more than once, not always kindly."' },
+          { speaker: 'San', text: '"And now?"' },
+          { speaker: 'Joel', text: '"Now I think he loves her, in his own uneven way," Joel says. "And I think she is allowed to be loved by someone, even imperfectly, even younger than she probably imagined. I spent a long time deciding whether that was mine to be angry about. I do not think it ever was."' },
+          { speaker: 'Narrator', text: 'You think of your own family, your own complicated arithmetic of who gets to be forgiven and on whose timeline, and find something quietly comforting in watching him do the same work, imperfectly, out loud, instead of alone.' },
+          { speaker: 'Joel', text: '"I do not know if I have fully forgiven either of them," he says. "My father, for going quietly and letting me be surprised by it. Him, for existing in a space I was not ready to share. But I do not think forgiveness is actually the finish line I used to think it was."' },
+          { speaker: 'San', text: '"What is, then?"' },
+          { speaker: 'Joel', text: '"Showing up anyway," Joel says, echoing something he told the stepfather\'s wraith without seeming to notice he is repeating it. "Even complicated. Even unfinished. I think that might just be what family actually is, San, the parts that never quite resolve, and you keep showing up for them regardless."' },
+          { speaker: 'Narrator', text: 'You reach for his hand, and he takes it, and for once neither of you feels the need to fill the quiet that follows with anything else at all.' },
+        ]
+      },
+      {
+        id: 'journal_085',
+        title: 'The Present, Whatever It Holds',
+        chapter: 85,
+        unlockType: 'level',
+        unlockAt: 71,
+        icon: '🌅',
+        summary: 'Five names, finally set down. Ser Aldric names what both San and Joel are only now realizing themselves — that the past is actually finished, and the present no longer has to feel like another disguise for it.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Ser Aldric finds you both again at the edge of the clearing, the same unhurried way he has found you every time something in this arc needed closing.' },
+          { speaker: 'Ser Aldric', text: '"Five names," he says, something like quiet pride in his voice. "I do not think I have ever watched anyone clear that many at once and still be standing this steadily."' },
+          { speaker: 'San', text: '"I do not feel steady," you admit. "I feel emptied out. I did not expect closure to feel this much like exhaustion."' },
+          { speaker: 'Ser Aldric', text: '"They are not always different things," Ser Aldric says. "I have found the two arrive together more often than either alone."' },
+          { speaker: 'Joel', text: '"I keep waiting for one more name to show up," Joel admits. "Some part of me assumed the list was longer than this."' },
+          { speaker: 'Ser Aldric', text: '"Maybe it was," Ser Aldric says. "Or maybe you have simply run out of names you were still carrying instead of setting down. That is not a small thing to run out of."' },
+          { speaker: 'Narrator', text: 'You think of everything the last several weeks have actually held — an ex-mother-in-law who never once saw you as a person, a marriage built like a cage, a daughter measured out in two-year increments, a border that stole a wedding, a stepfather who is somehow, imperfectly, still family, and a father who went quietly enough that his own son never got the chance to properly say goodbye.' },
+          { speaker: 'San', text: '"That is the whole of it," you say slowly, testing the shape of the sentence. "Everything either of us was still dragging out of the old world. All of it, actually looked at, actually finished."' },
+          { speaker: 'Joel', text: '"Not resolved," Joel corrects, gently. "Some of it does not resolve. My stepfather is still going to be exhausting. My daughter is still two years away, every time. But finished, yes. I do not think I am carrying any of it the same way anymore."' },
+          { speaker: 'San', text: '"Neither am I," you say, and mean it more completely than you have meant almost anything since the Breaking.' },
+          { speaker: 'Ser Aldric', text: '"Then perhaps," he says, "it is time both of you stopped looking backward quite so often. Not because the past stops mattering. Because you have finally finished saying everything to it that needed saying."' },
+          { speaker: 'Narrator', text: 'You look at Joel, and he looks back, and something between you settles into a kind of quiet neither of you has had access to in longer than either of you can properly measure.' },
+          { speaker: 'Joel', text: '"The present, then," Joel says, testing the word the same careful way you tested \'finished\' weeks ago.' },
+          { speaker: 'San', text: '"The present," you agree. "Whatever it turns out to actually hold."' },
+          { speaker: 'Narrator', text: 'You do not know yet what comes next — only that for the first time since any of this began, neither of you is bracing for it to be another piece of the past, disguised as something new. It is simply what happens next. And for once, that is allowed to be enough.' },
+        ]
+      },
+      {
+        id: 'journal_086',
+        title: 'The Retainer\'s Hollow',
+        chapter: 86,
+        unlockType: 'boss',
+        unlockAt: 'Robin C.',
+        icon: '📋',
+        summary: 'San finally confronts Robin — and finds nine years does not need his understanding in order to actually be over.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The Retainer\'s Hollow smells exactly the way San once described it — burnt coffee, cold fluorescent light, and somebody else\'s overtime, all of it standing in a clearing where an office has no business standing at all.' },
+          { speaker: 'San', text: 'You go very still at the edge of it, the same particular stillness Joel had at the Treeline Detail. "Same firm," you say. "Same rules. He just put a new sign out front."' },
+          { speaker: 'Joel', text: '"Do you want to do this alone?" he asks, careful, the offer genuine.' },
+          { speaker: 'San', text: '"No," you say, and mean it. "I did enough of this alone the first time. I would like you standing here for the second one."' },
+          { speaker: 'Narrator', text: 'Robin, when he appears, looks exactly as unbothered as nine years of memory insists he always was — the specific, practiced indifference of a man who has never once had to consider that the people under him were people at all.' },
+          { speaker: 'Robin', text: '"Can\'t break the retainer," he says, not even looking up properly. "Are you working, or are you on your phone?"' },
+          { speaker: 'San', text: '"You do not even recognize me," you say, and it comes out flatter than you expected, more observation than accusation.' },
+          { speaker: 'Robin', text: 'He looks at you properly then, and something in his expression stays genuinely, politely blank. "Should I?"' },
+          { speaker: 'Narrator', text: 'You feel something in your chest brace for the old hurt to land the way it always used to. It does not. It just confirms something you already suspected, the way a diagnosis confirms a symptom you had already learned to live around.' },
+          { speaker: 'San', text: '"No," you say slowly. "I do not think you ever once saw me clearly enough to remember. Nine years. A resignation letter you used two years after I\'d already come back, like paperwork mattered more than the person standing in front of you every single day since."' },
+          { speaker: 'Robin', text: '"It\'s the job," Robin says, already bored, already reaching for the next dismissal. "People are replaceable. That\'s how firms work."' },
+          { speaker: 'San', text: '"It is," you agree, quiet, and something in your certainty makes even Robin pause half a second. "That was always the whole problem. You built an entire practice on nobody being able to afford to disagree with you. I could not, for a long time. I can now."' },
+          { speaker: 'Narrator', text: 'The fight is not the release you half expected it to be. Robin does not rage or bargain or even seem to register what is actually happening to him — he goes down the same way he ran the firm, indifferent right up until indifference stops being an option available to him.' },
+          { speaker: 'Joel', text: '"He does not even understand what this is," Joel says afterward, something between anger and pity in his voice — the same thing you said to him, not so long ago, in a different clearing.' },
+          { speaker: 'San', text: '"No," you agree. "I do not think he ever will. I think I am finally alright with that being his problem instead of mine."' },
+          { speaker: 'Narrator', text: 'You think of the resignation letter, the laughing, the nine years measured out in a single hundred-dollar increment, the whiplash of being let go and asked back and let go again — and find, standing here, that none of it needs Robin\'s understanding in order to finally, actually be over.' },
+          { speaker: 'San', text: '"Nine years," you say, testing the number one more time, the way you have tested it so many times before. "Just a number now. Not a debt anymore."' },
+          { speaker: 'Joel', text: '"Just a number," Joel agrees, taking your hand. "Ready?"' },
+          { speaker: 'San', text: '"Ready," you say, and walk away from the Hollow without looking back at it even once.' },
+        ]
+      },
+      {
+        id: 'journal_087',
+        title: 'The Treeline Detail',
+        chapter: 87,
+        unlockType: 'boss',
+        unlockAt: 'Jeff, the SK* Son-in-Law',
+        icon: '🌲',
+        summary: "Jeff remembers Joel perfectly \u2014 he was his favorite, once, right up until the pain started and Joel stopped being easy to like. That is a worse thing to learn than being forgotten would have been.",
+        scenes: [
+          { speaker: 'Narrator', text: 'The Treeline Detail looks exactly like every version of it Joel ever described — a loading dock that has no business being this far into the Vale, floodlights running on a generator nobody asked permission to install, brush cleared over and over by people who were never given a choice about it.' },
+          { speaker: 'Joel', text: 'He goes very still at the edge of the clearing, the specific stillness of a body that remembers a place before the mind has finished catching up. "This is it," he says. "Almost exactly. Down to the noise the generator makes."' },
+          { speaker: 'San', text: '"Do you want to turn back?" you ask, meaning it completely, no judgment folded into the offer.' },
+          { speaker: 'Joel', text: '"No," Joel says, and there is something steadier in his voice than you expected. "I have wanted this exact conversation for a long time. I just never thought I would actually get to have it."' },
+          { speaker: 'Narrator', text: "Jeff, when he appears, breaks into something almost warm — the specific, easy familiarity of a man greeting someone he genuinely used to enjoy having around." },
+          { speaker: 'Jeff', text: '"Joel!" he says, and it lands wrong precisely because it sounds so real. "Look at you. Feels like old times already, does it not? You used to make this whole place bearable."' },
+          { speaker: 'Joel', text: '"You remember me," Joel says, and it is not quite a question, more a confirmation of something he had almost hoped would not be true.' },
+          { speaker: 'Jeff', text: '"Of course I remember you," Jeff says, like the question itself is faintly absurd. "You were my favorite, for a long while there. Sharp. Funny. Never made things difficult." A pause, something harder creeping into it. "Not until the end, anyway."' },
+          { speaker: 'Narrator', text: 'You watch Joel absorb that — not relief, nothing close to relief, something worse. Being forgotten would have been simple. This is not simple at all.' },
+          { speaker: 'Joel', text: '"The end," Joel repeats slowly. "You mean once my body actually started falling apart. Once the pain got bad enough that I could not keep up the way I used to. Once I started speaking up — not even only for myself, most of the time. For everyone else getting handed the same treatment and too afraid to say anything about it."' },
+          { speaker: 'Jeff', text: '"You changed," Jeff says, like it is a simple, self-evident fact, like it excuses everything that came after it. "Started taking your stepfather\'s side over mine, of all people. Started acting like your opinion was something I owed consideration to."' },
+          { speaker: 'Joel', text: '"It was," Joel says, and his voice does not shake at all. "That is exactly the part you never understood. You liked me when I made things easy for you. The moment my body stopped cooperating and my mouth started working, I stopped being useful. That is not the same as being forgotten. I almost wish it were."' },
+          { speaker: 'Jeff', text: '"Everyone gets replaced eventually," Jeff says, already bored again, already reaching for the dismissal. "That is just how it works."' },
+          { speaker: 'Joel', text: '"It is," Joel agrees, quiet, and something in his tone makes even Jeff pause. "That was always exactly the problem. You built an entire operation on nobody being able to afford to disagree with you. I could not, for a long time. I can now."' },
+          { speaker: 'Narrator', text: 'The fight, when it comes, is not the release you half expected. Jeff does not rage or plead — he goes down the same way he ran the Detail, certain right up until certainty stops being an option.' },
+          { speaker: 'San', text: '"He actually liked you," you say afterward, something complicated in your voice — not quite anger, not quite pity, something that has not fully settled into either yet.' },
+          { speaker: 'Joel', text: '"He did," Joel agrees. "Right up until liking me stopped being convenient. I think that might genuinely be worse than not being seen at all." He looks around the cleared brush, the floodlights, the whole ugly little operation. "The Detail gets a day off, at least. That is not nothing."' },
+          { speaker: 'San', text: '"It is not nothing," you agree. "How do you feel?"' },
+          { speaker: 'Joel', text: '"Lighter," Joel says, testing the word. "Not because I hurt him. Because I finally said it to his face, and it turns out I did not need him to agree with any of it for it to still be true."' },
+          { speaker: 'Narrator', text: 'You leave the Treeline Detail behind, floodlights still humming uselessly into the daylight, and neither of you looks back at it even once on the way out.' },
+        ]
+      },
+      {
+        id: 'journal_088',
+        title: 'What You Have to Resolve Yourself',
+        chapter: 88,
+        unlockType: 'level',
+        unlockAt: 65,
+        icon: '🗝️',
+        summary: 'San remembers a conversation from before the Breaking — a hundred dollars after six months, not nine years — and understands the difference between what the world resolved for them, and what they had to go resolve themselves.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The memory arrives unbidden, the way the true ones always do — not summoned, just surfacing, somewhere between the last echo of Robin\'s voice and the quiet of an evening with nothing left demanding to be fought.' },
+          { speaker: 'Narrator', text: 'It is from before. Months after she’d finally left the firm, sitting across from Joel in a kitchen that does not exist anymore, in a life that ended without either of them getting to say goodbye to it properly.' },
+          { speaker: 'Joel', text: '"But I think you\'re okay now," Joel says, in the memory, something like relief in his voice. "In the new job."' },
+          { speaker: 'San', text: '"Yes," you hear yourself say. "New friends. New environment. They gave me a hundred dollars after six months. Not nine years."' },
+          { speaker: 'Narrator', text: 'You remember the specific, quiet satisfaction of that sentence — not triumph, just the plain relief of finally being seen as worth something close to on time.' },
+          { speaker: 'Joel', text: '"It\'s my side that\'s worrying," Joel says, in the memory, some old work trouble of his own you no longer remember the exact shape of.' },
+          { speaker: 'San', text: '"We\'ll figure it out," you tell him, the way you always used to. "There are plenty of jobs, after all. We just have to go out and look for them."' },
+          { speaker: 'Narrator', text: 'You remember believing that completely, the way you believed a lot of things before the world ended and started teaching you which of your beliefs had actually been true.' },
+          { speaker: 'San', text: '"I thought I had friends there too," you say to Joel, present-tense now, the memory folding back into the evening you are actually sitting in. "At Robin\'s office. It took months after I left to understand how few of them actually meant it, asking how I was doing. Most of them were just — busy. Every single time. For months."' },
+          { speaker: 'Joel', text: '"Busy," Joel repeats, and the word carries the exact weight you meant it to.' },
+          { speaker: 'San', text: '"I do not think they were lying," you say slowly, working through it even now. "I think being busy was just easier than actually finding out the answer might be complicated."' },
+          { speaker: 'Narrator', text: 'You sit with that a while, the old conversation and the new one layered over each other, close enough to touch.' },
+          { speaker: 'San', text: '"Some things resolved on their own out here," you say finally. "The money I cannot send. The border that does not exist to close anymore. Things the world just took out of my hands, whether I was ready or not."' },
+          { speaker: 'Joel', text: '"But not all of it," Joel says, understanding exactly where you are going before you finish getting there.' },
+          { speaker: 'San', text: '"Not all of it," you agree. "Robin did not stop existing just because I stopped thinking about him every day. Jeff did not either. Some things do not resolve by themselves, no matter how much time passes or how far away you get. You actually have to go find them, and finish it yourself."' },
+          { speaker: 'Joel', text: '"That is what we did," Joel says. "Both of us. Six wraiths and two men who never once understood what they cost us."' },
+          { speaker: 'San', text: '"That is what we did," you agree, and something in the saying of it out loud settles the whole arc into place, finished, actually finished, not just quiet.' },
+          { speaker: 'Narrator', text: 'You think of the kitchen that no longer exists, the hundred dollars after six months, the friends who were busy for months on end. Old proof, all of it, that you already knew how to tell the difference between the people who show up and the people who do not — you just needed the whole world to end before you fully trusted what you already knew.' },
+          { speaker: 'San', text: '"And now," you say, looking out at whatever comes next, road and Vale and everything still unmapped past it, "we\'ve got a journey of our own."' },
+          { speaker: 'Joel', text: '"We do," Joel says, taking your hand. "Let\'s go see what it actually holds."' },
+        ]
+      },
+      {
+        id: 'journal_089',
+        title: 'What Soel Remembers',
+        chapter: 89,
+        unlockType: 'level',
+        unlockAt: 45,
+        icon: '❄️',
+        summary: 'Soel grows restless, pulling toward Frostspire Ruins and a memory none of you can fully name yet.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Soel has been restless for days — not sick, not scared, just pulled toward something none of you can name, pacing the edge of camp at odd hours, staring off in the same direction every single time.' },
+          { speaker: 'San', text: '"He wants to go somewhere," you say, watching him watch the horizon. "He has wanted to for a while now. I do not think it is nothing."' },
+          { speaker: 'Joel', text: '"Frostspire," Joel says slowly, following the line of Soel\'s gaze. "That is the direction. Every time."' },
+          { speaker: 'Narrator', text: 'You remember, distantly, a strange encounter out there once — an echo of something that looked like Soel but was not, sitting on a throne of frost, speaking like it already knew exactly who you were.' },
+          { speaker: 'San', text: '"Do you remember him?" you ask Soel directly, crouching to his level. He does not answer, obviously, but he presses his head against your hand once, firm, deliberate, in the exact way he does when he wants you to understand something without words.' },
+          { speaker: 'Joel', text: '"I think he does remember," Joel says quietly. "I think that is exactly the problem."' },
+          { speaker: 'San', text: '"Then let\'s go find out what he is trying to tell us," you say, and Soel is already moving before you finish the sentence, tail high, certain of the direction in a way he has not been certain of anything in days.' },
+        ]
+      },
+      {
+        id: 'journal_090',
+        title: 'The Warmth That Waited',
+        chapter: 90,
+        unlockType: 'level',
+        unlockAt: 46,
+        icon: '🐾',
+        summary: 'The frost-throne\'s echo finally tells its own story — a Kindling who stayed for someone who could not let the warmth in, and has spent an age since wondering if staying was enough.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The throne is exactly where it was — frost-covered, ancient, and this time, when you approach, the air does not simply shimmer and offer a few borrowed words. It waits, like it has been waiting specifically for this visit.' },
+          { speaker: '???', text: 'The cat that is not Soel opens its eyes properly this time, ancient and translucent and entirely aware. "You came back," it says. "He brought you back. I did not expect that either."' },
+          { speaker: 'San', text: '"Who were you?" you ask, gently, San\'s whole life of learning to ask hard questions carefully finally finding a use out here. "Before this throne. Before you were an echo."' },
+          { speaker: '???', text: '"Bonded," it says. "The same as him. Chosen, the same way, for the same reason — someone who needed warmth badly enough that I formed around the need itself." A long pause, frost shifting like breath. "I chose someone who could not let it in. Not because they did not want to. Because wanting felt too dangerous to survive, after everything that had already been taken from them."' },
+          { speaker: 'Joel', text: '"What happened?" Joel asks, quiet, already understanding more of this than he probably wants to.' },
+          { speaker: '???', text: '"I stayed," the echo says simply. "Every day, every cold night, every time they pushed me an inch further away out of fear instead of anything I had done wrong. I stayed until there was nothing left of them to stay for. I do not know if I helped. I have had a very long time to wonder whether staying was enough, or whether I only ever made the leaving quieter."' },
+          { speaker: 'San', text: '"That is not failure," you say, before you have fully decided to say it. "That is just love that arrived at someone who was not able to receive it yet. Those are not the same thing."' },
+          { speaker: '???', text: '"I have told myself that," the echo admits. "Some days I even believe it. Most days I just remember the warmth, and wonder if it counted for anything at all, in the end."' },
+          { speaker: 'Narrator', text: 'Soel presses close against the base of the throne, small and warm and entirely present, the exact opposite of everything this echo is describing — and something about that specific contrast seems to be the actual point of all of it.' },
+        ]
+      },
+      {
+        id: 'journal_091',
+        title: 'What the Cold Never Took',
+        chapter: 91,
+        unlockType: 'level',
+        unlockAt: 47,
+        icon: '🔥',
+        summary: 'A single, unsent thank-you finally reaches the one it was always meant for — and Soel\'s own bond with Joel gets to stand, completely, in the light of it.',
+        scenes: [
+          { speaker: 'Narrator', text: 'You find it — not by searching, exactly, more by finally being willing to look properly. A small, worn token half-buried at the base of the throne, old enough that the frost has grown around it rather than over it.' },
+          { speaker: 'San', text: '"This was theirs," you say, turning it over carefully. "The person. Not Soel\'s ancestor\'s — the person he chose." Something is scratched into the surface, faint, deliberate. "It says \'thank you for staying, even when I could not say it.\'"' },
+          { speaker: 'Narrator', text: 'The echo goes very still, the specific stillness of something that has waited a very long time to hear exactly this.' },
+          { speaker: '???', text: '"They wrote that?" the echo asks, and for the first time it sounds less like a memory and more like something genuinely alive again, however briefly.' },
+          { speaker: 'San', text: '"They did," you say gently. "I do not know when. But they knew. Whatever they could not say out loud, they knew what you gave them, and they wanted you to have proof of it, even if they never found the courage to hand it to you directly."' },
+          { speaker: 'Narrator', text: 'The frost around the throne begins, slowly, to recede — not shattering, not dramatic, just thawing, the way something does when it finally has permission to stop holding a shape it was never meant to keep forever.' },
+          { speaker: '???', text: '"The warm spots were worth it," the echo says, quiet, almost to itself. "I told the last visitor to say that, and I do not think I fully believed it myself, saying it. I think I do now."' },
+          { speaker: 'San', text: '"Rest," you tell it, and mean it completely. "You did not fail. You loved someone exactly as hard as you were built to, and it mattered, whether or not they ever got to tell you while you could still hear it."' },
+          { speaker: 'Narrator', text: 'The throne empties, gently, frost giving way to bare stone, and something in the air feels lighter for it — not erased, just finally, properly finished.' },
+          { speaker: 'Joel', text: 'Soel climbs into your lap the moment it is done, purring hard enough that you can feel it in your chest, and Joel watches him with something unguarded on his face. "Are you worried," Joel asks him, half a joke, half not, "that you might end up on a throne like that someday?"' },
+          { speaker: 'San', text: '"He chose you completely," you say, answering for him, watching the same certainty in Soel that has never once wavered since the day Joel found him in the rain. "That is the whole difference. He is not waiting to see if you will let him in. You already did. Every day, since the very beginning."' },
+          { speaker: 'Joel', text: '"I know," Joel says, quiet, holding them both a little closer. "I am just glad I get to keep proving it. Every single day, for as long as he\'ll have me."' },
+        ]
+      },
+      {
+        id: 'journal_092',
+        title: 'Not Recovering. Beginning.',
+        chapter: 92,
+        unlockType: 'level',
+        unlockAt: 95,
+        icon: '🌅',
+        summary: 'Standing at the actual edge of everything mapped, San realizes her life did not really start until now — everything before this was surviving, escaping, or recovering from something. This is the first thing she gets to simply want.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The Waking Edge earns its name properly here — not a border, not a wall, just the exact place where everything that has ever been mapped simply stops, and something else, unnamed, begins.' },
+          { speaker: 'San', text: '"I keep waiting to feel the old thing," you say, looking out at it. "The bracing. The sense that whatever is out there is going to cost me something I have not already paid for."' },
+          { speaker: 'Joel', text: '"And?" Joel asks, watching you rather than the horizon.' },
+          { speaker: 'San', text: '"It is not there," you say slowly, testing the absence the way you have tested every hard-won thing since the wraiths, since Robin, since all of it. "I do not feel like I am walking toward something I have to survive. I feel like I am walking toward something I actually get to see."' },
+          { speaker: 'Narrator', text: 'You think of everything that brought you here — the ex-mother-in-law, the marriage built like a cage, nine years and a hundred dollars, a warehouse boss who never learned your name, a daughter measured out in two-year increments, a father who died quietly enough that his own son almost missed it. All of it real. All of it, finally, actually finished.' },
+          { speaker: 'San', text: '"I do not think my life really started until now," you say, and it surprises you, saying it, the plainness of it. "Everything before this was surviving something. Escaping something. Recovering from something. I do not think I have ever once, in my whole life, gotten to just want to see what happens next, without it being attached to getting away from what came before."' },
+          { speaker: 'Joel', text: '"That sounds like a beginning," Joel says, quiet, something warm and unguarded in it.' },
+          { speaker: 'San', text: '"It is," you agree. "Not a better chapter of the same story. An actual beginning. I do not know what is out there past this edge. For the first time in longer than I can measure, I do not need to know before I am willing to go looking."' },
+          { speaker: 'Narrator', text: 'Ser Aldric finds you both there, unsurprised, like he expected exactly this conversation to be happening exactly here.' },
+          { speaker: 'Ser Aldric', text: '"You have the look of someone about to actually live," he says, something like pride in it. "I have seen it before, rarely. It does not look like relief. It looks like this — just quiet, and forward-facing, and unafraid of not having all the answers yet."' },
+          { speaker: 'San', text: '"Is that what this is?" you ask.' },
+          { speaker: 'Ser Aldric', text: '"I believe so," he says. "For what it is worth — I do not think anyone gets to choose when their real life starts. But you get to notice when it does. Consider this noticed, on my part, if you needed a witness."' },
+          { speaker: 'Joel', text: 'Joel takes your hand, and for once neither of you needs to say anything else to make the moment complete.' },
+          { speaker: 'San', text: '"Whatever is out there," you say, looking past the edge of everything mapped, everything survived, everything finally, properly finished, "let\'s go find out. Not because we have to. Just because we get to."' },
+          { speaker: 'Narrator', text: 'You step past the edge together, into the first genuinely unwritten thing either of you has ever walked toward on purpose — and it does not feel like an ending, or even a continuation. It feels, simply, like a beginning, exactly as overdue as it is real.' },
+        ]
+      },
+      {
+        id: 'journal_093',
+        title: 'The One Who Watches the Distance',
+        chapter: 93,
+        unlockType: 'level',
+        unlockAt: 55,
+        icon: '🔮',
+        summary: "A hermit scryer finds Mimi's Dreamsight the way he finds most things — by accident — and offers to help her point it somewhere it has never reached before. It will cost more than patience.",
+        scenes: [
+          { speaker: 'Narrator', text: "He is already sitting at your camp when you arrive, uninvited and entirely unbothered about it, like the fire has simply always had one more person around it than you remembered inviting. Soel does not hiss. Soel almost never approves of strangers this fast." },
+          { speaker: 'Varel Farseer', text: '"You are the one with the office friend who already knows things," he says, not quite a question, nodding at Mimi without looking up from whatever he is doing to the fire. "I felt her from three valleys over. Untrained. Loud, in the way things are loud when nobody ever taught them to whisper."' },
+          { speaker: 'Mimi', text: '"Untrained," Mimi repeats, testing the word like it might bite. "I have always known things. Nobody taught me. It was just already there."' },
+          { speaker: 'Varel Farseer', text: '"That is exactly the problem," he says, entirely unbothered by how that lands. "A gift nobody trained is a door nobody learned to open on purpose. It opens anyway, sometimes, whenever it wants to. Never where you actually need it to."' },
+          { speaker: 'San', text: '"And you can train it," you say, already feeling the shape of where this is going, already half-afraid to hope out loud.' },
+          { speaker: 'Varel Farseer', text: '"I can teach her the discipline. I have kept watch on the boundary between here and everywhere else for longer than I have bothered counting." He finally looks up, and his eyes are the particular unsettling kind that seem to be looking at something several minutes in either direction from now. "Discipline is not power. She has more raw power than I ever had. I just know how to point."' },
+          { speaker: 'Joel', text: '"Point at what," Joel asks, careful, already guessing.' },
+          { speaker: 'Varel Farseer', text: '"At whatever the two of you have been carrying and not saying out loud," Varel says, entirely without cruelty, the way a man states weather. "The old world. The parents you cannot reach. The daughter you send letters into silence for. I do not need you to tell me. I only need to watch you both not talk about it for one evening to know exactly what it is."' },
+          { speaker: 'San', text: 'The fire pops. Nobody says anything for a moment, because he is simply right, and there is no dignified way to argue with correct.' },
+          { speaker: 'Varel Farseer', text: '"A window," he says. "Not a door. I want to be exact about that before either of you get your hopes arranged wrong. A window does not let anything through. It only lets you see. That is the honest limit of what any of this can ever be, and I would rather tell you that now than let you find out the hard way later."' },
+          { speaker: 'San', text: '"A window is more than we have had this entire time," you say, and your voice comes out steadier than you expected. "A window is not nothing."' },
+          { speaker: 'Varel Farseer', text: '"No," Varel agrees, something almost gentle under the flatness. "It is not nothing. It will also not be easy, or cheap, or quick. Building a frame strong enough to hold a window between two entire worlds takes more than good intentions and an untrained gift. It takes materials most people never go looking for, because most people never have a reason to."' },
+          { speaker: 'Mimi', text: '"Tell us where to look," Mimi says, already standing, already done deliberating. "I have spent this whole journey knowing things two floors away. I would like, for once, to know something that actually matters this much."' },
+          { speaker: 'Varel Farseer', text: '"Two things," Varel says. "A splinter off Skarrowyn, the Split Horizon \u2014 that dragon has spent its whole unnatural life being two things looking at each other across a line that should not exist. That is exactly the property a window needs. And a thread off Nyxathorne, the Unmended Wound \u2014 a wound that never closed knows more about looking at what is missing than anything else alive. Bring me both, and I will teach Mimi how to hold the rest steady."' },
+          { speaker: 'Joel', text: '"We already know where both of those are," Joel says, and for the first time since Varel sat down, something in his voice sounds almost like hope trying not to get ahead of itself. "We have fought worse for less."' },
+          { speaker: 'Varel Farseer', text: '"I know," Varel says, and for just a moment the strange, elsewhere-focused look in his eyes settles fully on the present, on all of you, warmer than anything he has said so far. "That is rather why I offered."' },
+        ]
+      },
+      {
+        id: 'journal_094',
+        title: 'What It Takes to Build a Window',
+        chapter: 94,
+        unlockType: 'boss',
+        unlockAt: 'Skarrowyn, the Split Horizon',
+        icon: '🪞',
+        summary: 'Skarrowyn and Nyxathorne both fall, and Varel and Mimi build the frame together — his discipline, her untrained sight, and one honest warning about the cost.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The splinter off Skarrowyn does not look like much once the fight is over \u2014 a sliver of scale still holding two colors that refuse to agree with each other, fire bleeding into cosmic dark along one thin seam. Nyxathorne\'s thread is worse to look at directly, a strand of something that was clearly once whole and is now permanently, deliberately not.' },
+          { speaker: 'San', text: '"This is what a window is made of," you say, turning the splinter over in your hand, unable to quite reconcile how something this small held a fight that hard.' },
+          { speaker: 'Varel Farseer', text: '"Everything worth building is made of something that cost more than it looks like," Varel says, taking both pieces from you with more care than you expected from someone who found you three valleys away by accident. "Now. The actual work."' },
+          { speaker: 'Narrator', text: 'He sets both pieces at the center of a circle he has clearly drawn a hundred times before, in a hundred other places, and gestures Mimi forward without ceremony.' },
+          { speaker: 'Varel Farseer', text: '"Give me your hand. Not your gift \u2014 your hand. The gift will follow on its own. It always does, once it finally has somewhere real to go."' },
+          { speaker: 'Mimi', text: 'Mimi kneels across from him, and for the first time since you have known her, she looks genuinely uncertain \u2014 not about the danger, about whether she is actually capable of the thing being asked of her.' },
+          { speaker: 'Mimi', text: '"What if I am not strong enough," she says, quiet, the question she has clearly been sitting on since the tower.' },
+          { speaker: 'Varel Farseer', text: '"You already reached a coworker\'s exhaustion two floors down through a wall, in a world that did not even believe in magic yet," Varel says, flat, certain. "Strength was never the missing piece. Aim was. I am not lending you power tonight. I am only teaching you where to point what you already have."' },
+          { speaker: 'Narrator', text: 'The splinter and the thread begin to turn between them, slow, then faster, then not moving at all in any way you can actually track \u2014 just present, differently, like something has been persuaded rather than built.' },
+          { speaker: 'Varel Farseer', text: '"One more thing, before this finishes," he says, not looking up, voice steady even as the light between his hands and Mimi\'s gets harder to look at directly. "This will not be free to use, once it exists. Not in materials \u2014 those are spent already, tonight. In cost. A window this size, held open between two worlds that were never meant to touch, takes more than either of you will want to pay every single time. Gold, mostly. An enormous, deliberately unreasonable amount of it."' },
+          { speaker: 'Joel', text: '"Why deliberately," Joel asks.' },
+          { speaker: 'Varel Farseer', text: '"Because if it were easy, you would use it every day, and stop actually living the life you are trying to check in on," Varel says, and for once there is no strangeness in his voice at all, just plain, unhurried honesty. "This should cost enough that you only ever open it because you truly mean to. Not out of habit. Out of love, spent on purpose."' },
+          { speaker: 'San', text: '"That is fair," you say, and mean it, even as something in your chest aches at the size of what he is describing. "We are not exactly short on gold these days."' },
+          { speaker: 'Varel Farseer', text: '"No," Varel agrees, the faintest, rare smile finally showing. "I rather assumed as much. That was, admittedly, part of the plan." He looks between you both, then finally at Mimi, whose hands have stopped shaking. "It is ready. Whenever the two of you are."' },
+        ]
+      },
+      {
+        id: 'journal_095',
+        title: 'The First Vision',
+        chapter: 95,
+        unlockType: 'boss',
+        unlockAt: 'Skarrowyn, the Split Horizon',
+        icon: '👁️',
+        summary: 'The Vision Machine opens for the first time. Not a door. A window \u2014 and it is enough.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The frame stands finished at the edge of the Mended Grove now, unassuming, more like a tall mirror missing its glass than anything you expected from a night of dragon splinters and unmended thread. Varel has already made himself comfortable beside it, like he has been sitting there for years rather than hours.' },
+          { speaker: 'Varel Farseer', text: '"Whenever you are ready," he says. "Both of you, if you like. It answers to intent, not to a single hand."' },
+          { speaker: 'Joel', text: 'Joel goes first, without needing to be asked twice \u2014 a folded letter already in hand, the same care in his fingers you have watched him carry into every letter since the Crucible. He does not read it aloud. He simply holds it to the frame, and the frame simply takes it, the way a held breath finally gets let out.' },
+          { speaker: 'Joel', text: '"For my mother," he says, quiet, to no one in particular. "Same as always. Just \u2014 further, this time. Actually further."' },
+          { speaker: 'San', text: 'Then it is your turn, and you find you have no letter, nothing prepared, nothing rehearsed \u2014 just your own two hands, and an ache that has been waiting a very long time for somewhere to actually go.' },
+          { speaker: 'Varel Farseer', text: '"You do not need words for this part," Varel says, gentler than you have heard him yet. "Just look."' },
+          { speaker: 'Narrator', text: 'The window does not open like a door. It simply stops being a frame around nothing, and becomes a frame around somewhere \u2014 a small kitchen you would know with your eyes closed, afternoon light through a curtain you helped choose years ago, your mother\'s hands moving through some small, unremarkable task exactly the way they always have.' },
+          { speaker: 'San', text: '"She is fine," you say, and your voice breaks on the second word, all the air you had been holding for this finally let go at once. "She is just \u2014 she is making tea. She is fine."' },
+          { speaker: 'Narrator', text: 'You do not know if she is fine in every way that matters. You will never fully know that, not through a window that only shows and never tells. But she is upright, and moving, and humming something under her breath the way she always has, and for tonight that is not almost enough. It is enough.' },
+          { speaker: 'Aisyah', text: '"Is that Mum\'s kitchen," Aisyah asks from behind you, voice gone very small, and you realize she followed without either of you noticing \u2014 of course she did.' },
+          { speaker: 'San', text: '"It is," you say, and step aside so she can see too, because some things were never meant to be carried by only one of you.' },
+          { speaker: 'Varel Farseer', text: '"It will not stay open," he says, careful, the warning arriving exactly on time rather than early enough to spoil anything. "It never does, for long. And it will cost the same, every single time you choose to open it again. I am not sorry about that. I built it that way on purpose."' },
+          { speaker: 'San', text: '"I understand," you say, and you do, fully, the way you have learned to understand most hard things lately \u2014 not as unfair, just as true. "Thank you. For all of it. For pointing something that has been loud and untrained her whole life somewhere it could finally actually matter."' },
+          { speaker: 'Mimi', text: '"Two floors away, my whole life," Mimi says, quiet, watching the window finally begin to fade. "And this is the first time it ever felt like enough."' },
+          { speaker: 'Narrator', text: 'The frame goes still, glassless and ordinary again, waiting at the edge of the grove for the next time either of you can bear the cost \u2014 gold, and hope, spent on purpose, exactly the way Varel intended.' },
+        ]
+      },
+      {
+        id: 'journal_096',
+        title: 'What the Window Chose First',
+        chapter: 96,
+        unlockType: 'special',
+        unlockAt: 'first_vision_machine_use',
+        icon: '🌅',
+        summary: 'The Vision Machine\'s very first glimpse is small and ordinary — Mama, haggling over fruit at a market, alive and well and completely unaware she is being watched. It pulls San and Joel into remembering the week she visited Brunei, and the offer that came quietly, months later, once she was already back home.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The vision catches on something small before it catches on anything else — a woman at a market stall, turning over fruit she is deciding whether to buy, unremarkable in every way except that Joel goes completely still beside you the instant he sees her face.' },
+          { speaker: 'Joel', text: '"Mama," he says, just that, like the word has to be tested before he trusts it.' },
+          { speaker: 'Narrator', text: 'The window holds her a moment longer than it held anything else so far — ordinary, upright, arguing gently with a vendor over the price of something, exactly as unbothered as she has apparently always been. Then it fades, the way all of them do, and Joel sits back slowly, something loosened in his shoulders that you had not realized was tight.' },
+          { speaker: 'San', text: '"She looked well," you say quietly, and mean it as the whole comfort it is.' },
+          { speaker: 'Joel', text: '"She did," Joel agrees, and then, after a moment, quieter: "Do you remember the airport? When she first landed in Brunei?"' },
+          { speaker: 'Narrator', text: 'You do. You remember it with a clarity that surprises you, considering how much else has happened since — the exact way Mama\'s face changed the moment she saw you both waiting, not scanning you the way you had braced for, not assessing. Just glad.' },
+          { speaker: 'San', text: '"She hugged me before she hugged you," you say, and Joel laughs, soft and disbelieving even now. "I remember thinking, she does not even know me yet. And she was already glad I was there."' },
+          { speaker: 'Joel', text: '"She liked you before either of you said a word," Joel says. "I think she decided somewhere over the ocean."' },
+          { speaker: 'Narrator', text: 'You think of the week that followed, in pieces, the way memory actually works rather than the way stories usually tell it — no order, just weight. The night the two of you went out alone while Joel worked overtime, hot chocolate at some small place San picked because the name made Mama laugh, the two of you trying food neither of them had eaten before and pulling faces at each other over it like old friends rather than a woman and the mother of the man she loved.' },
+          { speaker: 'San', text: '"She never once asked about before you," you say. "Not the marriage. Not any of it. I kept waiting for the question, the same way I always used to. It never came."' },
+          { speaker: 'Joel', text: '"She told me later she did not need to ask," Joel says. "She said she could already tell what mattered, just from watching how you were with me."' },
+          { speaker: 'Narrator', text: 'The last morning surfaces clearest of all — the cruise finished, the whole week folding down toward an ending none of you were ready for. The four of you had breakfast together at the airport restaurant first, unhurried, like none of you wanted to be the one who noticed the time. The stepfather did not come any further than that. He said, simply, that he would cry too if he went to the gate, and stayed at the table instead.' },
+          { speaker: 'Narrator', text: 'Joel stayed too, when the moment finally came. He did not say why. He just did not get up.' },
+          { speaker: 'Narrator', text: 'So it was you who walked Mama the rest of the way — through security, right up to where family could not follow any further, the two of you pausing there just long enough for one photo before she had to go. You remember exactly how she held onto your arm the whole way, unhurried even then, like she still had all the time she needed.' },
+          { speaker: 'Narrator', text: 'When you got back to the table, you told Joel, plainly, that you had wanted to cry. You had held it together the entire walk back — you always could, in public, some old and well-worn discipline that never quite left you even now. It was only ever in private that it caught up with you at all.' },
+          { speaker: 'Joel', text: '"That is why I did not want to go," Joel says quietly, and you understand, finally, exactly what he had been protecting both of you from all along.' },
+          { speaker: 'Narrator', text: 'It was months later, long after she was home and the visit had settled into something you both just called a good memory, that the offer came — not in person, not with any of the weight you might have expected from something so large. Just Mama, over a call, saying plainly that if you ever wanted your own sons back with you properly, she would come stay, would help however was needed. She could not work in Brunei by then, past the age the permits allowed, and she offered anyway, like the inability to earn her keep had never once occurred to her as a reason not to help.' },
+          { speaker: 'San', text: '"She did not see herself as a guest," you say. "Or me as someone she needed a reason to be kind to."' },
+          { speaker: 'Joel', text: '"She never has," Joel says. "Not with anyone she has decided is family. That was never a performance for her. It was just how she actually is."' },
+          { speaker: 'Joel', text: 'He is quiet for a while after that, and when he speaks again his voice is unsteady in a way he does not try to hide. "She calls you her daughter now. You know that, do you not? Not my wife. Not my girlfriend. Her daughter."' },
+          { speaker: 'San', text: '"She greets me every morning," you say, something warm breaking open in your chest even now, months later, saying it out loud. "Every single day. I do not think I understood, before her, that this was even a thing I was allowed to want. A mother who chose me back."' },
+          { speaker: 'Narrator', text: 'The window is fully dark now, the vision long since faded, but neither of you moves to leave the frame just yet. Somewhere across all that distance, an ordinary woman is haggling over fruit, entirely unaware of how completely she rearranged what family was allowed to mean for the two people who love her.' },
+        ]
+      },
+      {
+        id: 'journal_097',
+        title: 'What Nothing Kindles',
+        chapter: 97,
+        unlockType: 'level',
+        unlockAt: 96,
+        icon: '🌫️',
+        summary: 'San understands what The Thinning actually is — not a monster to defeat once, but ground nobody has chosen to tend. The same practice as Soel choosing Joel, just at the scale of an entire unmapped region.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The Thinning does not announce itself the way most dangerous places do. There is no wall of thorns, no obvious wound in the ground. It just gradually stops agreeing with you about what color things are, and how long a sound should take to reach your ears.' },
+          { speaker: 'Joel', text: '"This is different," Joel says, unnerved in a way you have rarely seen from him. "Everywhere else that was broken still felt like a place. This barely feels like it is trying anymore."' },
+          { speaker: 'San', text: '"I do not think it is trying," you say slowly, understanding arriving the way it sometimes does, all at once. "I think this is what happens when nothing kindles it. When there is no one, and nothing, actively choosing to hold it together."' },
+          { speaker: 'Narrator', text: 'You think of Soel, small and warm and entirely present, and the ancestor who came before him, choosing to stay through a cold that never once thanked it for staying. You think of Verdant Reach, and the specific, unglamorous work of tending something instead of just surviving near it.' },
+          { speaker: 'San', text: '"That is what this whole region actually is," you say. "Not a monster to defeat once. Ground that needs someone willing to keep choosing it, the same way Soel kept choosing Joel, the same way the Vale kept getting tended by anyone who bothered. This will not stay pushed back just because we win one fight here."' },
+          { speaker: 'Joel', text: '"Then we keep coming back," Joel says simply, like it is the easiest decision he has made in a long time. "As many times as it takes. That is not a burden. That is just what tending something actually looks like."' },
+          { speaker: 'Narrator', text: 'You feel something enormous settle into a shape you can finally hold — not a war to win and be done with, but a practice, ongoing, the same unglamorous, essential thing every real kind of care has always required.' },
+          { speaker: 'San', text: '"Let\'s go kindle something, then," you say, and mean it as completely as you have ever meant anything, stepping forward into ground that has forgotten how to hold itself together, entirely on purpose, for the first time in your life not because you have to, but because you get to."' },
+        ]
+      },
+      {
+        id: 'journal_098',
+        title: 'What the Line Never Had',
+        chapter: 98,
+        unlockType: 'level',
+        unlockAt: 97,
+        icon: '🛡️',
+        summary: 'San recognizes The Held Line for what it actually is — exactly what Soel\'s ancestor was, before it finally got to rest. The whole framework clicks into place: everywhere the Fraying wins is somewhere nothing had backup.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The Held Line looks nothing like the rest of the Thinning. The rest of it has simply stopped agreeing to exist. This ground has clearly been fought for, over and over, by something that never once had anyone standing beside it while it did.' },
+          { speaker: 'San', text: '"This is different," you say slowly, taking in the scorch marks that are not scorch marks, the ground worn down in a very specific, defensive shape. "The Thinning just fades. This place was defended."' },
+          { speaker: 'Joel', text: '"By what?" Joel asks, already scanning the treeline out of old habit.' },
+          { speaker: 'Narrator', text: 'You do not get a clean answer, not yet — just the growing, uncomfortable understanding that whatever has been holding this ground has been doing it completely alone, for longer than anything reasonably should have to.' },
+          { speaker: 'San', text: '"Soel," you say slowly, looking down at him, something clicking into place. "This is what the ancestor was, is it not? Before we found it. Before it finally got to rest. Something exactly like this — still fighting, still holding, with absolutely no one there to share any of it."' },
+          { speaker: 'Narrator', text: 'Soel does not answer, obviously, but he presses close against your leg, unusually still, watching the treeline with an intensity that answers the question better than words could.' },
+          { speaker: 'Joel', text: '"That is the actual pattern, is it not," Joel says, working through it out loud. "Every place the Fraying has properly beaten is a place nothing was tending. Every place still holding, barely, is a place something refused to stop trying. And the ones closest to breaking are always the ones trying to do it completely by themselves."' },
+          { speaker: 'San', text: '"Kindling only works because it does not stay solitary," you say, the whole framework finally clicking into full focus. "Soel is not just warm. He is warm because he stayed, and because we let him. Whatever is holding this line never got that. It has just been surviving on its own, alone, for so long that surviving and actually living stopped being the same thing."' },
+          { speaker: 'Narrator', text: 'When the fight finally comes, it does not feel like fighting an enemy so much as it feels like finally, forcibly introducing something to the idea that it does not have to keep doing this by itself.' },
+          { speaker: 'Joel', text: '"We are not here to replace you," Joel says, mid-fight, to whatever is actually listening underneath all that exhausted, structural refusal to fall. "We are here because you should never have had to do this without backup in the first place."' },
+          { speaker: 'Narrator', text: 'When it finally stops, there is no dramatic collapse, no shattering — just something enormous and exhausted finally, properly exhaling, the way anything does when a weight it has carried completely alone finally gets to be shared, even just once, even this late.' },
+          { speaker: 'San', text: '"The line is still holding," you say quietly, looking at the ground, the scorch marks, all of it. "It is just not alone anymore. I do not think that is nothing. I think that might actually be the whole difference."' },
+          { speaker: 'Joel', text: '"Then that is what we do from here," Joel says, certain in a way that settles something in your own chest too. "Wherever the next line is. We do not let anything hold it by itself again, not if we can help it."' },
+          { speaker: 'Narrator', text: 'You look out at whatever comes next, unmapped, uncertain, and understand — clearly, for the first time since any of this began — that the actual fight was never going to be won by strength alone. It was always going to be won by refusing to let anything hold a line by itself.' },
+        ]
+      },
+      {
+        id: 'journal_099',
+        title: 'Before It Gets That Bad',
+        chapter: 99,
+        unlockType: 'level',
+        unlockAt: 98,
+        icon: '🔦',
+        summary: 'San and Joel go looking on purpose this time, and find something worn but not yet broken — proof that the actual practice was never one great rescue, just arriving sooner, over and over, before anything has to hold alone for too long.',
+        scenes: [
+          { speaker: 'Narrator', text: 'This time you go looking. That is the whole difference, and all of you feel it the moment you actually set out — not stumbling onto ground that needed help, but deciding, on purpose, to go find it before it got as bad as the last one.' },
+          { speaker: 'San', text: '"How do we even know where to look?" you ask, and it is a real question, not a rhetorical one.' },
+          { speaker: 'Joel', text: '"We do not, exactly," Joel admits. "We just go toward the places that feel like they are still holding. Somewhere still fighting has a different shape than somewhere that has already given up. You learn to feel the difference, the more of these you find."' },
+          { speaker: 'Narrator', text: 'Soel leads, mostly — some instinct in him, some leftover thread connecting him to whatever the ancestor once was, pulling toward ground that is worn but not yet broken.' },
+          { speaker: 'San', text: '"This one is different," you say, when you finally reach it. "Younger, somehow. It does not feel as tired as the last one did."' },
+          { speaker: 'Joel', text: '"That is the point, is it not," Joel says, understanding arriving steady and certain. "We are not here to save something after it has already worn all the way down. We are here before that. While there is still time for it to matter that someone showed up."' },
+          { speaker: 'Narrator', text: 'When the fight comes, there is a different quality to it — not the exhausted, structural refusal of something that has forgotten what living feels like, but something closer to genuine surprise. It did not expect anyone. It clearly never let itself hope for anyone.' },
+          { speaker: 'San', text: '"You do not have to keep doing this by yourself," you say, mid-fight, meaning it as plainly as you have ever meant anything. "Not one more day of it, if we can help it."' },
+          { speaker: 'Narrator', text: 'It does not take as long as the last one did. It does not need to. Whatever this is, it had not yet spent everything it had on holding alone — there was still enough of it left to actually believe you, once you finally arrived.' },
+          { speaker: 'Joel', text: '"That has to count for something," Joel says afterward, something quietly satisfied in it. "Getting to someone before they are all the way worn through, instead of after."' },
+          { speaker: 'San', text: '"It counts for everything," you say, echoing something he told you once, in a different clearing, about a different kind of arriving late. "This is what the practice actually looks like, is it not. Not one great rescue. Just going looking, over and over, before it gets as bad as it can get."' },
+          { speaker: 'Narrator', text: 'You think of Soel again, of the ancestor who waited far too long to be found, of every place the Fraying has ever properly won belonging to something that had to hold it completely alone. This is the actual answer to all of it. Not a bigger sword. Just showing up sooner.' },
+          { speaker: 'Joel', text: '"Where next, then?" Joel asks, already looking past this line toward whatever comes after it.' },
+          { speaker: 'San', text: '"Wherever else is still holding," you say, certain, already moving. "We just have to keep going looking."' },
+        ]
+      },
+      {
+        id: 'journal_100',
+        title: 'Not the Exception',
+        chapter: 100,
+        unlockType: 'level',
+        unlockAt: 99,
+        icon: '👣',
+        summary: 'Tracks that are not theirs, a line already half-won by someone else entirely — San and Joel learn they were never the only ones who decided nothing gets to hold a line alone. The practice was always bigger than the two of them.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The tracks stop you before the fighting does. Boot prints that are not yours, worn into ground none of you have ever set foot on. A waterskin, half-full, tucked against a root like someone meant to come back for it. Something was already here.' },
+          { speaker: 'Joel', text: '"Someone beat us to it," Joel says, and there is no disappointment in his voice at all, just a kind of quiet astonishment.' },
+          { speaker: 'San', text: '"Someone else is doing this," you say slowly, the idea only now fully landing, bigger than you expected it to feel. "Not just us. Somewhere out here, completely separate from anything we know about, somebody else decided the exact same thing we did — that nothing gets to hold a line alone anymore."' },
+          { speaker: 'Narrator', text: 'Soel presses close to the waterskin, sniffing at it with an intensity that says more than any words could — recognition, maybe, or something closer to kinship.' },
+          { speaker: 'Joel', text: '"Do you think they know about Soel\'s line?" Joel asks. "The Kindling. Whatever it actually is, under all of it."' },
+          { speaker: 'San', text: '"I do not know," you admit. "I do not think it matters, honestly. Maybe they found their own reason. Maybe it does not need to be the same reason, to still be the same practice."' },
+          { speaker: 'Narrator', text: 'The fight, when it comes, is already half-won before you ever arrive — whatever this line was defending against has clearly already taken real damage, already been pushed back once by hands that were not yours.' },
+          { speaker: 'Joel', text: '"Almost enough," Joel says, mid-fight, something almost reverent in it. "Somebody almost finished this alone. We just get to be the ones who make sure almost turns into actually."' },
+          { speaker: 'Narrator', text: 'It does not take long, not compared to the others. Whoever came before you did real work here, and you are only ever finishing what they started, not carrying the whole weight yourselves.' },
+          { speaker: 'San', text: '"I do not know their names," you say afterward, looking at the waterskin, the worn ground, all of it. "I do not think I need to. I just needed to know they exist. That this was never something only the two of us happened to invent out of nowhere."' },
+          { speaker: 'Joel', text: '"It spread," Joel says, and the wonder in it is completely unguarded now. "However it started, wherever it actually began, it spread. Other people, other pairs, out there doing exactly this, for their own reasons, without ever needing our permission or our example."' },
+          { speaker: 'San', text: '"That changes something," you say slowly, working through the actual shape of it. "I thought we were the exception. San and Joel, and Soel\'s strange inheritance, doing something nobody else was doing. We are not the exception. We might just be one version of something a lot bigger than either of us realized."' },
+          { speaker: 'Narrator', text: 'You leave the waterskin exactly where you found it, refilled, a small and deliberate kindness for whoever left it there first, whenever they happen to pass this way again.' },
+          { speaker: 'Joel', text: '"Whoever you are," Joel says to the empty clearing, to no one, to everyone, "thank you for getting here first. We will keep going too."' },
+          { speaker: 'San', text: '"Wherever the next line is," you agree, "we are clearly not the only ones going looking for it. I think that might be the best thing we have learned out here yet."' },
+        ]
+      },
+      {
+        id: 'journal_101',
+        title: 'Meant to Be Done Together',
+        chapter: 101,
+        unlockType: 'level',
+        unlockAt: 100,
+        icon: '🦊',
+        summary: 'San and Joel finally meet another Kindled pair face to face — Iris and her fox, Ash — and fight alongside them for the first time. The practice was never meant to be a solitary habit.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The camp is real before the person in it is — a fire, tended recently, gear laid out with the particular efficiency of someone who has done this enough times to stop wasting motion. Then she straightens up, sees you, and does not look surprised so much as she looks like she has been waiting.' },
+          { speaker: 'Iris', text: '"You are the pair from further back," she says, not quite a question. "I heard there might be others. I did not expect to actually meet you."' },
+          { speaker: 'San', text: '"San," you say. "This is Joel. We did not expect this either, if it helps."' },
+          { speaker: 'Narrator', text: 'A fox steps out from behind her, sharp-eyed and entirely unbothered, close enough to her heel that the bond is obvious before anyone explains it.' },
+          { speaker: 'Iris', text: '"Ash," she says, following your gaze. "My own strange inheritance, same as yours, I am guessing, from the way your familiar is sitting."' },
+          { speaker: 'Joel', text: '"How long have you been doing this?" Joel asks. "The going-looking. The lines."' },
+          { speaker: 'Iris', text: '"Longer than I expected to have to," Iris says, something tired and wry in it. "Ash chose me during my own worst night, same as I am guessing yours chose you. I did not know there was a name for it, or a practice, or anyone else. I just kept finding ground worth defending and defended it, because stopping felt like betraying the reason Ash stayed in the first place."' },
+          { speaker: 'San', text: '"We thought we were the only ones," you admit. "Tracks, once. A waterskin, refilled and left behind. This is the first time it has been an actual person."' },
+          { speaker: 'Iris', text: '"I left that waterskin," she says, something almost embarrassed in it. "I did not think anyone would ever know it was me."' },
+          { speaker: 'Narrator', text: 'Something settles between all four of you at that — not quite friendship yet, too new for that, but the specific, immediate kinship of people who recognize the exact shape of what the other has been carrying.' },
+          { speaker: 'Iris', text: '"This line is too big for me alone," Iris admits, nodding toward the ground ahead, something in her voice that costs her to say out loud. "I was not going to be able to hold it. I do not think I would have admitted that to anyone, if you had not turned up first."' },
+          { speaker: 'Joel', text: '"You do not have to hold it alone," Joel says. "That is kind of the entire point we have been learning too. Let us actually help."' },
+          { speaker: 'Narrator', text: 'The fight that follows is unlike anything either of you has faced out here — not because it is impossible, but because for the first time, it is not just the two of you carrying it. Ash and Iris fight alongside you, four bonded creatures and three humans against something that was never built to expect this many hands.' },
+          { speaker: 'San', text: '"It does not know what to do with us," you call out, mid-fight, something like joy breaking through the exhaustion. "It was ready for one pair. It was never ready for two."' },
+          { speaker: 'Narrator', text: 'When it finally falls, it falls all at once, overwhelmed rather than worn down — the first time the practice has actually looked like what it always should have been. Not a lone act of endurance. An actual, shared effort.' },
+          { speaker: 'Iris', text: '"Thank you," she says afterward, quiet, meaning it with her whole chest. "I do not think I say that enough, to anyone. I have been alone in this for a very long time."' },
+          { speaker: 'San', text: '"You are not anymore," you tell her, and mean it as completely as you have ever meant anything out here. "None of us have to be, apparently. That might be the actual discovery. Not that the practice exists. That it was always meant to be done together."' },
+          { speaker: 'Iris', text: '"Where are you two headed next?" she asks, already looking past this fire toward whatever comes after it.' },
+          { speaker: 'Joel', text: '"Wherever the next line is," Joel says. "Same as always."' },
+          { speaker: 'Iris', text: '"Mind if Ash and I come with you a while?" Iris asks, something hopeful under the careful casualness of it. "It has been a long time since going looking felt like something other than a solitary habit."' },
+          { speaker: 'San', text: '"We would like that," you say, and Soel, pressed warm against your side, seems to agree completely.' },
+        ]
+      },
+      {
+        id: 'journal_102',
+        title: 'Fifty Levels of Choosing It',
+        chapter: 102,
+        unlockType: 'level',
+        unlockAt: 150,
+        icon: '🔥',
+        summary: 'A quiet milestone, fifty levels past the beginning — San, Joel, and Iris realize the practice stopped being extraordinary a long time ago, and that is not a loss. That is what it looks like when a chosen thing finally becomes an ordinary life.',
+        scenes: [
+          { speaker: 'Narrator', text: 'There is no particular line to find today, no fresh tracks, no waterskin left behind. Just an ordinary evening, fifty levels past the one where all of this actually started, and the strange, quiet realization that it has started to feel less like a quest and more like a life.' },
+          { speaker: 'San', text: '"Do you remember when this felt like something enormous?" you ask, watching the fire. "Going looking. Every line an event. Now it is just Tuesday."' },
+          { speaker: 'Joel', text: '"I remember," Joel says, something warm in it rather than wistful. "I do not think that is a loss, though. I think that is what it looks like when a thing you choose on purpose finally just becomes part of how you live."' },
+          { speaker: 'Iris', text: 'Iris looks up from where she is mending a strap, Ash curled warm against her side. "It stopped being extraordinary for me a long time ago too," she says. "I did not realize how much I missed it being ordinary with other people, instead of ordinary alone."' },
+          { speaker: 'San', text: '"Fifty levels," you say, turning the number over. "I do not think I could tell you most of what happened in them individually anymore. Just that we kept going. Kept finding ground worth tending. Kept coming back for each other, and for whoever else needed the backup."' },
+          { speaker: 'Joel', text: '"That might be the actual measure of it," Joel says. "Not any single line held, or any one thing defeated. Just that it never stopped being something we chose, fifty levels of choosing it, one ordinary day at a time."' },
+          { speaker: 'Narrator', text: 'You think, briefly, of the person you were the night you stood at the edge of everything mapped and called it a beginning. You did not know yet what the beginning would actually be made of — mostly this. Mostly small, unremarkable evenings, chosen on purpose, again and again, until they added up to something that stopped needing to prove itself.' },
+          { speaker: 'San', text: '"I am glad it got boring," you say, and mean it completely, watching Joel\'s face do something soft at the word. "Boring, safe, chosen. I spent a long time not knowing that was even an option."' },
+          { speaker: 'Iris', text: '"To boring," Iris says, lifting nothing in particular in a mock toast, and Ash huffs out something that might be a laugh if a fox could laugh.' },
+          { speaker: 'Joel', text: '"To boring," you all echo, and the fire keeps burning, and nothing dramatic happens at all, and that turns out to be exactly enough.' },
+        ]
+      },
+      {
+        id: 'journal_103',
+        title: 'However Long That Takes',
+        chapter: 103,
+        unlockType: 'level',
+        unlockAt: 200,
+        icon: '🌙',
+        summary: 'A hundred levels past Iris and Ash, San and Joel sit with a question that used to matter and no longer does: how this ends. It doesn\'t need to. The practice was never about reaching a final line — just about how many more are worth going out to find.',
+        scenes: [
+          { speaker: 'Narrator', text: 'One hundred levels since Iris and Ash. You do not remember most of them individually anymore, the same way you stopped being able to name most of the fifty before that — just a long, accumulating certainty that the ground keeps being worth going out to find, and that you are never, anymore, the only ones looking.' },
+          { speaker: 'San', text: '"How many pairs do you think are out there now?" you ask Joel, watching the fire. "Ones we still have not met. Ones we never will."' },
+          { speaker: 'Joel', text: '"I stopped trying to guess a while ago," Joel says. "It stopped feeling like the kind of number that needed pinning down. Just a good one to know is bigger than us."' },
+          { speaker: 'Narrator', text: 'Iris is not with you tonight — off tending a line of her own, somewhere past the ridge, the way she does now on her own schedule as much as yours. That used to feel like something to track. It stopped being that a long time ago too.' },
+          { speaker: 'San', text: '"I used to think about how this ends," you admit. "Early on. Some final line, some last thing to hold, and then — done. Rest, maybe. I do not think about that anymore."' },
+          { speaker: 'Joel', text: '"Does it bother you?" Joel asks, careful, the way he still sometimes checks on the parts of you that used to need checking on. "Not having an ending in view?"' },
+          { speaker: 'San', text: '"No," you say, and mean it completely, surprising yourself a little with how easily it comes. "I think that was always the wrong shape to want. Looking for an ending made every single day about how far there was left to go. This does not ask that of me. It never really did, past the beginning."' },
+          { speaker: 'Narrator', text: 'You think of the version of yourself who first stood at the edge of everything mapped and called it a beginning, a hundred levels before this one, a hundred and five before that. She would not recognize how quiet this has become. You do not think she would mind.' },
+          { speaker: 'Joel', text: '"A hundred more, then," Joel says, not really a question, watching the same fire you are. "However long that takes."' },
+          { speaker: 'San', text: '"However long that takes," you agree. "I stopped needing to know the number a while ago too."' },
+          { speaker: 'Narrator', text: 'Soel shifts against your side, warm and unbothered, and somewhere past the ridge a line is being held by someone who once needed finding and now does the finding herself. None of it needs to resolve into anything larger than exactly what it already is.' },
+        ]
+      },
+      {
+        id: 'journal_104',
+        title: 'The Door, Finally',
+        chapter: 104,
+        unlockType: 'level',
+        unlockAt: 210,
+        icon: '🚪',
+        summary: "Jorvin's salvaged instruments and Mimi's Dreamsight both catch the same thing at once — not another one-way arrival like every transmigrator San has ever met, but something that might, for the first time, actually pull both directions.",
+        scenes: [
+          { speaker: 'Narrator', text: "Jorvin finds you before Mimi does, which is how you know it is serious — Jorvin never leads with anything, usually lets the fix speak for itself. Not this time. He is holding a salvaged reader with both hands like it might stop working if he lets go." },
+          { speaker: 'Jorvin', text: '"I have been picking up crossings for years," he says, no preamble. "Every transmigrant who ever came through, Robin, Jeff, me, Dr. AA, all of it, always the same shape — a pull toward here, one direction, done. This is not that. This is holding steady. Both ways."' },
+          { speaker: 'San', text: '"Both ways," you repeat, and the two words take a moment to actually land, the way something can be exactly the sentence you have been braced to eventually hear and still knock the wind out of you regardless.' },
+          { speaker: 'Narrator', text: 'Mimi arrives a minute later, unsurprised to find you both already talking about it — of course she already knew, in whatever way Mimi always already knows. "It is not finished deciding what it is," she says, settling in like she is describing weather rather than a hole in the world. "That is the honest answer. Not a door yet. Something that might become one."' },
+          { speaker: 'Joel', text: '"Not for us. Not yet," Joel says slowly, and you both hear it at the same moment \u2014 Mimi\'s own words, thrown back at you from a conversation that must be close to a hundred levels old by now. "Does \'not yet\' still hold?"' },
+          { speaker: 'Mimi', text: '"I do not know," Mimi admits, and there is no performance in the not-knowing, which is somehow worse than if she had simply guessed. "I have never once had to say that about anything before. I do not love how it feels."' },
+          { speaker: 'San', text: '"Where is it," you ask, already aware of the answer before Jorvin finishes gesturing east, past the edge of every hand-drawn map you own, past even the Frontier\'s own unmapped edge.' },
+          { speaker: 'Jorvin', text: '"Past the Reach. Past the Thinning. Past whatever the Frontier even means by \'past.\'" He shrugs, an engineer running fully out of engineering vocabulary. "Somewhere the actual map just stops being able to say anything useful."' },
+          { speaker: 'Aisyah', text: 'Aisyah, quiet until now, finally speaks. "I am used to things arriving. Robin. Jeff. You two, once. Never once, in all this time, something that might be able to leave."' },
+          { speaker: 'Joel', text: '"What does it even mean, if it opens," Joel says, careful, watching you the exact way he watches you whenever the ground under a conversation gets uncertain. "Going back? Going somewhere else? Nobody actually knows what is on the other side of a thing like that."' },
+          { speaker: 'San', text: '"Nobody has to decide tonight," you say, and mean it, surprising yourself with how easily the patience comes after a hundred levels of practicing exactly this. "We mark it. We go look, properly, when we are ready to. That is all tonight actually needs to be."' },
+          { speaker: 'Narrator', text: 'You sleep on it, all of you, the practice already too deeply worn into how you live for even something this large to skip the step. Whatever it is, it has apparently been waiting. It can wait one more night.' },
+        ]
+      },
+      {
+        id: 'journal_105',
+        title: 'Not the Old World',
+        chapter: 105,
+        unlockType: 'level',
+        unlockAt: 225,
+        icon: '🌀',
+        summary: 'The party finally goes to look properly, and Jorvin confirms the one thing nobody had actually said out loud yet: whatever is on the other side of the pull is not the world any of the transmigrants came from. It is somewhere none of you have ever heard of.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It takes three days of hard travel to actually reach it \u2014 past the Reach, past the last hand-placed marker on any map you own, out to ground the Frontier itself has never bothered giving a name. And there it is: not a door, exactly, the way Mimi warned you, but close enough to one that the difference stops mattering the moment you see it.' },
+          { speaker: 'Jorvin', text: 'Jorvin has his reader out before you have even stopped walking. He is quiet for a long time, turning it in his hands, and when he finally speaks his voice has lost every trace of the confidence he walked in with. "This is not the pull I know. Every crossing I have ever read \u2014 mine included \u2014 has the same signature. Home. This does not."' },
+          { speaker: 'San', text: '"What does that mean," you ask, already suspecting you will not love the answer.' },
+          { speaker: 'Jorvin', text: '"It means whatever is on the other side of this is not where Robin came from. Not where I came from. Not the old world at all." He looks up, and for once looks genuinely lost rather than merely puzzled. "I do not know what this actually is. I have never once had to say that about a crossing before."' },
+          { speaker: 'Joel', text: '"So it is not a way home," Joel says slowly, working through it out loud. "For anyone. Robin does not get his old firm back through this. I do not get the old warehouse back. It is not that kind of door."' },
+          { speaker: 'San', text: '"No," you agree, something in your chest unclenching in a way you did not expect it to, relief arriving from a direction you had not braced for. "It is not a way back to anything. It is just... somewhere else. Somewhere new."' },
+          { speaker: 'Narrator', text: 'You think, standing at the edge of it, of every rival guild muster you have fought since Guild War opened up \u2014 how more than one of them mentioned, in passing, ground out past their own territory that "does not behave right anymore." Nobody had put the pieces together yet. You are fairly sure, now, that everyone has been circling the same discovery from different directions.' },
+          { speaker: 'Aisyah', text: '"That actually changes things," Aisyah says, and there is something almost like excitement under the careful flatness she always keeps. "Not going backward. Just going further than anyone standing here has ever actually been."' },
+          { speaker: 'Mimi', text: '"I still cannot tell you what is over there," Mimi admits. "For the first time since I have known any of you, I genuinely have no idea. I find I do not mind it as much as I expected to."' },
+          { speaker: 'San', text: '"We are not going through tonight," you say, and nobody argues, the decision landing the same unhurried way every large decision has landed for a very long time now. "But we are not walking away from it either. We go looking, properly, when we are ready. Same as everything else out here has ever worked."' },
+          { speaker: 'Joel', text: '"However long that takes," Joel says, and it is not a question, and you both hear exactly what he is doing \u2014 handing the words right back to you, a hundred levels later, still true.' },
+          { speaker: 'San', text: '"However long that takes," you agree, and mean it completely, watching the not-quite-a-door hold perfectly steady against a sky that has no name yet for what is on the other side of it.' },
+        ]
+      },
+      {
+        id: 'journal_106',
+        title: 'Beyond the Horizon',
+        chapter: 106,
+        unlockType: 'level',
+        unlockAt: 240,
+        icon: '🌅',
+        summary: 'Not an ending \u2014 the story was never built to need one. Just the morning the party finally steps toward the edge of everything mapped, the same way they once stepped toward the beginning, and keeps walking.',
+        scenes: [
+          { speaker: 'Narrator', text: 'You do not announce it. There is no ceremony, no gathered crowd, no final speech \u2014 that was never how any of this worked, not once, not from the very first line held to whatever this turns out to be. Just an ordinary morning, packs checked the way Zaki still checks his, and the whole party walking, together, toward ground that has no name yet.' },
+          { speaker: 'Joel', text: '"Feels like the first morning all over again," Joel says, watching the not-quite-a-door hold steady ahead of you, patient as it has been every single time you have come to look at it since. "Standing at the edge of everything mapped. Calling it a beginning."' },
+          { speaker: 'San', text: '"It is not, though," you say, and the correction comes easy, certain in a way the old fear never once let you be. "A beginning assumes there was nothing before it. This has a hundred levels of before. All of it is coming with us."' },
+          { speaker: 'Narrator', text: 'Iris and Ash are already waiting at the threshold when you arrive \u2014 not summoned, never summoned, just there, the way she has learned to simply be wherever the next line is forming. Mimi and Aisy stand a little apart, together, the exact same way they have stood next to each other since the old office, before either of you had a name for any of this.' },
+          { speaker: 'Iris', text: '"Figured you would actually go through with it eventually," Iris says, something warm and unguarded in it. "Ash and I are coming. Somebody has to keep finding the next line, wherever this one leads."' },
+          { speaker: 'Mimi', text: '"I still cannot tell you what is over there," Mimi says, and for once there is no performance of certainty covering the gap. "I find I have gotten better at that, somewhere along the way. Not knowing. Going anyway."' },
+          { speaker: 'Aisyah', text: '"Somebody has to notice what is worth noticing on the other side," Aisyah adds. "May as well be someone who has had a lot of practice at not being noticed first."' },
+          { speaker: 'San', text: '"We are not going to solve it today," you say, to all of them, to yourself as much as anyone. "We are just going to go look. Properly, this time. However long that actually takes."' },
+          { speaker: 'Joel', text: '"However long that takes," Joel echoes, and takes your hand, the same steady grip he has offered you since the very first storm, and together you step toward the edge of the only map that has ever mattered.' },
+          { speaker: 'Narrator', text: 'The world does not end here. It never was going to. It just keeps being worth walking further into \u2014 one more horizon, one more line worth finding, one more morning chosen on purpose, the same practice it always was, carried now by more hands than you ever once thought to hope for. Somewhere ahead, past everything anyone has mapped yet, daybreak is still doing exactly what daybreak has always done. It is still coming. You go to meet it.' },
+        ]
+      },
+      {
+        id: 'journal_107',
+        title: 'Kaya Kaya',
+        chapter: 107,
+        unlockType: 'level',
+        unlockAt: 240,
+        icon: '🐇',
+        summary: 'Before the party can even finish stepping through the not-quite-door, someone comes through from the other side first — a young man surrounded by rabbits, who takes one look at Aisyah and calls her by an old nickname nobody else here has ever heard. San explains its roots to Joel: a group chat, started for logistics, that became something neither of them expected.',
+        scenes: [
+          { speaker: 'Narrator', text: 'You have not even fully crossed the threshold when the not-quite-a-door does something none of you were braced for — it flickers, once, and something comes through from the other side before any of you get the chance to.' },
+          { speaker: 'Narrator', text: 'It is a young man, sprawled flat on his back in the dirt like he tripped through rather than walked, a cloud of actual live rabbits scattering in every direction around him like the world\'s least dignified honor guard.' },
+          { speaker: '???', text: '"Okay," he says, to no one, to the sky, still lying there. "That worked way better than I thought it would."' },
+          { speaker: 'Joel', text: 'Joel has a hand on his weapon before he has even finished processing what he is looking at. "Who — "' },
+          { speaker: 'Narrator', text: 'The stranger sits up, spots Aisyah standing frozen at the edge of the group, and his whole face rearranges itself into open, delighted disbelief.' },
+          { speaker: '???', text: '"AISYAH?" he says, like he has just won something. "No way. No way. Kaya kaya herself, standing right there."' },
+          { speaker: 'Aisyah', text: 'Aisyah does not move for a long moment. "KW Liang," she finally says, and it is not a question, and something in her voice is doing several things at once that she does not seem prepared for. "You are supposed to be — you were in the old world. You ran orders for me."' },
+          { speaker: 'San', text: '"You know him?" you ask, lowering your own guard slightly, reading Aisyah\'s face rather than the stranger\'s.' },
+          { speaker: 'Aisyah', text: '"He was my personal shopper," Aisyah says, still somewhere between stunned and something warmer. "Independent. Had real cash flow behind him, more than San or I ever had to work with \u2014 could front bigger orders than either of us could manage alone. Never once asked for more than what we agreed." A beat. ""Kaya kaya" is what he always called me. Rich, rich. Because I always had a new deal running."' },
+          { speaker: 'KW Liang', text: '"Because you DID," Liang says, delighted, getting to his feet and dusting off a coat that has, San notices immediately, entirely too many pockets for someone claiming to travel light. "I have never in my life met someone who could turn a spreadsheet into an actual small fortune the way you did. Kaya kaya. It just fits you."' },
+          { speaker: 'Narrator', text: 'The rabbits have not gone anywhere. There are, San counts, at least nine of them, orbiting Liang with the specific loyalty of animals that have decided, for reasons known only to them, that this particular human is theirs.' },
+          { speaker: 'San', text: '"The bunnies," you say, unable to help yourself, "are they — "' },
+          { speaker: 'KW Liang', text: '"Mine? Sort of? It is complicated," Liang says, with the easy, slightly-too-pleased tone of someone who has explained this exact thing many times and enjoys it every time. "I lead a group back home. We call ourselves the Bunnies. Long story. Mostly it just means I can call a lot of them, very fast, whenever running is the smarter option than fighting. Which, honestly, is most of the time."' },
+          { speaker: 'Joel', text: 'Joel, watching all of this with more amusement than suspicion now, finally lets his hand fall away from his weapon entirely. "You are really not much of a threat, are you."' },
+          { speaker: 'KW Liang', text: '"Absolutely not," Liang agrees immediately, cheerfully, no ego in it at all. "I am extremely fast at leaving. That is the whole skill set."' },
+          { speaker: 'Narrator', text: 'Something about the sheer, unbothered ease of him makes Joel laugh outright — a real laugh, no edge in it, no territory being quietly defended. Whatever San notices building between Aisyah and this stranger, Joel clearly has no intention of standing in the way of it.' },
+          { speaker: 'San', text: '"Wait," you say, something else catching your attention — the device half-visible in one of Liang\'s many pockets, familiar in a way nothing else about this new world has been. "Is that — "' },
+          { speaker: 'KW Liang', text: '"You recognize tech when you see it," Liang says, immediately brightening in an entirely different way than the Aisyah-directed teasing — sharper, more interested, an actual conversation opening up rather than a bit. "Not many people out here even ask."' },
+          { speaker: 'Narrator', text: 'The two of you fall, almost instantly, into a conversation that leaves everyone else several steps behind — components, salvage, what still runs and what does not and why, San forgetting for a full minute that she is standing at the edge of an entirely unmapped world talking shop with a stranger who arrived by falling through a hole in reality surrounded by rabbits.' },
+          { speaker: 'Joel', text: 'Later, once the introductions have settled and Liang has wandered off to reassure his rabbits about something, Joel finds a quiet moment to ask what has clearly been sitting with him. "You two fell into that like you had done it a hundred times before. All three of you, actually. Where does that come from?"' },
+          { speaker: 'San', text: '"A group chat," you say, and the memory arrives easier than you expected, warm rather than heavy. "Back home. My role in the business was small — I placed smaller orders myself, whatever I could manage around Claims. Liang had real cash flow behind him, could front bigger purchases than I ever could. I suggested making one so the three of us could coordinate directly instead of everything going through separate messages. That was the whole reason it existed, at first."' },
+          { speaker: 'Joel', text: '"At first," Joel repeats, catching exactly the word she wants him to catch.' },
+          { speaker: 'San', text: '"It stopped being about orders within a week," you admit, something fond in it. "The three of us just kept talking. About everything. Nothing to do with business at all, most days. I do not think I ever told you that part."' },
+          { speaker: 'Joel', text: '"You do not have to explain yourself to me," Joel says, gently, no jealousy anywhere in it, only genuine warmth. "I am glad she had that. I am glad you did too."' },
+          { speaker: 'San', text: '"I know," you say, and mean it, something settling easier in your chest than you expected it to. "I just wanted you to understand why it feels this easy already. It was always easy. This is just the first time you have gotten to actually see it."' },
+          { speaker: 'Aisyah', text: '"He does this," Aisyah says to Joel later, not quite hiding her own smile, nodding toward Liang mid-conversation with San about something neither of them can follow. "Give him thirty seconds and he will find the one person in any room who speaks his actual language."' },
+          { speaker: 'Joel', text: '"Seems like a good problem to have," Joel says, watching the two of them with open fondness rather than anything guarded.' },
+          { speaker: 'Narrator', text: 'It takes a while for Liang to notice the rest of the party actually watching him — really watching, the specific attention of people deciding in real time whether to trust someone. When he finally does, something in his easy confidence flickers, just slightly, young in a way the jokes had been covering for.' },
+          { speaker: 'KW Liang', text: '"I did not exactly think this through," he admits, quieter than anything he has said so far. "Came through, saw a familiar face, got excited. Did not really plan past that part."' },
+          { speaker: 'San', text: '"That is alright," you say, and mean it, recognizing something in the admission that the whole party has practiced answering a hundred times over by now. "Not everyone plans past the first step. Some of the best people we know did not either."' },
+          { speaker: 'Aisyah', text: '"You are going to have a lot to learn out here," Aisyah says, not unkindly, already sliding back into something like the old working rhythm the two of them clearly used to have. "This is not online shopping. People actually die out here."' },
+          { speaker: 'KW Liang', text: '"Noted," Liang says, and for once there is no joke riding underneath it. "I am a fast learner. Ask anyone. Well — ask Aisyah. She is the only one here who can actually vouch for that."' },
+          { speaker: 'Narrator', text: 'Aisyah looks at him for a long moment, something working behind her eyes that has nothing to do with old business at all — the particular, quiet relief of finding, entirely by accident, that the world she left behind sent her someone worth keeping.' },
+          { speaker: 'Aisyah', text: '"Kaya kaya," Aisyah says, soft, almost to herself, and for the first time since anyone has known her out here, she does not look like the one person in the room nobody quite notices.' },
+        ]
+      },
+      {
+        id: 'journal_108',
+        title: 'The Real Cost',
+        chapter: 108,
+        unlockType: 'level',
+        unlockAt: 245,
+        icon: '🩹',
+        summary: 'Liang\'s first real mistake in a fight costs Aisyah a wound that is not serious, but is real — and for the first time since he fell through the door, the actual weight of this world lands on him without a joke to soften it.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It happens fast, the way the real ones always do — Liang, three days into traveling with the party, sees an opening mid-fight and takes it without checking who else is standing in the space he is about to fill.' },
+          { speaker: 'Narrator', text: 'San\'s blade meant for the enemy behind him instead catches empty air, thrown off just enough that the enemy gets a free hit in on Aisyah instead — not a serious wound, but a real one, blood real and immediate against her sleeve.' },
+          { speaker: 'KW Liang', text: '"Aisyah — " Liang starts, already moving toward her, every ounce of his usual ease gone out of his voice entirely.' },
+          { speaker: 'Aisyah', text: '"I am fine," Aisyah says, and she is, mostly, already pressing a hand to it. "It is fine, Liang."' },
+          { speaker: 'Narrator', text: 'It is not fine, not to him, not right now — San can see it happening in real time, the exact moment the actual weight of this world lands on him for the first time since the rabbits and the jokes and the easy first afternoon.' },
+          { speaker: 'KW Liang', text: '"That is not — back home, if I misjudge a purchase, I am out some money, or someone\'s order shows up wrong," he says, quieter than San has heard him say anything. "That is the entire cost. I did not — I do not think I actually understood what "people die out here" meant. Not really. Not until right now."' },
+          { speaker: 'San', text: '"No," you agree, gently, not softening it more than it needs. "You did not. Most people do not, the first time. That is not an insult. It is just true."' },
+          { speaker: 'Aisyah', text: 'Aisyah, wound already tended, looks at him with something that is not quite forgiveness because there was never really anything to forgive — just recognition. "You are used to being the fastest person in the room. Out here, fast is not always the right instinct. Sometimes it is the one that gets someone else hurt."' },
+          { speaker: 'KW Liang', text: '"I do not want to be someone who gets people hurt," Liang says, and for the first time since he fell through the door surrounded by rabbits, there is nothing performing in his voice at all. "How do I actually learn this? Not the joke version. The real one."' },
+          { speaker: 'San', text: '"You watch," you say. "You ask, before you move, instead of after. You let the people who have been doing this longer than you tell you when to wait. It is not glamorous. It is mostly just patience."' },
+          { speaker: 'Aisyah', text: '"And you keep showing up," Aisyah adds. "Even on the days it is not fun. Especially those days."' },
+          { speaker: 'KW Liang', text: '"Kaya kaya," Liang says, and it comes out different this time — not the old joke, something closer to a promise wearing the joke\'s clothes because he does not yet have better words for it. "I am not going anywhere. I just need someone patient enough to actually teach me."' },
+          { speaker: 'Aisyah', text: '"I have taught worse," Aisyah says, and there is real warmth under the dry delivery, the specific fondness of someone deciding, quietly, that this one is worth the effort.' },
+        ]
+      },
+      {
+        id: 'journal_109',
+        title: 'A Deal Worth Honoring',
+        chapter: 109,
+        unlockType: 'level',
+        unlockAt: 250,
+        icon: '🐇',
+        summary: 'Weeks of watching, asking, and staying steady later, Liang asks to be part of this properly — not a guest passing through, but someone who means it. Aisyah welcomes him in for good.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Weeks pass — real ones, not the abstraction of levels ticking upward, but actual days of Liang watching before moving, asking before acting, the rabbits quieter now too, like even they have picked up on the shift in him.' },
+          { speaker: 'Joel', text: '"He has gotten better," Joel says to you one evening, watching Liang and Aisyah work through a drill together, patient in a way that would have looked nothing like him a month ago. "Genuinely. Not performing it. Actually better."' },
+          { speaker: 'San', text: '"He has," you agree, something quietly proud in it that surprises you, given how briefly you have actually known him. "Aisyah has been good for him. He has been good for her too, honestly. She laughs more than she used to."' },
+          { speaker: 'Joel', text: '"I noticed," Joel says, and there is no edge anywhere in it, only the same easy warmth he has had about this whole thing since the very first afternoon. "Good. She has earned that."' },
+          { speaker: 'Narrator', text: 'Liang finds you both later, the drill finished, something steadier in the way he carries himself now than the young man who fell through a hole in the world surrounded by panicked rabbits.' },
+          { speaker: 'KW Liang', text: '"I want to actually be part of this," he says, no preamble, none of the old deflecting humor covering it. "Not a guest. Not someone passing through until the next interesting thing happens. Part of it. If that is something I am allowed to ask for."' },
+          { speaker: 'San', text: '"It is not really a matter of being allowed," you say. "It is a matter of meaning it. Do you mean it?"' },
+          { speaker: 'KW Liang', text: '"I have never meant anything more," Liang says, steady, none of the old performance in it at all. "Kaya kaya taught me that some deals are worth honoring properly. This is the first one I have ever actually wanted to."' },
+          { speaker: 'Aisyah', text: 'Aisyah, arriving in time to catch the tail end of it, allows herself something rare — an actual, unguarded smile, the specific kind she has never quite let herself have out here before now. "Welcome in properly, then. About time."' },
+          { speaker: 'Narrator', text: 'The rabbits, San notices, have gathered close around him too, settled rather than scattered, the way animals do when they finally decide somewhere is safe enough to actually stay.' },
+          { speaker: 'KW Liang', text: '"So what happens now?" Liang asks, and there is real curiosity in it rather than the old bravado, someone genuinely ready to learn the shape of the answer.' },
+          { speaker: 'San', text: '"Now," you say, "you fight beside us. Properly. Same as everyone else who has ever chosen to stay."' },
+          { speaker: 'KW Liang', text: '"Kaya kaya," Liang says, one more time, and this time it does not sound like an old joke at all. It sounds like a name he has finally decided to grow into.' },
+        ]
       }
-
-
-
-
-
-
-
-
-
-
-
-
+,{
+        id: 'journal_110',
+        title: 'A Dollar a Meal',
+        chapter: 110,
+        unlockType: 'level',
+        unlockAt: 255,
+        icon: '🍚',
+        summary: 'A stray memory of dollar nasi katok pulls the whole group into something quieter than usual — Joel speaking plainly about a season he once could only address through a hidden alter ego, and Liang admitting, for the first time, exactly how much of his old self he has left unspoken.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It starts, as these things usually do, with nothing important — San idly turning over a coin from a market stall, watching the light catch on it, and somewhere in that small, ordinary motion, an old memory surfaces uninvited.' },
+          { speaker: 'San', text: '"Remember the dollar nasi katok?" you say, mostly to yourself at first. "Keboys. The chicken rice at Menglait."' },
+          { speaker: 'Joel', text: 'Joel looks up from what he is doing, something immediate and unguarded crossing his face. "The dollar ones with the extra sambal, or the ones that actually gave you a real piece of chicken?"' },
+          { speaker: 'San', text: '"Both," you say, laughing despite yourself. "Depending on how broke we actually were that week."' },
+          { speaker: 'Joel', text: '"I lived on those for longer than I ever told anyone," Joel says, easy about it now in a way that still occasionally surprises you. "A dollar a meal, some weeks. I got very good at knowing which stalls actually meant it when they said extra."' },
+          { speaker: 'Narrator', text: 'It is a small thing, Joel saying this so plainly — but San remembers a version of him who would have folded a story like this into a joke before anyone got close enough to feel the actual weight of it. Two hundred levels into becoming who he is now, he simply does not do that anymore.' },
+          { speaker: 'Narrator', text: 'There was a season, long before any of this, when Joel could not have said any of it so plainly at all — not directly, not as himself. He ran a small, half-anonymous vlog back then, a persona he called Tigasin Ng Brunie, and it was there, hidden behind a name that was not quite his, that he first let himself actually say the things a dollar meal a week does to a person. It took the world ending and building itself back up around him before he learned he could simply say them as Joel instead.' },
+          { speaker: 'San', text: '"I did not know that had a name," you say, quiet, something tender in it.' },
+          { speaker: 'Joel', text: '"Neither did most people," Joel says, and does not elaborate further, and does not need to.' },
+          { speaker: 'KW Liang', text: '"Where I came from, food was not really something you missed," Liang says, joining the conversation with the easy tone he has mostly recovered by now. "Rationed. Functional. You ate because the alternative was worse, not because any of it was worth remembering." A beat, lighter. "This place, at least, understands a meal is allowed to actually be good."' },
+          { speaker: 'San', text: '"Amad keeps a supply of nasi katok, if you ever actually want to try it," you offer. "Just say the word."' },
+          { speaker: 'Narrator', text: 'Liang does not answer right away. Something crosses his face instead — brief, involuntary, gone almost as quickly as it arrived — the specific look of someone thinking of people rather than food.' },
+          { speaker: 'Aisyah', text: '"You do not have to perform being fine," Aisyah says, gently, watching him with the particular attentiveness of someone who has learned exactly what his easy tone is sometimes covering for.' },
+          { speaker: 'KW Liang', text: '"I know," Liang says, and for a moment none of the old deflecting humor shows up to fill the space. "I used to talk more than this. Did you know that? Back home, I mean. Before all of this."' },
+          { speaker: 'San', text: '"I remember," you say.' },
+          { speaker: 'KW Liang', text: '"I think I just ran out of things worth saying that were not about them," Liang admits, quiet, and nobody in the group moves to fill the silence that follows — Joel included, who simply stays exactly where he is, present without needing to say anything at all this time.' },
+          { speaker: 'Narrator', text: 'The moment passes the way these moments always do here — not resolved, just held, gently, by people who have learned better than to rush someone through it.' },
+          { speaker: 'Aisyah', text: '"Your hair is doing the thing again," Aisyah says, apropos of nothing, clearly deciding the room could use it.' },
+          { speaker: 'KW Liang', text: '"It is ALWAYS doing the thing," Liang says, aggrieved, swatting uselessly at the stubborn tuft at his crown that has never once, since the day he arrived, agreed to lie flat. "I have tried everything. I do not know what Aethon has against me specifically."' },
+          { speaker: 'Joel', text: '"At this point it might just be part of you," Joel says, grinning properly now, the heaviness of a moment ago allowed to actually pass. "Bunny-shaped and permanent."' },
+          { speaker: 'KW Liang', text: '"I hate that you might be right," Liang says, and the laugh that finally breaks loose from him is real, easy, entirely his own — no old persona standing between him and the sound of it.' },
+        ]
+      }
+,{
+        id: 'journal_111',
+        title: 'Coffee People',
+        chapter: 111,
+        unlockType: 'level',
+        unlockAt: 260,
+        icon: '☕',
+        summary: 'Over coffee at the Guild Café, San finally asks Mimi the things she never felt comfortable asking before — and ends up telling her, in return, the real reason she stopped fighting to get her own children back.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The Guild Café has become, somehow, exactly what a café back home always was — a place people simply end up, without needing much of a reason. San spots Mimi already at a corner table, two cups steaming, and slides in across from her like no time has passed at all.' },
+          { speaker: 'San', text: '"Just like the good old days at Claims," you say, wrapping both hands around the cup. "We are all coffee people, apparently. Some things survive the end of the world completely intact."' },
+          { speaker: 'Narrator', text: 'A few tables over, Liang and Joel are deep into something that involves a great deal of hand gestures and at least one genuine laugh. Joel catches your eye first, lifts his cup slightly in greeting; Liang follows a half-second later with an exaggerated little salute, then goes straight back to whatever argument he was clearly winning.' },
+          { speaker: 'Mimi', text: '"They are going to be doing that for a while," Mimi says, not even needing to look. "I could tell you what about, if you want. I already know."' },
+          { speaker: 'San', text: '"I believe you," you say, laughing. "Some things about you never change either."' },
+          { speaker: 'San', text: '"How are the kids?" you ask, settling in properly now. "The older one — your daughter — and your son."' },
+          { speaker: 'Mimi', text: '"Getting too clever for me, both of them," Mimi says, warmth threaded all through the complaint. "She has opinions about everything now. He mostly just wants to know where she is at all times. It is exhausting. I would not trade it."' },
+          { speaker: 'San', text: '"I never did actually ask about your marital status," you admit, turning the cup slowly in your hands. "I thought you were married, at first. Then somewhere along the way I started thinking you were single. I was never really comfortable enough to just ask directly."' },
+          { speaker: 'Mimi', text: '"So I look single?" Mimi asks, one eyebrow going up, delighted by the question in a way that has nothing to do with actually answering it.' },
+          { speaker: 'San', text: 'You laugh, caught. "Yeah. Maybe."' },
+          { speaker: 'San', text: '"And the man I saw you with, that day near the Guild gates," you continue, "that was Brada, was it not? He is good to you. The two of you looked close."' },
+          { speaker: 'Mimi', text: '"Ah. Yes," Mimi says, something private and pleased settling into her face for just a moment before she lets the rest of the sentence catch up to it.' },
+          { speaker: 'San', text: '"Do your kids stay with you? You and your parents, I mean — now that we are all here in Aethon anyway."' },
+          { speaker: 'Mimi', text: '"Mostly," Mimi says. "My daughter stays with her father sometimes."' },
+          { speaker: 'San', text: '"Were you two divorced?"' },
+          { speaker: 'Mimi', text: '"Not exactly," Mimi says. "We just do not live together."' },
+          { speaker: 'San', text: '"That sounds a lot like my own situation, actually," you say, something rueful in it. "Divorce was never simple back in Brunei. Expensive enough that plenty of people just quietly stopped living as married instead of ever making it official."' },
+          { speaker: 'Mimi', text: '"Ah. Yes," Mimi says again, softer this time, recognizing the shape of it.' },
+          { speaker: 'San', text: '"I would have had my own kids with me," you say, quieter now, "if my ex-mother-in-law had not fought it so hard."' },
+          { speaker: 'Narrator', text: 'You tell her the rest slowly, the way you have only ever told it to a very small handful of people — that you had only ever wanted space, and that your ex-mother-in-law made it plain what staying would actually cost, unless you gave her son what he wanted, physically, whenever he wanted it. That speaking back against her, even once, was reason enough to be put out of the house entirely.' },
+          { speaker: 'San', text: '"Then she went and cried to my own mother about it," you say, something flat and old in your voice now, "made the whole thing into a performance where I was somehow the one who had done something wrong."' },
+          { speaker: 'San', text: '"I decided against trying to get them back after that," you say. "I just wanted my parents safe. They were already old. I did not have it in me to fight a war on two fronts at once."' },
+          { speaker: 'Narrator', text: 'You feel it rising before you can stop it — the old, familiar tightness — and you hold it back the only way you have ever really known how, standing up a little too quickly.' },
+          { speaker: 'San', text: '"I am going to get some cream for this," you say, already turning away. "Back in a moment."' },
+          { speaker: 'Narrator', text: 'You make it only a few steps before realizing your money pouch is still sitting on the table. You turn back — and that is when you see it: Brada, outside the café window, tapping lightly on the glass. Mimi opens it just enough to let the sound of the street in, and the two of them talk, brief and easy, the specific shorthand of people who do not need very many words to actually say something.' },
+          { speaker: 'Narrator', text: 'Brada has to go — something waiting for him at the Guild — and you watch, quietly, from a few steps back, the whole unhurried shape of it. The way Mimi\'s face does not change when he leaves, because she is not worried he is actually going anywhere.' },
+          { speaker: 'San', text: '"I left my pouch," you say, sliding back into your seat once he is gone.' },
+          { speaker: 'Mimi', text: '"I saw," Mimi says, already sliding a small plate of snacks across the table without being asked. "Eat something. You look like you need it more than the cream."' },
+          { speaker: 'Narrator', text: 'You do, and something in you settles as you eat — grateful, plainly, for a friend who lets a hard thing be said out loud without flinching from it, and glad, genuinely glad, for whatever steady thing Mimi has built with Brada. It sits next to the same quiet gladness you carry for what you have with Joel, two separate, ordinary happinesses, neither one needing to be smaller so the other can be true.' },
+        ]
+      }
+,{
+        id: 'journal_112',
+        title: 'What Chocolates Kept',
+        chapter: 112,
+        unlockType: 'level',
+        unlockAt: 265,
+        icon: '🎟️',
+        summary: 'A rare reply finally reaches Joel through the window — his old, self-destructive lottery habit becoming, against every odds, the thing that actually reaches San\'s parents, and Mama\'s own quiet generosity opening a door San had never let herself finish asking about.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The window opens the way it always does — quiet, one-directional, no promise of anything back. Joel goes still the moment the vision settles, and San recognizes the particular stillness immediately: this is not one of the ordinary glimpses. This is one of the rare ones.' },
+          { speaker: 'Joel', text: '"It is a letter," Joel says, voice careful, like speaking too loudly might make it stop being real. "From my mother. She actually wrote back."' },
+          { speaker: 'Narrator', text: 'You wait, San, not pushing, the way you have learned to wait for him through every one of these. When he finally reads it aloud, his voice catches almost immediately.' },
+          { speaker: 'Joel', text: '"The ticket won," he reads, slow, like he is still catching up to the words himself. "Tsu Carlits\'s ticket. The one you always bought through him, back home."' },
+          { speaker: 'San', text: '"Chocolates," you say, something clicking into place. "That is who you mean, is it not? Your roommate. Carlito. He actually ran that as a real business, did he not? Buying numbers for people."' },
+          { speaker: 'Joel', text: '"He did," Joel says, something rueful and fond tangled together in it. "I bought through him constantly. My numbers were never anything sensible — your father\'s car plate, once my own weight, birthdays, whatever happened to be sitting in my head that particular week. I lost more on that habit than I ever won. It was part of how the debt got as bad as it did, if I am honest. I always believed the next one would be the one that mattered."' },
+          { speaker: 'Narrator', text: 'Something in his voice is not quite shame and not quite nostalgia — just an old, familiar honesty about exactly who he used to be, spoken plainly, the way he has learned to speak about all of it now.' },
+          { speaker: 'Joel', text: '"Tsu Carlits still had the ticket on file when I disappeared," he continues, reading again. "He knew whose numbers those were. He knew I was missing, not confirmed dead. And he knew — " Joel\'s voice catches properly this time. "He knew how much I put myself through at work, for her. For Mama. So he sent it to her instead of just letting it sit unclaimed."' },
+          { speaker: 'San', text: '"That is an extraordinary thing for someone to do," you say quietly. "He did not have to do that at all."' },
+          { speaker: 'Joel', text: '"He did not," Joel agrees. "But apparently he watched me long enough to understand exactly where it should go."' },
+          { speaker: 'Narrator', text: 'Joel reads on, and this is where his voice finally breaks properly — not from the win itself, but from what his mother chose to do with it.' },
+          { speaker: 'Joel', text: '"She split it. Fifty-fifty, straight down the middle, with San\'s parents." He has to stop for a moment. "She is still in debt herself. She did not have to give away half of anything. She says — " he swallows, "she says San means as much to her as her own children do now, and she already knows how much you love me, unconditionally, and that was reason enough."' },
+          { speaker: 'Narrator', text: 'It is not a fortune, San understands, reading the actual numbers over Joel\'s shoulder — modest, a few thousand, split further still between your father\'s side and your mother\'s pension. Not remotely enough to solve everything. But real. Actually real, actually theirs, actually sent.' },
+          { speaker: 'San', text: '"My mother has her pension already," you say slowly, working through it. "It will matter more for my father. His citizenship is still not finalized. Every extra bit toward the treatment counts, even if it is not everything."' },
+          { speaker: 'Joel', text: '"It is not nothing," Joel says, and you can hear him deciding, in real time, to let that be enough instead of wishing it were more.' },
+          { speaker: 'San', text: '"Your mother did not have to do that," you say again, quieter now, something working through you that you do not entirely have words for yet.' },
+          { speaker: 'Joel', text: '"She never has needed a reason where you are concerned," Joel says. "You know that by now."' },
+          { speaker: 'Narrator', text: 'You do. And sitting with it — Joel\'s old, self-destructive faith in impossible numbers becoming, against every reasonable odds, the thing that actually reached your own parents — something else quietly surfaces, a question you have been carrying since long before any of this, one you have never quite let yourself finish asking out loud.' },
+          { speaker: 'San', text: '"Do you think they would ever actually meet?" you ask. "My parents. Your mother. If any of us ever found a way back, even just once."' },
+          { speaker: 'Joel', text: '"I think she would like that very much," Joel says, gentle, watching you rather than the window now. "I think she already thinks of them as family. She just has not gotten to say it to their faces yet."' },
+          { speaker: 'Narrator', text: 'The window closes the way it always does, without ceremony, without certainty of when it might open like this again. But something has genuinely shifted — not resolved, not finished, but real in a way it was not an hour ago. Somewhere very far from here, a debt gets a little smaller. A door, long assumed closed, sits open just slightly further than it did this morning.' },
+        ]
+      }
+,{
+        id: 'journal_113',
+        title: 'It Does Not Take a Phone Call',
+        chapter: 113,
+        unlockType: 'level',
+        unlockAt: 270,
+        icon: '🏢',
+        summary: 'The window finds C. Adv., Robin\'s old firm still carrying his name, and San finally sees what she could never quite read at the time — that being forgotten and being missed were never actually the same thing, no matter how identical they looked from the wrong side of a silence.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The window finds C. Adv. — Robin\'s old firm, still carrying his name even now, since changing a sign costs more than most people think it should. His business partner runs it these days, quietly, has since the day Robin never came back. Kept the name for convenience, everyone assumes. San is no longer sure that is the only reason.' },
+          { speaker: 'Narrator', text: 'Imah is still there, exactly where San left her, though there is a wedding ring now that was not there before. San remembers the wedding itself clearly — Imah marrying her high school love, years and years of dating finally spent on one expensive, deliberate afternoon, every bit of it saved for on purpose. It happened before the Breaking, back when the biggest thing anyone had to worry about was whether the caterer would run out of food.' },
+          { speaker: 'Narrator', text: 'That same wedding is where San met Nurul properly for the first time — a shy clerk who had just been let go by the firm, not long after San\'s own quiet exit. Neither of them had planned to talk about it that day. Somehow they ended up doing exactly that, two people freshly without a job, standing at the edge of someone else\'s happiest afternoon.' },
+          { speaker: 'Narrator', text: 'Erma is not there anymore. She left not long after San did \u2014 after San had already gone to Claims \u2014 and told San so herself, plainly, in a WhatsApp message that left nothing to guess at: she had overheard Robin telling his business partner that she was not working at all, was not bringing in new cases fast enough, as if the sudden shortage of accident claims were some failure of effort on her part rather than the simple, provable fact that the roads themselves had gotten stricter, safer, harder to get hurt on. San never had to wonder what actually happened there. Erma had already told her, in her own words, exactly why she left.' },
+          { speaker: 'Narrator', text: 'Erna, sharp-tongued in the way she always was, is the one who actually stayed. She tried once to have San over for Raya \u2014 gave directions, meant every word of the invitation \u2014 and San simply got lost trying to find the house, never made it, never quite explained why well enough afterward. Before the Breaking, the last message Erna ever sent was about Temu, some free gift she was certain one more invite would finally unlock. San assumed it was just a marketing gimmick and never gave it much more thought than that.' },
+          { speaker: 'Narrator', text: 'Dre loved Zus \u2014 the whole small group did, actually, on the mornings someone remembered to bring it. San had treated everyone to a round of it once, a year before Imah\'s wedding, not long before Dre left for a better offer somewhere else. It was not a significant afternoon at the time. San finds she remembers it anyway, clearly, the way small ordinary things sometimes outlast the important ones.' },
+          { speaker: 'Narrator', text: 'The others are here too, unnamed in San\'s memory now more than they ever were people she stopped to really look at \u2014 faces at desks, voices in meetings, people who were simply there, the way coworkers are there, until one day they were not.' },
+          { speaker: 'Narrator', text: 'It was Sabby, in the end, who was told to remove San from the old WhatsApp group \u2014 Robin\'s instruction, carried out because Sabby\'s job, and everything that job held up for her, depended on doing exactly what she was told. San only found out much later, secondhand, once it no longer had anywhere left to sting. By then, everyone at the firm already knew where San had actually gone \u2014 Claims, not somewhere Robin could still call his own \u2014 and whatever warmth had been there before seemed to cool all at once, right around the same time.' },
+          { speaker: 'Narrator', text: 'San spent a long time reading that coldness as simple indifference. Watching now, she is less sure. It was never that they stopped caring. It was that caring, visibly, where Robin might notice, was a risk none of them could actually afford \u2014 and being quietly written out of a group chat by someone else\'s hand is not the same thing as choosing, yourself, to let a person go.' },
+          { speaker: 'San', text: '"It did not take a phone call," you say, quiet, watching the window hold on all of them at once. "It did not even take a message. I was still missed. I just never had proof of it, the way I thought I needed to."' },
+          { speaker: 'Narrator', text: 'The window closes the way it always does, without ceremony. What stays is smaller than an apology and larger than nothing at all \u2014 the plain, late understanding that being forgotten and being missed were never actually the same thing, no matter how identical they can look from the wrong side of a silence.' },
+        ]
+      }
+,{
+        id: 'journal_114',
+        title: 'What Small and Quick Was For',
+        chapter: 114,
+        unlockType: 'level',
+        unlockAt: 275,
+        icon: '🐰',
+        summary: 'A stray line in a Guild War scouting report finally cracks Liang open — the full truth of the Bunnies, the collapse he left mid-crisis, and the not-knowing he has carried alone since. The party\'s answer is immediate: they go together.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It comes up sideways, the way the important things usually do — a Guild War scouting report, read out loud at the debrief table, mentioning a stretch of contested territory that "does not behave right anymore." Nobody at the table means anything by it. It is the kind of line people say about a lot of places these days, half a joke, half a shrug.' },
+          { speaker: 'Narrator', text: 'Liang goes very still.' },
+          { speaker: 'Narrator', text: 'You almost miss it. Aisyah does not. She has spent enough time next to him by now to know the difference between him being quiet and him going somewhere else entirely.' },
+          { speaker: 'Aisyah', text: '"You know something about that," she says, not a question, once the debrief has moved on and it is just the four of you left at the table.' },
+          { speaker: 'KW Liang', text: '"Maybe," Liang says, too fast, already reaching for the easy deflection that has worked on everyone else for years.' },
+          { speaker: 'Aisyah', text: '"Liang."' },
+          { speaker: 'Narrator', text: 'Just his name. Nothing else. It is enough.' },
+          { speaker: 'Narrator', text: 'He is quiet for a long moment, long enough that you almost tell him he does not have to, and then he starts talking anyway, like something finally gave way under its own weight.' },
+          { speaker: 'KW Liang', text: '"There is a place I came from before Aethon," he says. "Not the old world. Somewhere in between — a version of it that was already coming apart when I got there. I did not choose to be there. I was already running from one collapse and found myself in the middle of a different one."' },
+          { speaker: 'KW Liang', text: '"There were people. A group of us, surviving on whatever we could figure out together. We called ourselves the Bunnies — evasive, adaptable, small enough to slip through things that would have caught anyone standing still. It was half a joke and half the only actual strategy any of us had."' },
+          { speaker: 'Narrator', text: 'His voice does something here it has never quite done in front of you before — goes careful, the way a person handles something they are afraid of dropping.' },
+          { speaker: 'KW Liang', text: '"I left while it was still actively falling apart. I went looking for help, for anything, and I found a door instead — the one that eventually put me here. I have never known what happened to the rest of them. Whether the collapse finished what it started. Whether any of them are even still — whether there is still a them to wonder about at all."' },
+          { speaker: 'KW Liang', text: '"I have not told you the whole truth of that, Aisyah. Not the actual size of not knowing. I let you think it was smaller than it is, because the real version of it did not feel like something I was allowed to bring into this. Into us."' },
+          { speaker: 'Narrator', text: 'Aisyah does not say anything for a moment. When she does, her voice is steadier than you expected, and gentler than his.' },
+          { speaker: 'Aisyah', text: '"You do not get to decide what I am allowed to carry with you," she says. "That was never yours to decide alone."' },
+          { speaker: 'San', text: '"The territory in that report," you say, carefully, watching him. "Do you think it could actually be connected? To where you came from?"' },
+          { speaker: 'KW Liang', text: '"I do not know," Liang admits. "I have wondered it every time something like this comes up. I have never let myself follow the thought all the way through, because I was afraid of exactly this — of hoping, and being wrong, in front of people who matter to me now."' },
+          { speaker: 'Narrator', text: 'Joel, quiet through most of this the way he sometimes is when a moment does not need him to fill it, finally speaks.' },
+          { speaker: 'Joel', text: '"Then we go find out," he says, simple, like it was never actually going to be a question. "Together. Not you working up the nerve to go alone and tell us about it after."' },
+          { speaker: 'KW Liang', text: '"You do not have to —"' },
+          { speaker: 'Aisyah', text: '"We know," Aisyah says, cutting him off, not unkindly. "We are choosing to anyway."' },
+          { speaker: 'Narrator', text: 'Something in Liang\'s face breaks open, just slightly — not relief exactly, not yet, but the particular loosening of a person who has been bracing for a long time and has just been told, plainly, that they do not have to brace alone anymore.' },
+          { speaker: 'KW Liang', text: '"Kaya kaya," he says, quiet, almost to himself, the old joke turned into something closer to a promise.' },
+          { speaker: 'Narrator', text: 'Nobody asks him to explain it this time. Nobody needs to. You are already thinking about the door, and the territory that does not behave right, and what it might actually take to go looking for a group of people who called themselves Bunnies because staying small and quick was the only thing that had ever kept them alive.' },
+        ]
+      }
+,{
+        id: 'journal_115',
+        title: 'A Seam, Not a Door',
+        chapter: 115,
+        unlockType: 'level',
+        unlockAt: 280,
+        icon: '🌌',
+        summary: 'Varel and Mimi work through the night to turn watching into crossing for the first time — an unstable, honestly-uncertain rift the party steps through together, landing not in the world Liang left, but somewhere closer to it than he has ever gotten before: unmapped, unexplored, and still clearly, quietly alive.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Varel listens to the whole thing without interrupting once — the scouting report, Liang\'s confession, the shape of what you are actually asking him for — and when you finish, he is quiet long enough that you start to wonder if he is going to say no.' },
+          { speaker: 'Varel', text: '"I have felt something off about that territory for longer than any of you have had a report to explain it." He says it plainly, no ceremony in it. "I did not have a reason to act on it before. I have one now."' },
+          { speaker: 'Narrator', text: 'He sends for Mimi. She arrives already half-certain what he is going to ask, the way she always seems to be.' },
+          { speaker: 'Mimi', text: '"You want to actually open it," she says, not a question either, the family resemblance in that particular habit unmistakable. "Not just look through it."' },
+          { speaker: 'Varel', text: '"Watching has never been the whole of what Farseeing is for. It was only ever the part I taught first, because it was the part that could not get anyone hurt."' },
+          { speaker: 'Narrator', text: 'The two of them work through the night, and you are not entirely sure, watching, whether what you are seeing is a ritual or an argument that both of them have simply agreed to have out loud instead of privately. Mimi keeps pushing at the edges of something; Varel keeps pulling her back from going too far too fast. It looks less like teacher and apprentice by the end of it, and more like two people who trust each other enough to actually disagree.' },
+          { speaker: 'Mimi', text: '"It will hold," Mimi finally says, close to dawn, sounding more certain than she looks. "For a while. I cannot promise you how long, and I cannot promise it stays open once you are through. This is not the same as watching. We do not actually know what we do not know yet."' },
+          { speaker: 'San', text: '"That is not exactly reassuring," you say.' },
+          { speaker: 'Varel', text: '"No," Varel agrees, entirely unbothered by that. "It is honest, though. I have found those two things trade off against each other more often than people would like."' },
+          { speaker: 'Narrator', text: 'Liang has said almost nothing this whole time. When you finally look over at him, he is staring at the place where the air has started to bend wrong, the way it apparently only ever bent for him once before, a long time ago, going the other direction.' },
+          { speaker: 'KW Liang', text: '"I never actually got to choose whether I was leaving," he says, quiet, mostly to himself. "I am choosing this part."' },
+          { speaker: 'Aisyah', text: 'She takes his hand. Does not say anything. Does not need to.' },
+          { speaker: 'Narrator', text: 'The rift, when it finally settles into something stable enough to actually use, does not look like the neat, single door Liang described falling through once. It looks more like a seam — a place where two different kinds of air have agreed, temporarily, to occupy the same space.' },
+          { speaker: 'Joel', text: '"Together," Joel says, the same word he used the night Liang finally told the truth, like it is simply the only answer this family has to anything anymore.' },
+          { speaker: 'Narrator', text: 'You go through first. San, Joel, Aisyah, Liang — the rift does something to sound on the way through, a half-second of total silence loud enough to feel in your teeth, and then you are standing somewhere that used to be a city, in a version of the world Liang has never once described the same way twice.' },
+          { speaker: 'Narrator', text: 'It is not one of the six places you already know. Whatever this is, it is further in, or further down, or simply further than anyone has mapped from the Aethon side. The tech-collapse quiet Liang always talked about is here, exactly as he said it would be — but underneath it, faint, unmistakable, there is something that is very clearly still moving.' },
+          { speaker: 'KW Liang', text: '"This is not where I left them," Liang says, turning slowly, something in his voice you have never heard from him before. "But it is closer than I have ever gotten to finding out."' },
+          { speaker: 'Narrator', text: 'Behind you, the seam holds, humming faintly, uncertain of how long it intends to keep its word. Ahead of you, an entire unmapped stretch of a third world waits, patient, indifferent, and completely unexplored.' },
+        ]
+      }
+,{
+        id: 'journal_116',
+        title: 'A Mark, On Purpose',
+        chapter: 116,
+        unlockType: 'level',
+        unlockAt: 285,
+        icon: '🐹',
+        summary: 'A weeks-old marking, cut fresh into a support beam, becomes the first real proof the Bunnies are still out there, still choosing to survive on purpose rather than by accident. The party doesn\'t find them today — but the search stops being a question of whether, and starts being a question of how much further.',
+        scenes: [
+          { speaker: 'Narrator', text: 'You do not go looking for the movement so much as let it decide the direction for you — a faint, irregular rhythm underneath the collapse-quiet, the kind of sound a place makes when something in it is still choosing to keep going.' },
+          { speaker: 'Narrator', text: 'The city, if it ever really was one, has folded in on itself in ways that do not match anything from the six zones you already know. Whatever caused this collapse was slower here, or crueler, or simply had more time to finish the job before anyone thought to stop it.' },
+          { speaker: 'KW Liang', text: '"This is not how I remember any of it looking." Liang keeps his voice low, scanning every doorway twice before letting the party pass it. "Not worse. Just different. Longer, maybe. I do not actually know how much time passed here while I was gone."' },
+          { speaker: 'Aisyah', text: '"Does that scare you?" she asks, not unkindly.' },
+          { speaker: 'KW Liang', text: '"Less than I expected," he admits. "I think I already made my peace with not knowing, a while ago. This is just the first time I have had to actually stand inside the not-knowing instead of carrying it around."' },
+          { speaker: 'Narrator', text: 'It is Joel who finds it first — a mark, deliberate, cut fresh enough into a support beam that the edges have not even started to weather. Not writing. A shape. Two long ears, unmistakable even reduced to the fewest lines a tired hand could manage.' },
+          { speaker: 'Joel', text: '"San." Just your name, and a nod toward the wall.' },
+          { speaker: 'Narrator', text: 'You cross the room to look. It is small, almost apologetic in size, tucked at knee height where anyone moving fast might miss it entirely and anyone moving carefully never would.' },
+          { speaker: 'Narrator', text: 'Liang\'s breath catches audibly behind you.' },
+          { speaker: 'KW Liang', text: '"That is ours," he says, quiet, reaching out like he is afraid touching it might make it not real. "That is actually ours. Someone left that on purpose."' },
+          { speaker: 'San', text: '"Recently?" you ask.' },
+          { speaker: 'KW Liang', text: '"I cannot tell exactly. Weeks, maybe. Not years — the cut is too clean for that." His hand is not quite steady. "Weeks means someone was standing exactly here, weeks ago, still marking territory the way we used to. Weeks means someone is still choosing to be careful about being found by the wrong people, which means —"' },
+          { speaker: 'Aisyah', text: '"Which means they are still choosing to survive on purpose," Aisyah finishes for him, gently. "Not just surviving by accident."' },
+          { speaker: 'Narrator', text: 'Liang does not answer that directly. He does not need to. He is already moving toward the next doorway, faster now, scanning for the next mark the way a person searches once they have finally been given a real reason to believe there is something left to find.' },
+          { speaker: 'Narrator', text: 'You do not find them today. The trail goes quiet again after the third marking, swallowed by a stretch of collapsed structure none of you can safely cross without better equipment than you brought expecting a single afternoon\'s search. But something has changed in the shape of the search itself — it is no longer a question of whether. It is a question of how much further, and how carefully.' },
+          { speaker: 'Joel', text: '"We come back better prepared," Joel says, already thinking practically, already thinking about what the party will actually need. "This is not a today thing. It was never going to be a today thing."' },
+          { speaker: 'KW Liang', text: '"I know," Liang says, and for the first time since the crossing, he sounds almost steady. "I think I can wait, now that I know waiting actually means something. That is different from the kind of waiting I was doing before."' },
+          { speaker: 'Narrator', text: 'Behind you, faint and patient, the seam Varel and Mimi opened hums on, holding its word a little longer than any of you had quite dared to hope it would. Ahead of you, past the collapsed stretch none of you could cross today, an entire unfinished search waits — smaller, now, than it was this morning. Still not finished. But smaller.' },
+        ]
+      }
+,{
+        id: 'journal_117',
+        title: 'Small and Quick',
+        chapter: 117,
+        unlockType: 'level',
+        unlockAt: 290,
+        icon: '🐰',
+        summary: 'The second attempt finds them waiting — four survivors, older, changed, not all of them, but still here. Reyes, sharp-eyed and careful, gives Liang the one thing he never let himself expect: not everyone made it, but he did not lose all of them either.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The second attempt goes differently from the first, in ways too small to name individually and too many to ignore — better rope, better light, a route Liang has half-memorized just from staring at it in his sleep since the last visit. It still takes three days past the collapsed stretch before the markings start again.' },
+          { speaker: 'Narrator', text: 'This time there are more of them. Closer together. Less careful about being found, or maybe just more confident that whoever is following the trail already means them no harm.' },
+          { speaker: 'KW Liang', text: '"They know we are here," Liang says, quiet, somewhere on the second day. "They have known for a while. This is not a trail anymore. It is an invitation."' },
+          { speaker: 'Narrator', text: 'He is right. The last marking is not tucked into a doorway at all — it is out in the open, painted large enough to see from the street, and beneath it, waiting, are people.' },
+          { speaker: 'Narrator', text: 'Four of them. Older than you expected, though you are not sure why you expected anything else — time did not stop for them any more than it stopped for Liang. One leans on a length of pipe like a cane, favoring a leg that clearly never healed quite right. Another has a scar running the length of one forearm, old enough to have gone pale and unremarkable. All four of them are watching Liang with an expression you do not have a clean word for — somewhere between disbelief and something that has been waiting so long it forgot it was allowed to hope.' },
+          { speaker: 'Narrator', text: 'A woman steps forward first. Sharp-eyed, gray threading through hair that used to be dark, a voice roughened by years of talking quietly in places where loud was dangerous.' },
+          { speaker: 'Bunny Elder', text: '"You are actually here." It is not quite a question. It does not sound like she trusts the answer yet, either way.' },
+          { speaker: 'KW Liang', text: '"Reyes." Just her name, and something breaks in his voice saying it. "I did not know. I have not known, this whole time, whether —"' },
+          { speaker: 'Bunny Elder', text: '"We are still here," Reyes says, cutting off the rest of it before he can finish. "Not all of us. Not the way we were. But still here."' },
+          { speaker: 'Narrator', text: 'There is a silence after that neither of you rushes to fill. It is the kind of silence that is doing real work — counting, quietly, everyone standing here against everyone who is not.' },
+          { speaker: 'KW Liang', text: '"Who," Liang finally asks, careful, like the word itself might cost something.' },
+          { speaker: 'Bunny Elder', text: '"Later," Reyes says, not unkindly. "You will want to sit down for that list. Right now I would rather just look at you for a minute, if you do not mind. It has been a long time since I got to do that."' },
+          { speaker: 'Narrator', text: 'Liang does not argue. Neither do you. Some things are allowed to happen out of order, and being looked at, finally, by someone who spent this long wondering whether there would ever be a reason to, is apparently one of them.' },
+          { speaker: 'Narrator', text: 'She stays close to Liang\'s shoulder the whole time, not speaking, not needing to — just present, the same way she has been every time this particular weight has come up.' },
+          { speaker: 'Bunny Elder', text: '"You brought people," Reyes says eventually, taking in the rest of you properly for the first time. "Good. That is good. We stopped being able to spare the hands for looking outward a long time ago. Maybe that changes now."' },
+          { speaker: 'Joel', text: '"It can," Joel says, simple, the same word he has meant every time he has said some version of it since this whole thing started. "If that is something you actually want."' },
+          { speaker: 'Narrator', text: 'You watch Liang\'s face while Reyes considers that — watch him hold still for an answer he has been afraid to actually hear for longer than he has known any of you. Whatever she says next, you understand, is going to matter more than almost anything that has happened since he first fell through a door he never meant to walk through.' },
+          { speaker: 'Bunny Elder', text: '"We will talk," Reyes finally says. "Properly. Tonight, once everyone here has had a chance to actually believe their own eyes."' },
+          { speaker: 'Narrator', text: 'She looks at Liang a moment longer, something softening in it that the roughness in her voice never quite managed to hide.' },
+          { speaker: 'Bunny Elder', text: '"Welcome back, small and quick," she says, and for the first time since the crossing, Liang actually laughs — unsteady, disbelieving, entirely real.' },
+        ]
+      }
+,{
+        id: 'journal_118',
+        title: 'What Small and Quick Was Actually For',
+        chapter: 118,
+        unlockType: 'level',
+        unlockAt: 295,
+        icon: '🔥',
+        summary: 'Reyes tells Liang the truth he has carried an unknown version of for years — two lost, Denny and Old Mateo, named honestly rather than left as a number. Not absolution, not blame, just the real shape of it, finally handed to him by someone who stayed to know it properly.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Reyes waits until the fire is properly going before she starts, and even then she takes her time about it — not stalling, you realize, just making sure everyone still standing has actually settled somewhere before she says any of the names out loud.' },
+          { speaker: 'Bunny Elder', text: '"Two," she says finally, no preamble left to soften it with. "We lost two. Not the night you left — later. Winter, the second one after. The kind of collapse that does not announce itself until it is already happening."' },
+          { speaker: 'Narrator', text: 'He does not ask who yet. He is very still, the way he gets right before something lands.' },
+          { speaker: 'Bunny Elder', text: '"Denny," Reyes says, and something in her own voice catches for the first time all night. "You remember him. Youngest of us. Never stopped complaining about the cold and never once actually left when he had the chance to."' },
+          { speaker: 'KW Liang', text: '"Denny." Just the name, flat, like saying it any other way might make it more true than it already is.' },
+          { speaker: 'Bunny Elder', text: '"And Old Mateo. Not from anything sudden — just tired, in the end, the way people get when they have been holding a line for longer than anyone should have to. He went easy. That is the part I actually want you to keep, if you keep anything."' },
+          { speaker: 'Narrator', text: 'Nobody rushes to fill the silence after that. Aisyah\'s hand finds Liang\'s without either of them making a show of it. Joel, across the fire, says nothing at all, which is its own kind of steady.' },
+          { speaker: 'KW Liang', text: '"I was not here." His voice is careful, testing each word before he commits to it. "For either of those. I do not get to have been here."' },
+          { speaker: 'Bunny Elder', text: '"No," Reyes agrees, direct rather than gentle about it, which you suspect is exactly what he actually needs from her right now. "You do not. That is true, and it is going to stay true, and you are going to have to actually live next to that instead of around it."' },
+          { speaker: 'Bunny Elder', text: '"But you did not do this. The world did this. There is a difference, and I need you to actually hear it instead of just agreeing with me to make the conversation shorter."' },
+          { speaker: 'Narrator', text: 'He laughs at that, wet and unsteady, the sound of someone caught between grief and being genuinely known.' },
+          { speaker: 'KW Liang', text: '"You have not changed even a little."' },
+          { speaker: 'Bunny Elder', text: '"Someone had to hold that part together too," she says, almost gentle now that the worst of it is actually said. "Might as well have been me."' },
+          { speaker: 'Narrator', text: 'You watch something shift in Liang across the fire — not relief, nothing that clean, but the particular loosening of a person who has been carrying an unknown number for years and has finally been handed the real one instead. Two. Not zero, not everyone. Two, and a reason each, and someone who was actually there to tell him honestly instead of letting him build worse versions alone in his own head.' },
+          { speaker: 'KW Liang', text: '"Thank you," he tells Reyes, quiet, meaning something much larger than the two words usually carry. "For not letting me imagine it as worse than it was. Or pretend it was smaller."' },
+          { speaker: 'Bunny Elder', text: '"That is what small and quick was always actually for," Reyes says. "Not just surviving. Making sure the ones who did not get to survive were seen, honestly, by someone who stayed long enough to do it properly."' },
+          { speaker: 'Narrator', text: 'The fire burns low around a group that is smaller than it should be and larger than Liang let himself hope for, for years. Somewhere behind you, the seam Varel and Mimi opened still hums, patient, holding a door between two worlds that no longer have to be entirely separate from each other.' },
+        ]
+      }
+,{
+        id: 'journal_119',
+        title: 'Sometimes, Not Every Hour',
+        chapter: 119,
+        unlockType: 'level',
+        unlockAt: 300,
+        icon: '🌿',
+        summary: 'Months after the Closed Eye\'s ending, San finds Aldric and Wren settled into something neither of their pasts would have predicted — ordinary afternoons, small rituals, a knight who finds people on purpose now and a woman relearning devotion at exactly the size a child\'s grass charm can hold.',
+        scenes: [
+          { speaker: 'Narrator', text: 'You find them at the Mended Grove on an unremarkable afternoon, doing something you almost walk past without registering — Aldric, sitting across from one of the newer recruits Iris brought in last month, listening far more than he is talking. Wren is a short distance away, showing Sabby\'s grandson (visiting for the day, underfoot in the good way) how to properly braid the loose grass into the kind of small, useless charm children make everywhere, in every world, given enough patience and green things to work with.' },
+          { speaker: 'Narrator', text: 'Neither of them is doing anything that looks like what happened to either of them. That, you are slowly realizing, might be the entire point.' },
+          { speaker: 'Narrator', text: 'You settle nearby, close enough to overhear without making it obvious that is what you are doing.' },
+          { speaker: 'Narrator', text: 'The recruit — young, still a little too eager in the specific way that used to make you nervous for reasons you could not name until you actually knew Aldric\'s story — is talking about a Guild War loss, replaying it out loud the way people do when they are looking for someone to tell them it was their fault so they can finally stop turning it over.' },
+          { speaker: 'Ser Aldric', text: '"It was not your fault," he says, plain, no performance in it. "You made a reasonable call with the information you actually had. That is different from a mistake. I know the difference matters less when you are the one who is upset, but it is still true."' },
+          { speaker: 'Narrator', text: 'The recruit does not look fully convinced. Aldric does not push it further — just lets the sentence sit there, unforced, the way you have noticed he does now with almost everyone who comes through still braced for something.' },
+          { speaker: 'San', text: '"You do this a lot," you say, once the recruit has wandered off looking marginally lighter than they arrived. "Find the new ones. Sit with whatever they are carrying."' },
+          { speaker: 'Ser Aldric', text: '"Someone did it for me," he says, simply. "Late. Later than it should have taken. I am not interested in making anyone else wait that long, if I can help it."' },
+          { speaker: 'Narrator', text: 'Across the clearing, Wren finishes the grass charm and hands it over with a ceremony far too solemn for what it actually is, and Sabby\'s grandson receives it like she has just handed him something genuinely sacred. In a way, you suppose, watching her do it, she has — just not the way either of them would have meant that word a year ago.' },
+          { speaker: 'San', text: '"And that," you say, nodding toward her, "is new too, is it not?"' },
+          { speaker: 'Ser Aldric', text: '"She started small," Aldric says, watching her with something unguarded in it. "Grass charms. A blessing over someone\'s cooking fire that was really just her checking they had eaten. It built from there. I do not think she trusts herself with anything bigger yet. I do not think she needs to rush that."' },
+          { speaker: 'Narrator', text: 'You think of the fire, months ago now — Wren admitting out loud that she had known, the whole time, and kept going anyway, because stopping would have meant admitting what she gave up was never worth it. You think of Aldric kneeling beside her with no triumph in his voice at all, just the plain, hard-won fact of it: it gets a little easier.' },
+          { speaker: 'San', text: '"It actually did, then," you say, watching both of them from exactly the right distance to see it clearly. "Get easier."' },
+          { speaker: 'Narrator', text: 'He is quiet for a moment, considering the question with the same care he gives everything.' },
+          { speaker: 'Ser Aldric', text: '"Not all at once," he says, finally. "But yes. Most days now I do not think about any of it until something makes me. That used to happen every hour. Now it happens sometimes. I will take sometimes."' },
+          { speaker: 'Narrator', text: 'Wren, apparently finished with charm-braiding for the afternoon, wanders over and settles beside Aldric without asking whether the spot is free — the specific, unbothered ease of two people who stopped needing to ask that a while ago.' },
+          { speaker: 'Sister Wren', text: '"Was he telling you the sometimes-not-every-hour thing again?" she asks you, dry, fond underneath it. "He tells everyone the sometimes-not-every-hour thing eventually. It is his version of small talk now."' },
+          { speaker: 'Ser Aldric', text: '"It is a genuinely useful thing to know," he says, entirely unbothered by being teased about it.' },
+          { speaker: 'Sister Wren', text: '"It is," Wren agrees, softer than the tease a moment ago. "I just like that you have decided it is also allowed to be ordinary. Not every conversation has to be the whole rescue over again."' },
+          { speaker: 'Narrator', text: 'You leave them there eventually — a knight who used to be found by the wrong things now spending his afternoons finding the right ones on purpose, and a woman who used to lead a congregation into something false now leading exactly one small child through exactly one small, honest ritual at a time. Nothing about it is dramatic. That, you have come to understand, was never actually the goal. Ordinary was always the goal. They just had to build their way back to being allowed to have it.' },
+        ]
+      }
+,{
+        id: 'journal_120',
+        title: 'Quieter Might Be Enough',
+        chapter: 120,
+        unlockType: 'level',
+        unlockAt: 305,
+        icon: '🔇',
+        summary: 'The party reaches the actual source behind the entire collapse — not a villain, just a failsafe that never got the order to stand down. Shutting it down doesn\'t feel like victory. It feels like finally letting something rest, the same permission Liang was given two chapters ago, given now to the whole world he left behind.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The core is not hidden. That is somehow the worst part — no vault, no final door, just a room the size of a cathedral where a single failsafe protocol has been quietly, patiently executing itself for longer than anyone left alive has been counting. It does not notice you arrive. It has not noticed anything in years.' },
+          { speaker: 'KW Liang', text: '"This is it," Liang says, quiet, and you understand from his voice that he does not mean the room. "This is the actual thing. Everything since the Threshold District — all of it traces back to whatever is still running in here."' },
+          { speaker: 'Narrator', text: 'The Order That Never Stood Down does not announce itself as a villain, because it was never built to be one. It activates the way a failsafe activates — mechanically, without malice, executing the last order it was ever given because no one ever gave it a different one.' },
+          { speaker: 'Joel', text: '"It is not angry," Joel says, watching it power up, something almost gentle in the observation. "It does not even know there is anything left to be angry at. It is just still doing the job."' },
+          { speaker: 'Narrator', text: 'The fight, when it comes, does not feel like defeating something. It feels like the last, hardest push of a much longer, much quieter argument — not good against evil, just finally against not yet, a system that was owed a stand-down order years ago finally getting one, however it has to arrive.' },
+          { speaker: 'Narrator', text: 'When it goes still, it does not explode, does not collapse dramatically the way a defeated boss usually does. The lights along its housing simply dim, one bank at a time, unhurried, like something exhaling for the first time in years.' },
+          { speaker: 'Narrator', text: 'He does not move for a long moment, watching the last light fade out.' },
+          { speaker: 'KW Liang', text: '"I keep waiting to feel like we won something," he says, finally. "I do not think that is actually what this was. I think we just finally let something stop."' },
+          { speaker: 'San', text: '"Does that feel different?" you ask. "From winning?"' },
+          { speaker: 'KW Liang', text: '"Quieter," Liang says, after real thought. "Which, given everything, might be exactly what this place actually needed. Not a victory. Just quiet. It has not had that in a very long time."' },
+          { speaker: 'Narrator', text: 'Outside, for the first time since the Threshold District, the city does not hum. No idle sentries looping their announcements to no one. No relay ghosts repeating a signal nobody sent. Just the particular, enormous silence of a place that has finally been allowed to stop pretending it is still mid-crisis.' },
+          { speaker: 'Joel', text: '"It sounds like nothing," Joel says, listening to it. "I did not expect nothing to sound like this much relief."' },
+          { speaker: 'Narrator', text: 'Reyes finds you before you leave — word travels fast, even here, even now — and stands for a moment in the new quiet with an expression that has nothing to do with triumph in it at all.' },
+          { speaker: 'Bunny Elder', text: '"We stopped hearing it a few hours ago," she says. "I thought something had gone wrong. I did not let myself consider it might just be finished."' },
+          { speaker: 'KW Liang', text: '"It is not finished," he says, and there is something steadier in him saying it than there has been since the crossing. "Nothing about any of this is finished. But it is quieter now. I think quieter might actually be enough, for today."' },
+          { speaker: 'Narrator', text: 'You leave the core room behind, the whole ruined district settling into a silence it earned the hard way — not an ending, not really, just the first honest quiet this world has been allowed to have in longer than Liang can remember. Somewhere behind you, the seam still holds. Ahead of you, a door back to everyone who is still waiting, on both sides of it now.' },
+        ]
+      }
+,{
+        id: 'journal_121',
+        title: 'Something Noticed Us First',
+        chapter: 121,
+        unlockType: 'level',
+        unlockAt: 315,
+        icon: '🌫️',
+        summary: 'The seam Varel and Mimi opened has started listening on its own — and something answered. Unlike the last crossing, nobody here knows this world, or what it is, or what it might become. The party steps through into somewhere still deciding what it is going to be.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Varel finds you before you have even properly sat down for the evening, something in his usually unhurried manner genuinely different this time.' },
+          { speaker: 'Varel Farseer', text: '"The seam has been listening on its own," he says, without much preamble. "I did not build it to do that. It is doing it anyway. And something out there just answered."' },
+          { speaker: 'Mimi', text: '"Not Liang\'s world," Mimi adds, already half-lost in whatever she is seeing that the rest of you cannot. "Somewhere else entirely. It does not match anything either of us has ever mapped."' },
+          { speaker: 'San', text: '"Answered how?" you ask, already not sure you are going to like the answer.' },
+          { speaker: 'Varel Farseer', text: '"Politely, almost," Varel says, which is somehow the least reassuring possible word he could have used. "Like something noticing it was being looked at, and looking back, deliberately, to confirm it. I do not know what that means yet. I know it has never happened before."' },
+          { speaker: 'Narrator', text: 'This is different from the last crossing, and everyone in the room seems to feel it at the same time — no Liang standing at the threshold with a decade of familiarity to lean on, no name for what waits on the other side, nothing at all except a seam that has apparently started listening on its own.' },
+          { speaker: 'Joel', text: '"We are not walking into somewhere someone already knows," Joel says, working through it out loud. "We are walking into somewhere that noticed us first."' },
+          { speaker: 'Mimi', text: '"That is one way to put it," Mimi agrees, quiet. "I would not call it wrong."' },
+          { speaker: 'Narrator', text: 'You look at the seam, humming the same as it always has, patient and unbothered, giving absolutely nothing away about what is actually on the other side of it now.' },
+          { speaker: 'San', text: '"Do we go?" you ask, mostly to Joel, though the question is really for everyone in the room.' },
+          { speaker: 'Joel', text: '"We have gone through for less certainty than this before," he says, and there is no hesitation in it at all. "I would rather know what noticed us than spend the next month wondering."' },
+          { speaker: 'Varel Farseer', text: '"I can hold it open," Varel says. "I cannot promise you will like what is waiting on the other side of holding it open. I have genuinely never been less certain of what a seam actually leads to."' },
+          { speaker: 'Narrator', text: 'Nobody treats that as a reason to stay. If anything, it settles something — an honest not-knowing is easier to walk into than a comfortable lie would have been.' },
+          { speaker: 'Narrator', text: 'The crossing itself feels different too, this time — not the sharp, immediate arrival of the last one, but something slower, like stepping into a room where the furniture has not entirely finished being placed. The ground holds. Mostly. There is a version of holding that is not quite the same as certainty, and you are standing on it.' },
+          { speaker: 'KW Liang', text: '"This is not my world," Liang says, low, taking it in with the specific caution of someone whose only frame of reference just stopped applying. "I do not recognize any of this. I do not think anyone is meant to, yet."' },
+          { speaker: 'Narrator', text: 'Something in the middle distance is not quite a building and not quite not one — columns that fade into unfinished suggestion a few feet off the ground, edges that have not committed to being edges. Nothing here reads as ruined. It reads, more than anything else, as unfinished, mid-arrival, still actively becoming whatever it is eventually going to be.' },
+          { speaker: 'San', text: '"It feels like walking in before something is ready," you say, careful, watching a wall that has not decided whether it wants to be load-bearing yet.' },
+          { speaker: 'Narrator', text: 'Mimi is quiet for a long moment, reading something none of the rest of you have access to.' },
+          { speaker: 'Mimi', text: '"I do not think we are early," she says, finally. "I think this place simply has not finished deciding what it is going to be. That is a very different thing from unfinished. Unfinished implies someone stopped. Nothing here has stopped."' },
+          { speaker: 'Narrator', text: 'Behind you, the seam holds, quieter and less certain of itself than it has ever sounded before. Ahead of you, an entire world waits, mid-formation — not a place to rescue, not a place to mourn. Just somewhere still deciding, with the party standing inside the decision, whether it wants to or not.' },
+        ]
+      }
+,{
+        id: 'journal_122',
+        title: 'A Shape You Would Know Anywhere',
+        chapter: 122,
+        unlockType: 'level',
+        unlockAt: 320,
+        icon: '📐',
+        summary: 'A fragment from the still-forming world leads Mezstorm and Eliz back to the Architect\'s old chamber — and the plan, it turns out, never actually stopped when its planner fell. Deep in a hall of unopened doors, one stops San and Joel cold, unexplainably familiar.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It is Mezstorm who notices first — a fragment pulled from the last, still-forming world, unremarkable to look at, except that the seal worked into its edge is one she has seen exactly once before, years ago, in a chamber that should have gone quiet the day its owner fell.' },
+          { speaker: 'Mezstorm', text: '"This is Architect work," she says, turning it over, something old and wary crossing her face. "I would know that seal anywhere. I watched it fall silent myself."' },
+          { speaker: 'Eliz', text: '"You said it fell silent," Eliz says, careful, already following the thread. "Not that the plan did."' },
+          { speaker: 'Narrator', text: 'Nobody has to say the rest of it out loud. If the plan outlived its planner, then whatever the Architect was actually building has been running, unattended, this entire time — and something from a genuinely new, still-forming world just handed you a piece of it.' },
+          { speaker: 'San', text: '"We go back," you say, already certain, already halfway to the decision before you finish the sentence. "To the chamber. See what is actually still running in there."' },
+          { speaker: 'Narrator', text: 'The chamber has not changed since the day The Architect fell — blueprints still lining walls that should have collapsed a dozen levels ago, that same too-deliberate silence you all noticed the first time. Except now, deeper in, past where the fight actually happened, something is still drafting.' },
+          { speaker: 'Mezstorm', text: '"Storms do not build doors," Mezstorm says again, quieter this time, an old line finding new weight. "I said that the first time we stood here. I did not know then that the storm building them would just keep going without anyone actually steering it."' },
+          { speaker: 'Joel', text: '"It is not the Architect," Joel says, watching lines draw themselves across a wall with no hand guiding them. "It cannot be. We ended that part."' },
+          { speaker: 'Eliz', text: '"It is what the Architect left running," Eliz says, and there is real sympathy in it, the same sympathy she offered the first time. "A plan that never got told it was allowed to stop, drafting doors because that is the only thing it has ever known how to do. I do not think it knows the difference between finishing and simply continuing."' },
+          { speaker: 'Narrator', text: 'Deeper in, past the drafting, an entire hall opens — doors, more than anyone can easily count, each one distinct, each one leading somewhere. Liang\'s collapsing city is here, marked plainly. The still-forming world you just left is here too, already labeled in a hand none of you recognize.' },
+          { speaker: 'Narrator', text: 'You walk the hall slowly, reading marks on doors that were drawn before you had any reason to know they existed, and the scale of what the Architect was actually attempting starts to properly land.' },
+          { speaker: 'San', text: '"It was not building one door," you say, quiet, mostly to yourself. "It was building all of them."' },
+          { speaker: 'Narrator', text: 'And then, further down the hall than any of you expected to find anything at all, one door stops you outright — no obvious reason why, nothing about its shape different from any of the others, except that something in you recognizes it before your mind can explain how.' },
+          { speaker: 'Narrator', text: 'He has gone very still beside you, looking at the same door, the same unexplainable certainty on his face.' },
+          { speaker: 'Joel', text: '"San," he says, careful, like the word itself might disturb something. "That door."' },
+          { speaker: 'Narrator', text: 'Neither of you says the rest of it. Neither of you has to. Whatever the Architect\'s plan was actually reaching for, when it finally, desperately tried to connect everything the Breaking tore apart — it was never only reaching for worlds like Liang\'s. Somewhere in an unfinished blueprint, drawn by someone who never got to see it through, is a door with a shape you would know anywhere.' },
+        ]
+      }
+,{
+        id: 'journal_123',
+        title: 'Listening, Specifically',
+        chapter: 123,
+        unlockType: 'level',
+        unlockAt: 325,
+        icon: '🌫️',
+        summary: 'Deeper into the still-forming world, Mimi realizes it is not broken, only genuinely undecided — and that it has been listening to the party specifically, working out what visitors are supposed to mean. By the time they reach the Waiting Shape, it becomes clear that whatever comes next will be shaped by how they choose to meet it, not just whether they win.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The deeper you go, the less this world agrees with itself — a stretch of ground Joel swears you crossed an hour ago, arranged now at a different angle, leading somewhere it did not lead the first time. Nobody argues about it. There is nothing to argue with. The place simply has not decided.' },
+          { speaker: 'Narrator', text: 'Mimi walks with her eyes half-closed more often than open here, reading something the rest of you cannot access.' },
+          { speaker: 'Mimi', text: '"This is doing something to my Dreamsight," she admits, finally, quiet. "Normally I see the shape of a thing before it happens. Here I see several shapes, all at once, none of them more true than the others yet. I do not think that is a flaw in the world. I think that is honestly what it is."' },
+          { speaker: 'San', text: '"Can you still read it?" you ask. "Enough to know what we are walking into?"' },
+          { speaker: 'Mimi', text: '"I can read that it is listening," Mimi says. "To us, specifically. I do not think this place has had visitors before. I think it genuinely does not know yet what visitors are supposed to mean for what it becomes."' },
+          { speaker: 'Narrator', text: 'The Half-Finished Hall makes the shape of the whole world plain — columns fading into unfinished suggestion, a ceiling only partly committed to existing, the unmistakable feeling of standing inside something still being decided rather than something already broken.' },
+          { speaker: 'Joel', text: '"It does not feel abandoned," Joel says, running a hand along a wall that has not finished deciding whether it is a wall. "World one felt abandoned. This feels more like walking in early. Like we got here before it was ready to be looked at."' },
+          { speaker: 'KW Liang', text: '"I keep waiting for it to feel dangerous the way the last one did," Liang admits. "It does not, exactly. It feels more like standing very close to something enormous that has not decided yet whether it likes you."' },
+          { speaker: 'Narrator', text: 'By the time you reach the Waiting Shape, that uncertainty has a size to it — something vast, patient, unmistakably close to finished, occupying the center of a space that seems to have organized itself entirely around waiting for whatever it is about to become.' },
+          { speaker: 'Narrator', text: 'You stand in front of it a long moment before anyone moves to fight anything at all.' },
+          { speaker: 'San', text: '"It is not attacking," you say, working through it out loud. "It is just... watching us watch it."' },
+          { speaker: 'Mimi', text: '"I do not think combat is actually the point here," Mimi says, careful. "I think combat is just the only language any of us currently share with it. It may not mean the same thing to it that it means to us."' },
+          { speaker: 'Joel', text: '"Then we should be careful what we are actually saying," Joel says, already thinking it through. "If every hit shapes what this becomes, we are not just fighting it. We are telling it something about what things from other worlds are actually like."' },
+          { speaker: 'Narrator', text: 'Nobody treats that lightly, walking the last stretch toward What It Was Becoming. Whatever waits at the end of this world, it is going to leave here changed by however you choose to meet it — and for the first time since the crossing, that feels like it might matter more than winning does.' },
+        ]
+      }
+,{
+        id: 'journal_124',
+        title: 'A Choice, Not a Victory',
+        chapter: 124,
+        unlockType: 'level',
+        unlockAt: 330,
+        icon: '✨',
+        summary: 'The fight with An Unwritten Thing turns out to be a conversation, not a battle — every hit shaping what it becomes, until the party\'s restraint gives it something to finally settle into. What\'s left isn\'t a monster or a ruin, but the first place in this entire world that got to choose what it wanted to be.',
+        scenes: [
+          { speaker: 'Narrator', text: 'An Unwritten Thing does not look like anything, exactly — the closest San can manage, afterward, is that it looked like several answers at once, none of them chosen yet, all of them equally possible until the moment they were not.' },
+          { speaker: 'Narrator', text: 'The fight goes strangely from the very first exchange. Every strike lands the way a strike is supposed to, and yet each one seems to nudge something in the shape of it, like the fight itself is a conversation none of you fully speak the language of.' },
+          { speaker: 'Joel', text: '"Careful," Joel says, low, watching it shift after Aisyah\'s opening hit. "I do not think we get to take that back once it is said."' },
+          { speaker: 'Narrator', text: 'You fight it the way you would fight anything — committed, careful, watching each other\'s openings — but something in how this particular fight unfolds is different, and by the second exchange everyone seems to feel it at once: this is not a battle being won so much as a shape being decided, one honest hit at a time.' },
+          { speaker: 'KW Liang', text: '"It is not fighting back the way it could," Liang notices, midway through, something careful in his voice. "It has the strength to hurt us properly. It is choosing something closer to matching us instead."' },
+          { speaker: 'Mimi', text: '"I do not think it wants to win," Mimi says, breathless, still reading whatever the rest of you cannot. "I think it wants to know what winning would have looked like, from something like us. That might be the actual question it has been asking this whole time."' },
+          { speaker: 'Narrator', text: 'So you answer it the only way any of you actually know how — hard when it needs to be hard, but never past what the moment calls for, no killing blow thrown just because you could throw one. Aisyah pulls a strike at the very end that could have ended it outright, and lets it land soft instead.' },
+          { speaker: 'Aisyah', text: '"That was a choice," she says, to no one in particular, watching the shape in front of her go very still. "I want it to know that was a choice."' },
+          { speaker: 'Narrator', text: 'The stillness that follows is not the stillness of something defeated. It is the stillness of something finally arriving somewhere — the shifting, uncertain shape at the center of the room settling, slowly, into something with actual edges, actual weight, the unmistakable feeling of a decision finally made.' },
+          { speaker: 'Narrator', text: 'What stands there afterward is not a monster, and was clearly never going to become one, not after everything it just watched you choose. It looks, more than anything else, like a place — solid now, real now, something that could genuinely be walked into rather than simply witnessed.' },
+          { speaker: 'San', text: '"What is it?" you ask, quiet, watching it settle fully into whatever it has decided to be.' },
+          { speaker: 'Mimi', text: '"I think," Mimi says, slow, working it out as she says it, "it is the first place in this entire world that got to choose what it wanted to be, instead of just happening to something. I think we are looking at the only part of this world that is actually, finally finished — on purpose, the way it wanted to be."' },
+          { speaker: 'Joel', text: '"Because of how we fought it," Joel says, not quite a question.' },
+          { speaker: 'Mimi', text: '"Because of how you chose to," Mimi corrects, gently. "There is a difference, and I think it is the whole reason this world found us at all."' },
+          { speaker: 'Narrator', text: 'Behind you, the seam holds, quieter now, almost satisfied. Ahead of you, an entire settled place waits — not a ruin, not a threat, the very first corner of an unstable world that finally, deliberately, got to become something. World two, you understand, standing in the middle of it, was never actually about what you would find here. It was about what you would leave behind, once you did.' },
+        ]
+      }
+,{
+        id: 'journal_125',
+        title: 'A Language Someone Else Began',
+        chapter: 125,
+        unlockType: 'level',
+        unlockAt: 335,
+        icon: '🗺️',
+        summary: 'Varel finds the scaffold beneath the drafting and recognizes it — not as something new, but as the same underlying structure he has spent his whole life quietly rediscovering alone in a tower. Realizing he was never truly the first, and never really alone, turns out to be a relief rather than a loss.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Varel finds the scaffold before anyone else does, drawn to it the way he is always drawn to anything that looks like it might finally explain something — structure laid bare beneath the drafting, the actual architecture connecting world to world, exposed the way scaffolding only ever is when someone has stopped bothering to hide it.' },
+          { speaker: 'Narrator', text: 'He goes very still in front of it, close enough that Mimi reaches out before she means to, like she is bracing to catch him.' },
+          { speaker: 'Mimi', text: '"Varel." Just his name, careful.' },
+          { speaker: 'Varel Farseer', text: '"I know this," he says, finally, and there is something genuinely unsteady in his voice for the first time since any of you have known him. "Not the shape of it. The grammar of it. This is the same underlying structure I have been quietly rediscovering my entire life, one careful piece at a time, and calling it my own work."' },
+          { speaker: 'San', text: '"You did not invent it," you say, gently, working out what he actually means.' },
+          { speaker: 'Varel Farseer', text: '"No," he says. "I thought I had. I was rather proud of having built something from nothing, alone in a tower, no one to check my work against. It turns out I was simply the first person in a very long time patient enough to notice something that was already here, waiting to be noticed again."' },
+          { speaker: 'Narrator', text: 'He runs a hand along a line of the scaffold the same way he handles the Vision Machine\'s own instruments — careful, reverent, a little afraid of it, in the specific way people get afraid of things that matter enormously.' },
+          { speaker: 'Mimi', text: '"Does that change anything?" Mimi asks, quiet. "What you have built with it. What we have built with it."' },
+          { speaker: 'Narrator', text: 'He considers that for a long moment before answering, and when he does, something in him has settled.' },
+          { speaker: 'Varel Farseer', text: '"No," he says again, steadier this time. "It changes what I thought I was doing. It does not change what I actually did. The seam still opened. The Vision Machine still works. I was simply never as alone in figuring out how as I believed myself to be — and I find, oddly, that I do not mind that nearly as much as I expected to."' },
+          { speaker: 'Joel', text: '"It means you were part of something," Joel offers, simple, the way he tends to land on the plain center of a thing. "Even before you knew it. That is not smaller than doing it alone. I do not think it is smaller at all."' },
+          { speaker: 'Narrator', text: 'Something eases in Varel\'s shoulders that has been there, unnoticed, for as long as any of you have known him — the particular tension of a man who built his entire sense of worth on being the only one who ever managed something, quietly setting it down.' },
+          { speaker: 'Varel Farseer', text: '"Whoever built this originally is long gone," he says, looking back at the scaffold, something almost fond in it now. "But they left the door open for someone else to keep learning the same language. I suppose that makes me the someone else. I find I would rather be that than the only one who ever mattered."' },
+          { speaker: 'Narrator', text: 'You leave the scaffold room with the seam-work ahead making a different kind of sense than it did an hour ago — not one man\'s careful, solitary genius, but a language someone else began, generations gone, that a lonely sage in a tower simply happened to be patient enough to keep speaking. Somewhere ahead, past the last of the drafting, the door with the familiar shape is still waiting. For now, that is exactly where it stays.' },
+        ]
+      }
+,{
+        id: 'journal_126',
+        title: 'Not Yet, On Purpose',
+        chapter: 126,
+        unlockType: 'level',
+        unlockAt: 350,
+        icon: '🔒',
+        summary: 'The Draft That Kept Drawing turns out to already be working on the familiar door, ownerless and patient in the worst way — finishing a decision that was never its place to make. The party stops it, and chooses, deliberately, to leave the door closed a little longer. Not because they can\'t open it. Because it should be them who decides when.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The line draws itself into existence a hand\'s width from the door before anyone actually notices it happening — one stroke, then another, patient and mechanical, the unmistakable sound of something being finished by a process that has no idea what it is actually finishing.' },
+          { speaker: 'Mezstorm', text: '"It is drawing on this one," Mezstorm says, already moving, already understanding what that means before anyone else fully catches up. "Right now. It does not know to wait. It has never once known to wait."' },
+          { speaker: 'San', text: 'You watch another line appear, and something in you goes cold in a way that has nothing to do with fear and everything to do with the sudden, physical understanding of what "finished" would actually mean here, arriving on a schedule none of you set.' },
+          { speaker: 'Joel', text: '"Not like this," Joel says, already between you and the door, already deciding something with his whole body before he finishes saying it out loud. "Whatever this is. Whenever it is. It does not get decided by something that does not even know it is deciding anything."' },
+          { speaker: 'Narrator', text: 'The Draft That Kept Drawing does not have a face to read intention from, does not have anything that resembles a reason. It simply keeps working, the way it has kept working since the day its architect fell and never told it to stop, and it does not slow down for the four of you standing in its way.' },
+          { speaker: 'Narrator', text: 'The fight is nothing like the last one. There is no conversation in this one, no shape being decided one honest hit at a time — just something ownerless and endless that has to be stopped outright, plainly, before it finishes a decision that was never its place to make.' },
+          { speaker: 'KW Liang', text: '"It is not cruel," Liang says, mid-fight, breathless, something almost sympathetic under the urgency of it. "I do not think it has ever been cruel. It just never learned that some doors are supposed to wait for the people they are actually about."' },
+          { speaker: 'Narrator', text: 'When it finally stills, the drafting stops with it — the half-finished line on the door fading, incomplete, exactly as unfinished as it needs to stay for now. The door itself does not open. It was never asked to. It simply, finally, gets to remain a question instead of becoming an answer nobody was ready for yet.' },
+          { speaker: 'Narrator', text: 'He stands in front of it a long moment after, not reaching for it, not needing to.' },
+          { speaker: 'Joel', text: '"We are not opening this today," he says, quiet, sure. "Not because we cannot. Because it should actually be us who decides when. Not something that never learned how to wait."' },
+          { speaker: 'San', text: '"Today, then," you agree, quiet, watching the door settle back into stillness. "Just — not yet."' },
+          { speaker: 'Mezstorm', text: '"That is allowed," Mezstorm says, gentle, the closest thing to permission any of you have actually needed since you found this hall. "It has waited this long already. It can wait a little longer, for the right reason instead of the wrong one."' },
+          { speaker: 'Narrator', text: 'You leave the hall the way you found it — quiet, unfinished, one door among hundreds now safely, deliberately still closed. Somewhere behind you, the seam holds. Ahead of you, an entire unfinished blueprint keeps waiting, patient in the one way that actually matters: on your own time, for once, instead of someone else\'s.' },
+        ]
+      }
+,{
+        id: 'journal_127',
+        title: 'Not Yet, In Her Own Hand',
+        chapter: 127,
+        unlockType: 'level',
+        unlockAt: 355,
+        icon: '✍️',
+        summary: 'San notices the pattern — every reply through the window has been Mama\'s handwriting, never the daughter\'s — and it pulls her mind, unexpectedly, toward wanting to see her own father instead.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The pattern is the kind of thing you only notice once you have seen it enough times to actually count. Every reply that has ever come back through the window has been in the same hand — careful, a little cramped at the edges, unmistakably Mama\'s. Never once has it been hers.' },
+          { speaker: 'San', text: '"Joel," you say, quiet, the window still holding its last light between you both. "Has it ever occurred to you that she has never actually written back? Not once. It is always Mama."' },
+          { speaker: 'Narrator', text: 'Joel goes still in the particular way he goes still when something obvious finally gets said out loud.' },
+          { speaker: 'Joel', text: '"She is seven," he says, slow, like he is working it out fresh even though some part of him must have always known. "Maybe eight, now, depending how the years actually line up out here versus in there. I have never sat and done that math properly. It felt like something I was not allowed to want to know."' },
+          { speaker: 'San', text: '"She might not even have the letters down yet. Not really. Not enough to trust with something this size."' },
+          { speaker: 'Joel', text: '"No," he agrees, something working through his jaw before he lets it settle. "Probably not. Mama would not force it either. She was never the type to make a child perform readiness before it was actually there."' },
+          { speaker: 'Narrator', text: 'Neither of you says anything for a while. The window has already closed, the frame gone back to being just a frame, ordinary and waiting. You find your mind has wandered somewhere you did not send it — your own sons, at seven, at eight, the exact shape of a hand still learning to hold a pencil properly. You have never once seen either of them write anything at all. You never will, probably. That was always the deal you made with yourself, the one you have mostly stopped questioning.' },
+          { speaker: 'Narrator', text: 'Mostly.' },
+          { speaker: 'San', text: '"I want to try something different tonight," you say, surprising yourself with how steady it comes out. "Not the usual window. I want to see my father. Just him. On purpose, this time, instead of whatever the window happens to give me."' },
+          { speaker: 'Narrator', text: 'Joel looks at you for a long moment — not surprised, exactly. More like he has been waiting for you to ask for something specific for longer than either of you has said out loud.' },
+          { speaker: 'Joel', text: '"Then let\'s see him," he says, and reaches for your hand the way he always does before the frame opens, like the asking itself is half the ritual.' },
+        ]
+      }
+,{
+        id: 'journal_128',
+        title: 'Another Vision of Her Father',
+        chapter: 128,
+        unlockType: 'level',
+        unlockAt: 360,
+        icon: '🕯️',
+        summary: 'San finally tells Joel the fuller shape of her father\'s two quiet acts of standing up — for her mother, and for her — and the broken-family theory he built to explain the ex who never deserved defending.',
+        scenes: [
+          { speaker: 'Narrator', text: 'The window holds on him longer than it usually holds on anyone — San\'s father, sitting where he always sits, a cup of something going cold beside him, older in the shoulders than the last vision let her notice.' },
+          { speaker: 'San', text: '"He was the one who actually stood up, in that family," you say, not looking away from the glass. "Twice, that I know of. Both times, it cost him something."' },
+          { speaker: 'Joel', text: '"Tell me," he says, simply, and does not fill the space with anything else.' },
+          { speaker: 'San', text: '"My grandmother — my father\'s mother — was married off young, to a man she never chose, because a fortune teller once told her family it would change their luck. Whatever bitterness that left in her, she spent decades finding new places to put it. My mother caught most of it, for years. And the one time it actually came to a head, in front of everyone, it was my father who stood between them. His own mother, against his own wife. He told her, plainly, that whatever she felt entitled to say, she did not get to say it to my mother."' },
+          { speaker: 'Joel', text: '"That is not a small thing, standing against your own mother like that."' },
+          { speaker: 'San', text: '"It is not. I do not think they have ever fully repaired it, honestly. But he did it anyway." You let out a breath that is almost a laugh. "The second time was for me. He actually met my ex, once — in person, not secondhand — and told him off outright. To his face. For using his own daughter the way he had been using me."' },
+          { speaker: 'Joel', text: '"Good," Joel says, no hesitation in it at all.' },
+          { speaker: 'San', text: '"He supported the divorce completely. Never once made me doubt it. Better off single than a man like him, he said, more than once. And he had a theory about why my ex was like that — decided it came from a terribly broken family. Parents split when he was young, apparently, and my father always said that kind of thing leaves a mark on a person that never quite closes."' },
+          { speaker: 'Narrator', text: 'You look at Joel, and something in your chest does the thing it always does now, right before you say the true thing out loud.' },
+          { speaker: 'San', text: '"My father does not know your parents separated too. During your own high school years, no less. He has never met you. He built a whole theory out of broken homes producing broken men, and he has no idea it does not actually hold up. Not against you."' },
+          { speaker: 'Narrator', text: 'Joel is quiet for a moment, turning that over.' },
+          { speaker: 'Joel', text: '"Maybe it is not the breaking that decides it," he says, finally. "Maybe it is just what a person chooses to do with what is left over afterward."' },
+        ]
+      }
+,{
+        id: 'journal_129',
+        title: 'What the Theory Missed',
+        chapter: 129,
+        unlockType: 'level',
+        unlockAt: 365,
+        icon: '🧩',
+        summary: 'San asks the question she has never quite asked before, and Joel finally says out loud what his own parents\' separation actually did to him — not breakage, but a rearranged idea of what staying was supposed to look like.',
+        scenes: [
+          { speaker: 'Narrator', text: 'You do not open the window again for this part. Some things do not need the glass — they just need to actually be said.' },
+          { speaker: 'San', text: '"Tell me about after," you say. "Your parents. I know it happened. I do not think I ever asked what it actually did to you."' },
+          { speaker: 'Narrator', text: 'Joel is quiet long enough that you almost take the question back.' },
+          { speaker: 'Joel', text: '"It did not break me the way you might expect," he says eventually. "It just — rearranged what I thought steady was supposed to look like. I stopped expecting people to stay simply because staying was the easier choice. I learned early that people leave for reasons that have nothing to do with whether they loved you enough."' },
+          { speaker: 'San', text: '"Is that why you never once, in two years, made me feel like I owed you certainty?"' },
+          { speaker: 'Joel', text: '"Maybe," he says. "Or maybe I just decided a long time ago that the leaving was never going to be the thing that proved whether the love was real. Only what happened while someone was actually still there."' },
+          { speaker: 'San', text: '"My father would like that answer," you say, quiet. "He would not know why. But he would like it."' },
+        ]
+      }
+,{
+        id: 'journal_130',
+        title: 'The Roads That Doubled Back',
+        chapter: 130,
+        unlockType: 'level',
+        unlockAt: 370,
+        icon: '🛤️',
+        summary: 'The fuller shape of the Village Ex, in order — the breakup, the party, the pregnancy used as a trap that did not hold, and the pandemic-era return that ended, finally, with a blessing instead of a reunion.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Some of this Joel has told you in pieces already, across a dozen small conversations that never quite added up to the whole shape until tonight, sitting together with nowhere else to be.' },
+          { speaker: 'Joel', text: '"We had already ended things," Joel says, plain, like he has decided to just start at the actual beginning this time instead of wherever the story usually gets picked up. "Clean enough, at the time. Then there was a party. She knew exactly how much I had had to drink before she ever came near me that night. I did not know that until much later. I do not think I want to know how much later, honestly — some things are worse the more precisely you can date them."' },
+          { speaker: 'San', text: '"That is not a small thing to carry either."' },
+          { speaker: 'Joel', text: '"No. And then she was pregnant, and I understood, fast, exactly what she was hoping that would do. Bring me back. Trap me into staying, if the word does not sound too harsh." He shakes his head. "It did not work. I had already landed the SK* job by then. I left anyway. Not because of the baby — despite it, if I am honest, which I still am not entirely proud of."' },
+          { speaker: 'Narrator', text: 'The window stays dark through this part. Neither of you needs the glass to hold what is already sitting plainly enough between you.' },
+          { speaker: 'Joel', text: '"She came back once more, years later. During the pandemic — after the Brunei ex, after all of that had already fallen apart on its own. Crying. Asking me to take her back properly, this time, like enough time might have made the same offer land differently."' },
+          { speaker: 'San', text: '"What did you say?"' },
+          { speaker: 'Joel', text: '"I told her to go look for someone else. That I was not the one for her — not out of cruelty, I hope. Just honesty, finally, instead of the blessing dressed up as something softer that I think she actually wanted from me instead." He is quiet a moment. "The borders opened not long after that. I went back to Brunei, back to SK*, back to the only shape of a life I still had any real claim to."' },
+          { speaker: 'San', text: '"And her?"' },
+          { speaker: 'Joel', text: '"Weeks. It only took her weeks." Something wry and tired moves through his voice, not quite bitterness, closer to exhaustion long since worn smooth. "A new man. Not married, not that it seems to matter to either of them. A third child on the way now. My daughter is her second. He loves her, from what I have heard. Genuinely. I find I do not resent that as much as I once thought I would."' },
+          { speaker: 'San', text: '"Do you resent any of it? Actually?"' },
+          { speaker: 'Joel', text: '"The party, still, some nights," he admits. "Not her moving on. Moving on was never the part that was ever really about me."' },
+        ]
+      }
+,{
+        id: 'journal_131',
+        title: 'What She Never Told Him',
+        chapter: 131,
+        unlockType: 'level',
+        unlockAt: 375,
+        icon: '📵',
+        summary: 'The messages during the pregnancy, the answer Joel refused to make for her, the block that followed — and the uncertain, secondhand way he ever found out his daughter had actually been born.',
+        scenes: [
+          { speaker: 'San', text: '"You blocked her. At some point. I remember you mentioning it once, in passing, and then never again."' },
+          { speaker: 'Joel', text: '"During the pregnancy," Joel says, quiet. "She kept messaging me. Asking, over and over, whether she should keep it. Whether she should abort. As if I had any right to hand her that answer, from that far away, having already made my own choice to leave."' },
+          { speaker: 'San', text: '"What did you tell her?"' },
+          { speaker: 'Joel', text: '"That she was an adult. That she already knew what was right and wrong, whatever she decided, and it was never going to be mine to decide for her." He exhales, slow. "I blocked her shortly after that. I could not keep being asked a question I had no honest answer to."' },
+          { speaker: 'San', text: '"So how did you find out? That she actually had her — that your daughter was born?"' },
+          { speaker: 'Narrator', text: 'Joel is quiet long enough that you understand, before he even says it, that this part does not resolve into a clean answer.' },
+          { speaker: 'Joel', text: '"I genuinely do not know, cleanly," he admits. "Maybe I unblocked her, eventually, and do not remember deciding to. Maybe she found another way through — a different number, a mutual friend. Maybe it was just the village doing what villages do, word finding its way to Mama before it ever found its way to me directly. I have tried to reconstruct it since. It never holds together the same way twice."' },
+          { speaker: 'San', text: '"Does it bother you? Not knowing exactly how you found out?"' },
+          { speaker: 'Joel', text: '"Less than you would think," Joel says. "I know that I did find out. I know I have never once regretted knowing. The exact door it came through matters less to me than the fact that, somehow, it did."' },
+        ]
+      }
+,{
+        id: 'journal_132',
+        title: 'What Mama Saw That He Didn\'t',
+        chapter: 132,
+        unlockType: 'level',
+        unlockAt: 380,
+        icon: '👀',
+        summary: 'Alone with Mama at the hotel, without Joel, San hears things he never told her himself — a birthday party where the Village Ex could not be bothered to feed him, and a Brunei Ex whose life may never have been as settled as Joel believed.',
+        scenes: [
+          { speaker: 'Narrator', text: 'It comes back to you in the vision the way it actually happened — not through Joel at all, but through Mama, the two of you alone in the hotel room while he worked overtime, the kind of conversation that only ever happens once the men in the room have left it.' },
+          { speaker: 'Mama', text: '"You know," Mama says, turning a bracelet over in her hands, not quite looking at you, the way people talk when they are deciding how much to actually say, "I never did like that first one. The one before you."' },
+          { speaker: 'San', text: '"Joel has never told me much about her. Not the small things."' },
+          { speaker: 'Mama', text: '"There was a birthday party. Her older daughter\'s — from before Joel, that one. He went, because he thought that is what you do, when you are trying to be decent to a woman\'s children even after everything." Mama shakes her head, something old and unimpressed moving through it. "She was the host. Her own daughter\'s party. And she could not be bothered to bring him so much as a plate. He waited hours before she finally did, and only then because someone else must have said something to her about it."' },
+          { speaker: 'San', text: '"Hours?"' },
+          { speaker: 'Mama', text: '"Hours. I do not understand what girlfriend that is." She says it plainly, the way she says most things, no drama in it at all, which somehow makes it land harder than if she had raised her voice. "A woman who cannot even feed the man standing in her own home."' },
+          { speaker: 'Narrator', text: 'You file it away, quiet, another small piece of a picture Joel has only ever shown you in careful fragments.' },
+          { speaker: 'San', text: '"What about the other one? The one in Brunei?"' },
+          { speaker: 'Mama', text: '"His father liked her," Mama says, and there is something careful in how she says it, like she is choosing to be fair even where she is not sure fairness is actually warranted. "Good with words, that one. Joel described her well, and his father believed what he was told, because he had never once met her himself. Everything he knew came secondhand, through his own son\'s eyes." A pause. "That is not nothing. But it is not the same as actually knowing someone."' },
+          { speaker: 'San', text: '"Was there something he did not know?"' },
+          { speaker: 'Mama', text: '"I heard, after, that she may have already had someone. A husband, of a kind — not on paper, not official, but real enough that there was a son from it too, back in the Philippines. Whether that was still going on while she was planning to marry my son, I do not know for certain. I only know the pandemic came before anyone ever had to find out for sure." Mama sets the bracelet down, finally looking at you directly. "Some people carry more than they ever let you see. I do not say this to make you distrust everyone who comes after. I say it because you should know your husband was not always careless with his heart. Sometimes he simply was not given the whole truth to be careful with."' },
+        ]
+      }
+,{
+        id: 'journal_133',
+        title: 'Why He Is Different',
+        chapter: 133,
+        unlockType: 'level',
+        unlockAt: 385,
+        icon: '🔍',
+        summary: 'San names the actual difference between Joel and everyone who came before him — not that he never upsets her, but that he never once makes her go looking alone for the reason why.',
+        scenes: [
+          { speaker: 'San', text: '"I get you upset sometimes. Even now. Even before Aethon."' },
+          { speaker: 'Joel', text: '"You do. Everyone does, eventually, with someone they actually love."' },
+          { speaker: 'San', text: '"But we never once went days without talking. Not once, in two years. My ex could go a whole night over something as small as a photograph."' },
+          { speaker: 'Joel', text: '"Tell me about the photograph."' },
+          { speaker: 'San', text: '"I saw my old colleague\'s car, parked somewhere ordinary, and I wanted to take a picture of it as a joke — the kind of small, stupid thing you send a friend to make them laugh. My ex was furious. Cold, for an entire night, over nothing I could actually name. I have wondered since if it was jealousy. I genuinely do not know. I have never been especially good at reading why someone is angry with me. I think that might be part of why I am the way I am — I suspect, some days, that I am on the spectrum somewhere, and it makes the why behind other people\'s anger genuinely difficult for me to reach."' },
+          { speaker: 'Joel', text: '"And with me?"' },
+          { speaker: 'San', text: '"With you, I do not have to reach for it. You just tell me. Plainly, the same day, and then it is actually over." You look at him. "That is the whole difference, I think. Not that you never upset me. That you never once made me go looking for the reason on my own."' },
+        ]
+      }
+,{
+        id: 'journal_134',
+        title: 'Better Than Her',
+        chapter: 134,
+        unlockType: 'level',
+        unlockAt: 390,
+        icon: '⚖️',
+        summary: 'San finally says out loud the comparison her ex used against her for years — and the quiet, obvious hypocrisy underneath it she was never allowed to point out at the time.',
+        scenes: [
+          { speaker: 'San', text: '"He compared me to her, once. Openly."' },
+          { speaker: 'Joel', text: '"To who?"' },
+          { speaker: 'San', text: '"His ex. The one he still looks up, to this day — Facebook, mutual friends, whatever he can still find. He said, more than once, why can\'t you be more like her. She has children with her husband." You almost laugh, the way you always do at the parts that should not be funny and are anyway. "She cheated on him. That was the whole reason they ended. And somehow, in his head, she was still the standard I kept failing to meet."' },
+          { speaker: 'Joel', text: '"That is not a small thing to carry either."' },
+          { speaker: 'San', text: '"It was never really about her. I understood that eventually. It was about having someone to hold up that made me feel like I was always coming up short, no matter what I actually did."' },
+        ]
+      }
+,{
+        id: 'journal_135',
+        title: 'What He Called It',
+        chapter: 135,
+        unlockType: 'level',
+        unlockAt: 395,
+        icon: '🕊️',
+        summary: 'The hardest thing San has ever told Joel — not what actually happened to her during her lowest years, but what her ex chose to call it instead, and how long it took her to find the words to correct him.',
+        scenes: [
+          { speaker: 'Narrator', text: 'This one San tells slower than the others. Joel does not fill any of the silences she leaves.' },
+          { speaker: 'San', text: '"He used to bring up things from before him. Flings, he called them. One-night stands. Said it like it was evidence of something broken in me, something he had generously overlooked when he married me."' },
+          { speaker: 'Joel', text: '"And what was it actually?"' },
+          { speaker: 'San', text: '"I was somewhere very low, when most of that happened. Somewhere I did not know how to get out of on my own. There were men who understood exactly how low I was, and used it, and I was too afraid of what fighting back might cost me to ever actually fight back. It was never freedom. It was never anything close to what he made it sound like." You look at your own hands, steady, for once, while you say it. "He turned the worst thing that ever happened to me into a character flaw. I let him, for longer than I am proud of, because I did not yet have the words to correct him."' },
+          { speaker: 'Narrator', text: 'Joel does not say anything for a moment. Then he reaches for your hand, careful, like he is asking permission with the gesture itself.' },
+          { speaker: 'Joel', text: '"You have the words now."' },
+          { speaker: 'San', text: '"I do," you say. "I just needed somewhere safe enough to finally use them."' },
+        ]
+      }
+,{
+        id: 'journal_136',
+        title: 'What Mez Gave Up',
+        chapter: 136,
+        unlockType: 'level',
+        unlockAt: 400,
+        icon: '🌩️',
+        summary: 'Mez finally tells San why her support was never simple — two older sons given up so they could be happy, a wound that broke her for years, and Eliz, the second chance she never quite let herself trust.',
+        scenes: [
+          { speaker: 'Narrator', text: 'Mezstorm finds you both by the fire, later, uninvited but not unwelcome — the kind of conversation that only happens once someone has clearly been building up to it for a while.' },
+          { speaker: 'Mezstorm', text: '"I owe you an explanation," Mez says, not quite meeting your eyes. "For how I was, when you first left him. I was not kind about it. I know that."' },
+          { speaker: 'San', text: '"You do not owe me anything."' },
+          { speaker: 'Mezstorm', text: '"I do, actually." A long pause, the fire doing most of the work of filling it. "I had two sons, before Eliz. From my first marriage. When it ended, I gave them up. Both of them. To their father."' },
+          { speaker: 'San', text: '"Why?"' },
+          { speaker: 'Mezstorm', text: '"Because he could give them a whole family, and I could not, not the way things stood then. I told myself — as long as they are happy, it does not matter if they end up loving another woman as their mother, or growing up in a different faith than mine. I meant it, when I said it. I am not sure I have ever stopped meaning it, even now." Something in Mez\'s voice goes very quiet. "It broke me anyway. For a very long time. Meaning something does not make it cost less."' },
+          { speaker: 'Narrator', text: 'You think of your own sons, the shape of the same decision made from a different angle, and understand, finally, exactly why Mez\'s silence back then was never really about you at all.' },
+          { speaker: 'San', text: '"Is that why it took you so long to be glad for me? When I left?"' },
+          { speaker: 'Mezstorm', text: '"You were doing the thing I already knew the cost of," Mez says. "I did not want you to pay it too. I was not being cruel. I was being a coward, watching someone I love walk toward the exact fire that already took something from me."' },
+          { speaker: 'San', text: '"And Eliz?"' },
+          { speaker: 'Mezstorm', text: '"My second chance. With my second husband. I did not let myself believe I deserved one, for a long time. I still catch myself, some mornings, waiting for her to be taken too. I do not think that fear ever fully leaves, once you have already lived the other version once."' },
+          { speaker: 'San', text: '"You are allowed to just be glad for her. Without waiting for it to be taken back."' },
+          { speaker: 'Mezstorm', text: '"I am working on that," Mez says, something almost like a smile finally breaking through. "Slowly. It is the one storm I have never quite learned to command."' },
+        ]
+      }
+,{
+        id: 'journal_137',
+        title: 'How Aisyah Carries It',
+        chapter: 137,
+        unlockType: 'level',
+        unlockAt: 405,
+        icon: '🌤️',
+        summary: 'Aisyah never actually says San was right to leave — she just stopped talking about the past entirely, and San finally understands that refusing to dwell was always her sister\'s own particular way of moving both of them forward.',
+        scenes: [
+          { speaker: 'San', text: '"You never once said I was right. Back then. Not directly."' },
+          { speaker: 'Aisyah', text: '"I know," Aisyah says, not defensive about it, just plain. "I am not really built for that kind of saying. I never have been."' },
+          { speaker: 'San', text: '"Then what were you doing? All those months you barely mentioned it?"' },
+          { speaker: 'Aisyah', text: '"Making sure you had somewhere to actually go, instead of somewhere to keep replaying what you left." She shrugs, easy, the way she makes almost everything look easy even when you know it costs her something. "Mez needed to grieve it out loud. That is just how she processes things. I have never been like that. I would rather find you a reason to look forward than sit with you in a reason to look back. It is not that the past does not matter. It is that I do not think dwelling in it ever actually fixed anything, for me."' },
+          { speaker: 'San', text: '"Is that easier? Being like that?"' },
+          { speaker: 'Aisyah', text: '"Some days. Other days it just means I am carrying things quietly instead of loudly. Quiet is not the same as absent." She looks at you, something warm and certain underneath the usual sharpness. "I did not need to tell you that you were right. I just needed you to have a family business, and trade routes, and a reason to get up the next morning that had nothing to do with him at all. That was always going to say it better than the words would have."' },
+          { speaker: 'San', text: '"It did," you tell her, and mean it completely. "It said it better than anything Mez ever managed to put into words either."' },
+          { speaker: 'Aisyah', text: '"Do not tell her that," Aisyah says, something almost fond in the warning. "She will insist it is a competition, and then never admit she lost."' },
+        ]
+      }
     ]
   },
 
@@ -2693,6 +4734,7 @@ storyJournal: {
       { id: 'ad_camp', name: 'Abyssal Refuge', type: 'camp', zone: 'Abyssal Depths', zoneLv: 8, desc: 'A pocket of reality that the void has not claimed... yet.', unlocked: false, icon: '⛺', cost: 0 },
       { id: 'ad_tavern', name: 'The Last Light', type: 'tavern', zone: 'Abyssal Depths', zoneLv: 8, desc: 'The final tavern before oblivion. Prices are steep.', unlocked: false, icon: '🍺', cost: 25 },
       { id: 'temple', name: 'Temple of Resurrection', type: 'temple', zone: 'Sanctuary', zoneLv: 1, desc: 'An ancient temple that restores fallen companions to life.', unlocked: true, icon: '⛪', cost: 50 },
+      { id: 'mended_sanctum', name: 'The Mended Sanctum', type: 'temple', zone: 'The Verdant Choir', zoneLv: 65, desc: 'Small, quiet, and honest about what it is \u2014 the same temple, a second doorway, so much closer when the road out here gets long.', unlocked: false, icon: '\uD83D\uDD6F\uFE0F', cost: 50 },
       { id: 'apt_camp', name: 'Planar Anchor Camp', type: 'camp', zone: 'Arcane Planar Tower', zoneLv: 11, desc: 'A pocket of stable reality anchored by ancient runes. The walls still shimmer.', unlocked: false, icon: '⛺', cost: 0 },
       { id: 'apt_tavern', name: 'The Shifting Spire', type: 'tavern', zone: 'Arcane Planar Tower', zoneLv: 11, desc: 'A tavern that exists in multiple dimensions at once. The bartender may be a future version of yourself.', unlocked: false, icon: '🍺', cost: 30 },
           // === EXPANSION: LV 21+ REST SITES ===
@@ -2753,6 +4795,10 @@ storyJournal: {
     { id: 'vale_camp', name: 'The Unbroken Clearing', type: 'camp', zone: 'The Unbroken Vale', zoneLv: 56, desc: 'A patch of ground soft enough to actually sleep on, for once, instead of just surviving the night on top of.', unlocked: false, icon: '🌿', cost: 0 },
     { id: 'sunreach_camp', name: "The Community Table", type: 'camp', zone: 'Sunreach Fields', zoneLv: 75, desc: 'Someone here always seems to have room for a few more at the table, no questions asked.', unlocked: false, icon: '🌾', cost: 0 },
     { id: 'rootbound_camp', name: 'The Rootbound Hollow', type: 'camp', zone: 'The Rootbound Sanctuary', zoneLv: 95, desc: 'A hollow between roots thick enough to feel less like shelter and more like being held.', unlocked: false, icon: '🌳', cost: 0 },
+    { id: 'grove_camp', name: 'The Mended Grove', type: 'camp', zone: 'The Unbroken Vale', zoneLv: 56, desc: 'Ground that healed itself before you ever arrived to claim it. It does not need defending so much as tending — which, it turns out, is a different kind of work entirely.', unlocked: false, icon: '🌱', cost: 0 },
+    { id: 'grove_tavern', name: 'The Root Cellar', type: 'tavern', zone: 'The Unbroken Vale', zoneLv: 56, desc: 'Carved into a root wide enough to walk through. Whatever is on tap tonight grew here, in the dark, without anyone having to ask it to.', unlocked: false, icon: '🍺', cost: 25 },
+    { id: 'edge_camp', name: 'The Waking Edge', type: 'camp', zone: 'The Rootbound Sanctuary', zoneLv: 95, desc: 'The last solid ground before the map simply stops. Not dangerous, exactly. Just genuinely unfinished.', unlocked: false, icon: '🌄', cost: 0 },
+    { id: 'edge_tavern', name: "The Threshold House", type: 'tavern', zone: 'The Rootbound Sanctuary', zoneLv: 95, desc: 'Built from whatever the roots were willing to spare. Everyone who drinks here is, in some sense, waiting to see what comes next.', unlocked: false, icon: '🍺', cost: 35 },
     // Phase 3 mana springs
     { id: 'ms_spring3', name: 'Infernal Mana Spring', type: 'mana_spring', zone: 'Infernal Crucible', zoneLv: 23, desc: 'A spring of liquid flame that burns cold. Each sip sears the mind with forbidden knowledge.', unlocked: false, icon: '💧', cost: 20 },
     { id: 'ms_spring4', name: 'Abyssal Mana Spring', type: 'mana_spring', zone: 'Tidal Abyss', zoneLv: 25, desc: 'Dark water that glows with inner light. Drinking it feels like drowning in stars.', unlocked: false, icon: '💧', cost: 25 },
@@ -2773,6 +4819,8 @@ storyJournal: {
     totalXp: 0,
     totalGold: 0,
     sessionStart: null,
+    startLevel: 1,
+    legendaryItemsGained: [],
     autoNext: true,
     maxZoneLevel: 1,
     difficulty: 'normal', // normal, hard, nightmare
@@ -2805,16 +4853,26 @@ storyJournal: {
   templeHunt: { active: false, currentBossName: null },
   guildRepBalance: 0, // spendable reputation currency for the Guild Shop
   dragonHunt: { active: false, currentId: null, cleared: {} }, // legendary optional superbosses, repeatable; cleared keyed by dragon id
-  bossRush: { active: false, streak: 0, bestStreak: 0 }, // chained boss fights, escalating reward + difficulty, no rest between
+  bossRush: { active: false, streak: 0, bestStreak: 0, batchRemaining: 0 }, // chained boss fights, escalating reward + difficulty, no rest between
+  frayingFrontier: { active: false, streak: 0, bestStreak: 0, batchRemaining: 0 }, // endless mode, level 100+, bosses scale off current player level indefinitely
+  guildWar: { active: false, streak: 0, bestStreak: 0, fielded: [], batchRemaining: 0 }, // squad gauntlet vs rival guilds, unlocks after Iris & Ash (journal_101) + Lv 105
+  guildRoster: { recruited: [] }, // ids from GUILD_MEMBERS who've actually joined the Guild War roster
+  visionMachine: { lastUseDay: -1, joelLetterCount: 0 }, // Varel Farseer's window — once per real day, 1M gold
+  kindlingCommissions: { linesToday: 0, checksToday: 0, refreshDay: 0 }, // bounded daily ritual — 3 lines, 2 checks, resets once per game day
+  guildBoss: { tierIndex: 0, currentHp: 0, lastAttemptDay: 0 }, // persistent HP across days — the whole recruited roster chips away at it together
+  guildBossSession: { active: false, endTime: 0, tapCount: 0, sessionDamage: 0 }, // the current day's 90-second battle, not persisted — resets fresh each attempt
+  disciples: [], // active mentorship threads — each tracks its own trajectory independently, delayed outcomes checked once per day
+  activeDilemma: null, // { discipleId, dilemmaId } — which prompt is currently on screen awaiting a response
+  logScreenFilter: 'all', // which category tab is active on the dedicated Combat Log screen
   strongholdCosmetics: {}, // purely cosmetic gold sink, keyed by cosmetic id
   bonding: { seenScenes: [] }, // one-time bonding scenes already triggered
   grindAfkMode: false, // minimal-render grind view for battery savings while multitasking
-  afkAdventure: { active: false, zoneIndices: [], startTime: 0, totalXp: 0, totalGold: 0, totalKills: 0, bossKills: {}, activeMs: 0, lastResumeTime: 0, backgroundedAt: null, eliteMode: false, visible: false },
+  afkAdventure: { active: false, zoneIndices: [], startTime: 0, startLevel: 1, legendaryItemsGained: [], totalXp: 0, totalGold: 0, totalKills: 0, bossKills: {}, activeMs: 0, lastResumeTime: 0, backgroundedAt: null, eliteMode: false, visible: false },
   afkAdventurePicker: [], // temporary selection state while choosing zones, before starting
   afkAdventureEliteToggle: false, // temporary picker-screen toggle, before starting
   notificationsEnabled: false,
   companionPrestige: {}, // { CompanionName: 'pathKey' } once chosen, absent until then
-  mercenary: { active: false, current: null, completed: 0 }, // current offered contract, if any; completed drives tier scaling
+  mercenary: { active: false, current: null, completed: 0, batchRemaining: 0 }, // current offered contract, if any; completed drives tier scaling; batchRemaining lets several contracts auto-chain without re-tapping "Take the Job" each time
   prestige: { count: 0, xpBonusPct: 0, goldBonusPct: 0 }, // permanent bonuses banked from past resets
   strongholdSiege: {}, // per-stronghold: { active: bool, day: gameDay } — under attack or not
   siegeDefense: { active: false, strongholdId: null, wave: 0, maxWaves: 3 },
@@ -2928,6 +4986,12 @@ storyJournal: {
   currentDialogue: null,
   ambushWarning: null,
   bestiary: {},
+  sessionRecap: { startLevel: 0, bosses: [], legendaryDrops: [], chapters: [], hiddenAt: 0 },
+  showingSessionRecap: false,
+  enemyIconStyle: 'svg', // 'svg' or 'emoji' — player-toggleable in combat
+  bossRevealShownFor: null, // tracks which G.currentBoss object was last revealed, by reference
+  bestiaryExpanded: null,
+  bestiarySearch: '',
   story: { active: true, chapter: 0, scene: 0, shown: false },
   storyChapters: [
     { title: 'The Rain and the Kitten', unlockLevel: 1, scenes: [
@@ -3240,11 +5304,16 @@ const LOOT_TABLES = {
 
 function rollRarity(zoneLevel, luckBonus = 0) {
   const roll = Math.random() + luckBonus;
-  const tier = Math.min(zoneLevel, 10);
-  if (roll > 0.995 - (tier * 0.005)) return 'legendary';
-  if (roll > 0.95 - (tier * 0.01))  return 'epic';
-  if (roll > 0.80 - (tier * 0.015)) return 'rare';
-  if (roll > 0.50 - (tier * 0.02))  return 'uncommon';
+  // Was: tier = min(zoneLevel, 10) — froze drop odds at zone-10 levels forever, so
+  // zone 42 and zone 95 rolled identically to zone 10. Rescaled with sqrt so zone 1-10
+  // matches the original curve exactly (progress=1 at zone 10), then keeps easing
+  // upward smoothly instead of flatlining — by zone 95, legendary climbs to ~16%
+  // (from 5.5%) and commons become rare instead of a third of all drops.
+  const progress = Math.sqrt(Math.min(zoneLevel, 95) / 10);
+  if (roll > 0.995 - (progress * 0.05)) return 'legendary';
+  if (roll > 0.95 - (progress * 0.10))  return 'epic';
+  if (roll > 0.80 - (progress * 0.15)) return 'rare';
+  if (roll > 0.50 - (progress * 0.20))  return 'uncommon';
   return 'common';
 }
 
@@ -3265,10 +5334,23 @@ function generateItem(slot, zoneLevel, forceRarity) {
     n: base.n,
     slot: slot,
     r: rarity,
-    ilvl: base.ilvl,
     d: base.d || 'A piece of adventuring gear.',
     ...base
   };
+  item.ilvl = Math.max(base.ilvl, zoneLevel); // must be set after the spread, or base.ilvl silently overwrites it
+
+  // Scale stats to the actual zone level, not just the base template's original ilvl.
+  // The loot table's authored items only go up to ilvl 22 — without this, every drop
+  // from a level 23+ zone would silently reuse those same frozen-low stats forever,
+  // which is exactly what was making high-level drops feel weak.
+  const levelScale = Math.max(1, zoneLevel / Math.max(1, base.ilvl));
+  if (levelScale > 1) {
+    for (let key of FORGE_STAT_KEYS) {
+      if (item[key] !== undefined && key !== 'critChance' && key !== 'lifeSteal' && key !== 'mpRegen' && key !== 'hpRegen' && key !== 'goldFind') {
+        item[key] = Math.max(1, Math.round(item[key] * levelScale));
+      }
+    }
+  }
 
   // Apply rarity multiplier to core stats
   if (item.atk) item.atk = Math.floor(item.atk * rarityData.mult);
@@ -3297,10 +5379,10 @@ function generateItem(slot, zoneLevel, forceRarity) {
   }
 
   // Calculate sell value
-  item.value = Math.floor((base.ilvl * 5 + (rarityData.mult * 10)) * (1 + Math.random() * 0.5));
+  item.value = Math.floor((item.ilvl * 5 + (rarityData.mult * 10)) * (1 + Math.random() * 0.5));
 
   // Add sockets for Lv 20+ gear (Phase 2)
-  const socketCount = getSocketCount(base.ilvl);
+  const socketCount = getSocketCount(item.ilvl);
   if (socketCount > 0) {
     item.sockets = new Array(socketCount).fill(null);
     item.d += ' [' + socketCount + ' socket' + (socketCount > 1 ? 's' : '') + ']';
@@ -3334,7 +5416,7 @@ function getTotalAC() {
     baseAC = 10 + Math.min(dexMod, 2) + (G.p.eq.armor.def || 0);
   }
   baseAC += eqStats.def;
-  const shieldBonus = G.p.buffs.reduce((s, b) => s + (b.def || 0), 0) + getFocusedDefBonus();
+  const shieldBonus = G.p.buffs.reduce((s, b) => s + (b.def || 0), 0) + getFocusedDefBonus() + getStatBoosterBonus('def');
   return baseAC + shieldBonus;
 }
 
@@ -3362,7 +5444,12 @@ function getFocusedDefBonus() {
 }
 
 function getPlayerAtkBuff() {
-  return G.p.buffs.reduce((s, b) => s + (b.atk || 0), 0) + getFocusedAtkBonus();
+  return G.p.buffs.reduce((s, b) => s + (b.atk || 0), 0) + getFocusedAtkBonus() + getStatBoosterBonus('atk');
+}
+
+function getStatBoosterBonus(stat) {
+  if (G.statBooster && G.statBooster.stat === stat && G.statBooster.expiresAt > Date.now()) return G.statBooster.val;
+  return 0;
 }
 
 // Migrates a single inventory item from the old t:'wep'/'arm'/'acc'/'pgear' schema to the
@@ -3566,7 +5653,7 @@ function equipPartyGearSlot(memberName, slot, invIndex) {
   if (!member) return;
   const item = G.p.inv[invIndex];
   if (!item || item.slot !== slot) return;
-  if (item.forCompanion !== memberName) {
+  if (item.forCompanion !== memberName && item.forCompanion !== 'any') {
     lg('❌ ' + item.n + ' is not fitted for ' + memberName + '!');
     return;
   }
@@ -3605,6 +5692,9 @@ function addLootFromCombat(zoneName) {
   if (item) {
     addI(item);
     lg('🎁 Loot: ' + item.n + ' (' + ITEM_RARITY[item.r].name + ')!');
+    if (item.r === 'legendary' || item.r === 'epic') {
+      G.sessionRecap.legendaryDrops.push(item.n + ' (' + ITEM_RARITY[item.r].name + ')');
+    }
   }
 
   // Companion gear: separate, smaller chance so it doesn't crowd out San's own drops
@@ -4014,6 +6104,9 @@ const ENEMY_REGISTRY = {
 
   // === THE VERDANT REACH (Lv 56+) ===
   'Bramble Warden': { template: 'tank', elem: 'poison', zoneLv: 56 },
+  'Rootbound Acolyte': { template: 'balanced', elem: 'poison', zoneLv: 65 },
+  'Hollow Chorister': { template: 'striker', elem: 'poison', zoneLv: 65 },
+  'Bloomveiled Sentinel': { template: 'tank', elem: 'poison', zoneLv: 65 },
   'Wildroot Sprite': { template: 'striker', elem: 'poison', zoneLv: 56 },
   'Thistle Stalker': { template: 'balanced', elem: 'poison', zoneLv: 56 },
   'Harvest Golem': { template: 'tank', elem: 'poison', zoneLv: 75 },
@@ -4022,11 +6115,81 @@ const ENEMY_REGISTRY = {
   'Root-Bound Elder': { template: 'tank', elem: 'poison', zoneLv: 95 },
   'Sanctuary Keeper': { template: 'balanced', elem: 'poison', zoneLv: 95 },
   'Elderwood Sentinel': { template: 'striker', elem: 'poison', zoneLv: 95 },
+  'Fraying Wisp': { template: 'striker', elem: 'void', zoneLv: 96 },
+  'Unwoven Stalker': { template: 'balanced', elem: 'void', zoneLv: 96 },
+  'Hollow Seam': { template: 'tank', elem: 'void', zoneLv: 96 },
+  'Line-Breaker': { template: 'striker', elem: 'void', zoneLv: 97 },
+  'Corrosion Vessel': { template: 'balanced', elem: 'void', zoneLv: 97 },
+  'Unmaking Sentinel': { template: 'tank', elem: 'void', zoneLv: 97 },
+  'Testing Current': { template: 'striker', elem: 'void', zoneLv: 98 },
+  'Patience-Eater': { template: 'balanced', elem: 'void', zoneLv: 98 },
+  'Unmaking Vanguard': { template: 'tank', elem: 'void', zoneLv: 98 },
+  'Remnant Current': { template: 'striker', elem: 'void', zoneLv: 99 },
+  'Half-Won Vessel': { template: 'balanced', elem: 'void', zoneLv: 99 },
+  'Watching Sentinel': { template: 'tank', elem: 'void', zoneLv: 99 },
+  'Deepfray Current': { template: 'striker', elem: 'void', zoneLv: 100 },
+  'Warden of the Gap': { template: 'balanced', elem: 'void', zoneLv: 100 },
+  'Unmaking Herald': { template: 'tank', elem: 'void', zoneLv: 100 },
+
+  // === THE PORTAL WORLD — tech-collapse, non-magical, still actively unfolding ===
+  'Idle Sentry Unit': { template: 'striker', elem: 'none', zoneLv: 210 },
+  'Looping Announcement Drone': { template: 'balanced', elem: 'none', zoneLv: 210 },
+  'Unmanned Response Walker': { template: 'tank', elem: 'none', zoneLv: 210 },
+  'Runaway Checkout Construct': { template: 'striker', elem: 'none', zoneLv: 220 },
+  'Ghost Inventory Drone': { template: 'balanced', elem: 'none', zoneLv: 220 },
+  'Collections Enforcement Unit': { template: 'tank', elem: 'none', zoneLv: 220 },
+  'Cascading Failsafe': { template: 'striker', elem: 'none', zoneLv: 230 },
+  'Relay Ghost': { template: 'balanced', elem: 'none', zoneLv: 230 },
+  'Static-Bound Sentinel': { template: 'tank', elem: 'none', zoneLv: 230 },
+  'Perimeter Drone': { template: 'striker', elem: 'none', zoneLv: 240 },
+  'Salvage Construct': { template: 'balanced', elem: 'none', zoneLv: 240 },
+  'Abandoned Guard Unit': { template: 'tank', elem: 'none', zoneLv: 240 },
+  'Warren Sentinel': { template: 'striker', elem: 'none', zoneLv: 250 },
+  'The Last Alarm': { template: 'balanced', elem: 'none', zoneLv: 250 },
+  'Something Still Guarding This': { template: 'tank', elem: 'none', zoneLv: 250 },
+  'Emergency Protocol Drone': { template: 'striker', elem: 'none', zoneLv: 260 },
+  'Directive Loop Construct': { template: 'balanced', elem: 'none', zoneLv: 260 },
+  'The System, In Pieces': { template: 'tank', elem: 'none', zoneLv: 260 },
 
   // === TEMPLE HUNTS: THE CULT OF THE CLOSED EYE ===
   'Closed Eye Acolyte': { template: 'striker', elem: 'void', zoneLv: 19 },
   'Closed Eye Zealot': { template: 'balanced', elem: 'void', zoneLv: 27 },
   'Closed Eye Warden': { template: 'tank', elem: 'void', zoneLv: 34 },
+
+  // === ROBIN C.'S ZONE (Lv 60) ===
+  'Associate Wraith': { template: 'striker', elem: 'void', zoneLv: 60 },
+  'Non-Compete Bramble': { template: 'balanced', elem: 'poison', zoneLv: 60 },
+  'Overtime Root': { template: 'tank', elem: 'poison', zoneLv: 60 },
+
+  // === ACT 3-5 & VERDANT REACH BOSSES (previously unregistered — fell back to
+  // the default arcane element on their combat-card medallion) ===
+  'The Vanished Guide': { template: 'elite', elem: 'void', zoneLv: 36 },
+  'Hollow Eliz': { template: 'elite', elem: 'void', zoneLv: 37 },
+  'Rustbound Zaki': { template: 'elite', elem: 'none', zoneLv: 38 },
+  'Mezstorm Unbound': { template: 'elite', elem: 'lightning', zoneLv: 39 },
+  'The Fading Familiar': { template: 'elite', elem: 'fire', zoneLv: 40 },
+  'Echo of Aisyah': { template: 'elite', elem: 'none', zoneLv: 41 },
+  'The Tired Version': { template: 'elite', elem: 'void', zoneLv: 42 },
+  'The Architect': { template: 'elite', elem: 'arcane', zoneLv: 43 },
+  'The Splinter Court': { template: 'elite', elem: 'arcane', zoneLv: 44 },
+  'The First Break': { template: 'elite', elem: 'void', zoneLv: 45 },
+  'The Unmended': { template: 'elite', elem: 'none', zoneLv: 46 },
+  'The Relapse': { template: 'elite', elem: 'void', zoneLv: 47 },
+  'The Question of After': { template: 'elite', elem: 'void', zoneLv: 48 },
+  'The Unity Ward': { template: 'elite', elem: 'arcane', zoneLv: 49 },
+  'Daybreak Incarnate': { template: 'elite', elem: 'fire', zoneLv: 50 },
+  'The Wayfinder': { template: 'elite', elem: 'none', zoneLv: 51 },
+  'The Tidereaver': { template: 'elite', elem: 'ice', zoneLv: 52 },
+  'The Ledgerbound': { template: 'elite', elem: 'none', zoneLv: 53 },
+  'The Undertow': { template: 'elite', elem: 'ice', zoneLv: 54 },
+  'The Horizon Keeper': { template: 'elite', elem: 'arcane', zoneLv: 55 },
+  'The Vale Warden': { template: 'elite', elem: 'poison', zoneLv: 56 },
+  'Robin C.': { template: 'elite', elem: 'none', zoneLv: 60 },
+  'The Sunreach Elder': { template: 'elite', elem: 'poison', zoneLv: 75 },
+  'The Verdant Heart': { template: 'elite', elem: 'poison', zoneLv: 95 },
+  'Overtime Wraith': { template: 'striker', elem: 'poison', zoneLv: 82 },
+  'Off-Day Enforcer': { template: 'balanced', elem: 'poison', zoneLv: 82 },
+  'Loading Dock Sentinel': { template: 'tank', elem: 'poison', zoneLv: 82 },
 };
 
 
@@ -4445,7 +6608,7 @@ function updateAffinity(partyMemberName, amount) {
     const soelActive = G.party.some(p => p.n === 'Soel' && p.on && p.hp > 0);
     if (soelActive && G.p.lvl >= SOEL_BONDING_CATALYST_UNLOCK) {
       // The Chosen Family (capstone, auto-granted at 50): the bond deepens further.
-      amount = Math.ceil(amount * (G.p.lvl >= COMPANION_PRESTIGE_UNLOCK ? 1.30 : 1.15));
+      amount = Math.ceil(amount * (G.p.lvl >= LATE_GAME_BONUS_LEVEL ? 1.30 : 1.15));
     }
   }
   G.affinity[partyMemberName].val = Math.max(0, G.affinity[partyMemberName].val + amount);
@@ -4556,7 +6719,12 @@ function checkNPCUnlocks() {
         lg('🌟 ' + npc.n + ' ' + npc.title + ' has joined as an ally!');
       }
     }
+    if (npc.t === 'ally' && !npc.unlocked && !npc.reqMember && npc.ul && G.p.lvl >= npc.ul) {
+      npc.unlocked = true;
+      lg('🌟 ' + npc.n + ' ' + npc.title + ' has joined as an ally!');
+    }
   }
+  checkGuildRecruitment();
 }
 
 function getZulTeleportCost(zoneLv) {
@@ -4573,8 +6741,7 @@ function teleportViaZul(zoneIndex) {
   }
   G.p.gold -= cost;
   lg('🚗 Zul drops you at ' + zone.n + ' without another word. (-' + cost + 'G)');
-  G.state = 'explore';
-  render();
+  sc(zoneIndex);
 }
 
 function buyFromNPC(npcName, itemIdx) {
@@ -4595,28 +6762,19 @@ function buyFromNPC(npcName, itemIdx) {
   
   G.p.gold -= finalPrice;
 
-  // Equip items now carry .slot directly; only pot/food/drink/revive/mat still use .t
-  const boughtItem = { 
-    n: item.n, 
-    t: item.t, 
+  // Start from a full copy of the stock item so ANY field it defines survives the
+  // purchase (price/idx aside) — a hardcoded whitelist here previously dropped custom
+  // fields like stat/boostVal/mins the moment a new effect type introduced them,
+  // which either silently no-op'd the item or crashed useI() outright.
+  const { price: _price, ...itemData } = item;
+  const boughtItem = {
+    ...itemData,
     slot: item.slot || undefined,
     forCompanion: item.forCompanion || undefined,
-    q: item.q || 1, 
-    r: item.r,
+    q: item.q || 1,
     ilvl: item.ilvl || 1,
     d: item.d || 'A purchased item.'
   };
-  // Copy all stat properties
-  const statProps = ['atk', 'def', 'spd', 'hp', 'str', 'dex', 'con', 'int', 'wis', 'cha', 
-                     'fireDmg', 'iceDmg', 'lightDmg', 'voidDmg',
-                     'fireRes', 'iceRes', 'lightRes', 'voidRes',
-                     'lifeSteal', 'critChance', 'mpRegen', 'hpRegen', 'goldFind'];
-  for (let prop of statProps) {
-    if (item[prop] !== undefined) boughtItem[prop] = item[prop];
-  }
-  // Copy effect properties for consumables (food/drink/pot)
-  if (item.eff !== undefined) boughtItem.eff = item.eff;
-  if (item.v !== undefined) boughtItem.v = item.v;
   // Copy sockets as a fresh array — some traders (Wahyu) sell gear with built-in
   // bonus sockets baked into the stock definition itself, distinct from the normal
   // ilvl-based socket migration. Must clone, not reference, so multiple purchases of
@@ -4669,22 +6827,61 @@ function sellToAmad(invIndex) {
 }
 
 // Returns { index, item, price }[] for gear sitting in the bag that's strictly not worth
-// keeping: equipment (not companion-specific gear — that's handled from the Party screen)
-// that's a Downgrade or Sidegrade versus whatever's already equipped in that slot. Used by
-// the Sell Stash button so a whole run of junk drops can be cleared in one tap.
+// keeping: equipment (not companion-specific gear — that's its own stash below) that's a
+// Downgrade or Sidegrade versus whatever's already equipped in that slot. Used by the Sell
+// Stash button so a whole run of junk drops can be cleared in one tap.
 function getJunkStashItems() {
   const results = [];
   for (let i = 0; i < G.p.inv.length; i++) {
     const item = G.p.inv[i];
     const isEquip = item.slot && item.slot !== 'mat' && item.slot !== 'pot' && item.slot !== 'revive' && item.t !== 'food' && item.t !== 'drink';
-    if (!isEquip || item.forCompanion) continue;
-    const cmp = getEquipComparison(item);
+    if (!isEquip) continue;
+    if (item.forCompanion) continue; // handled by getJunkCompanionGearItems() instead
+    const cmp = getEquipComparisonForOwner(item);
     if (!cmp || cmp.better) continue; // keep upgrades and anything that fills an empty slot
     let sellPrice = 0;
     if (item.value) sellPrice = Math.floor(item.value * 0.5);
     else sellPrice = Math.floor((item.ilvl || 1) * 4);
     sellPrice = Math.max(1, sellPrice);
     results.push({ index: i, item, price: sellPrice });
+  }
+  return results;
+}
+
+// Same idea as getJunkStashItems(), but scoped specifically to companion-signature gear
+// that's a Downgrade or Sidegrade for whichever companion it's flagged for — a separate
+// bucket since these clutter the bag differently (picked up for a specific party member,
+// not the player) and deserve their own clearly-labeled stash rather than being buried
+// in the general equipment pile.
+function getJunkCompanionGearItems() {
+  const results = [];
+  for (let i = 0; i < G.p.inv.length; i++) {
+    const item = G.p.inv[i];
+    if (!item.slot || !item.forCompanion) continue;
+    const cmp = getEquipComparisonForOwner(item);
+    if (!cmp || cmp.better) continue; // keep upgrades and anything that fills an empty slot
+    let sellPrice = 0;
+    if (item.value) sellPrice = Math.floor(item.value * 0.5);
+    else sellPrice = Math.floor((item.ilvl || 1) * 4);
+    sellPrice = Math.max(1, sellPrice);
+    results.push({ index: i, item, price: sellPrice });
+  }
+  return results;
+}
+
+// Raw material clutter — Herb Bundle, Iron Ore, and the like. Unlike equipment, materials
+// have no "better/worse" comparison, so there's no smart filtering here: this is every mat
+// currently in the bag, sold in one tap for whoever just wants the pile gone. Recipe
+// ingredients are cheap to re-farm, so this is a deliberate "clear it out" action, not a
+// selective one — same spirit as Sell Stash, just for the item type that actually piles up
+// the fastest and has the least individual identity once you have more than a couple of each.
+function getMatStashItems() {
+  const results = [];
+  for (let i = 0; i < G.p.inv.length; i++) {
+    const item = G.p.inv[i];
+    if (item.t !== 'mat') continue;
+    const sellPrice = Math.max(1, Math.floor((item.ilvl || 1) * 3 + 2));
+    results.push({ index: i, item, price: sellPrice * (item.q || 1) });
   }
   return results;
 }
@@ -4708,14 +6905,60 @@ function sellStashToAmad() {
   render();
 }
 
+function sellCompanionGearStashToAmad() {
+  const npc = G.npcs.find(n => n.n === 'Amad');
+  if (!npc || !npc.unlocked || npc.t !== 'trader') return;
+  const junk = getJunkCompanionGearItems();
+  if (junk.length === 0) { lg('💰 No outgrown companion gear to sell right now.'); return; }
+
+  let total = 0;
+  const sorted = [...junk].sort((a, b) => b.index - a.index);
+  for (let entry of sorted) {
+    total += entry.price;
+    G.p.inv.splice(entry.index, 1);
+  }
+  G.p.gold += total;
+  lg('💰 Sold ' + junk.length + ' outgrown companion item' + (junk.length > 1 ? 's' : '') + ' to Amad for ' + total + 'G!');
+  lg('   "Your family\'s old gear? I know someone who\'ll want it."');
+  render();
+}
+
+function sellMatsToAmad() {
+  const npc = G.npcs.find(n => n.n === 'Amad');
+  if (!npc || !npc.unlocked || npc.t !== 'trader') return;
+  const mats = getMatStashItems();
+  if (mats.length === 0) { lg('💰 No materials to sell right now.'); return; }
+
+  let total = 0;
+  const sorted = [...mats].sort((a, b) => b.index - a.index);
+  for (let entry of sorted) {
+    total += entry.price;
+    G.p.inv.splice(entry.index, 1);
+  }
+  G.p.gold += total;
+  lg('💰 Sold ' + mats.length + ' material stack' + (mats.length > 1 ? 's' : '') + ' to Amad for ' + total + 'G!');
+  lg('   "Good, good. Less to carry, more to cook with." Amad laughs.');
+  render();
+}
+
 
 // ============================================================
 // GAME TIME & DAILY SYSTEM
 // ============================================================
 
 function getRealDay() {
-  return Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  // Local-midnight-based, not raw UTC epoch division. The previous version
+  // (Math.floor(Date.now() / 86400000)) rolled over at UTC midnight regardless of the
+  // player's own timezone — for someone in UTC+8, that's 8 AM local, not midnight.
+  // Depending on when in the day an action happened, "24 hours later" could easily
+  // still fall inside the same UTC-day window, making daily resets feel unpredictable.
+  // Constructing the date from local year/month/day components (rather than UTC ones)
+  // makes the boundary track the player's actual calendar date correctly.
+  const now = new Date();
+  const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor(localMidnight.getTime() / (1000 * 60 * 60 * 24));
 }
+
 
 const MAX_STREAK_FREEZES = 3; // stockpile cap — earned automatically, never bought
 
@@ -4759,6 +7002,12 @@ function checkDayAdvance() {
   if (G.focusHistory.length > 30) G.focusHistory = G.focusHistory.slice(-30);
 
   G.gameDay += daysPassed;
+
+  // Resolve any disciple mentorship outcomes whose delay has now passed.
+  checkDiscipleOutcomes();
+
+  // Kindling Commissions reset on a new day — bounded, not accumulating.
+  G.kindlingCommissions = { linesToday: 0, checksToday: 0, refreshDay: G.gameDay };
 
   // Mercenary tier was scaling off a lifetime completed-contract count with no cap and
   // no reset — meaning difficulty only ever ratcheted up, disconnected from actual
@@ -5090,7 +7339,7 @@ function generateDailyQuests() {
   }
 
   const pool = DAILY_QUESTS.filter(t => t.id !== 'dq5');
-  for (let i = 0; i < 3 && pool.length > 0; i++) {
+  for (let i = 0; i < 7 && pool.length > 0; i++) {
     const idx = Math.floor(Math.random() * pool.length);
     const template = pool.splice(idx, 1)[0];
     G.dailyQuests.push({
@@ -5137,7 +7386,9 @@ function refreshBounties() {
   if (eligible.length === 0) {
     const fallback = G.bounties.filter(b => {
       if (!b.done || b.refreshDay === today) return false;
-      return (b.minLv || 1) <= G.p.lvl;
+      const minLv = b.minLv || 1;
+      const maxLv = b.maxLv || 99;
+      return minLv <= G.p.lvl && G.p.lvl <= maxLv;
     }).sort((a, b) => (b.minLv || 1) - (a.minLv || 1));
     
     const toRefresh = fallback.slice(0, 3);
@@ -5167,6 +7418,7 @@ function checkJournalLevelUnlocks() {
   for (let entry of G.storyJournal.entries) {
     if (entry.unlockType === 'level' && G.p.lvl >= entry.unlockAt && !G.storyJournal.unlocked.includes(entry.id)) {
       G.storyJournal.unlocked.push(entry.id);
+      G.sessionRecap.chapters.push(entry.title);
       lg('📖 Journal unlocked: ' + entry.title + '!');
       showToast('📖 New story chapter unlocked!', 'gold');
     }
@@ -5369,7 +7621,14 @@ const DAILY_QUESTS = [
   { id: 'dq5', n: 'Rest & Recover', d: 'Rest once at any campsite', t: 'rest', need: 1, rw: { xp: 25, g: 10 } },
   { id: 'dq6', n: 'Gold Hoarder', d: 'Earn 50 gold from any source', t: 'earn_gold', need: 50, rw: { xp: 50, g: 30 } },
   { id: 'dq7', n: 'Skill Master', d: 'Use focus mode once', t: 'focus', need: 1, rw: { xp: 60, g: 35 } },
-  { id: 'dq8', n: 'Party Bond', d: 'Win a battle with a full party', t: 'full_party_battle', need: 1, rw: { xp: 40, g: 20 } }
+  { id: 'dq8', n: 'Party Bond', d: 'Win a battle with a full party', t: 'full_party_battle', need: 1, rw: { xp: 40, g: 20 } },
+  { id: 'dq9', n: 'Spellstorm', d: 'Cast 10 spells in combat', t: 'cast_spells', need: 10, rw: { xp: 75, g: 40 } },
+  { id: 'dq10', n: 'Clear the Field', d: 'Defeat 8 monsters', t: 'kill', need: 8, rw: { xp: 70, g: 35 } },
+  { id: 'dq11', n: 'Stocked Shelves', d: 'Craft 5 potions', t: 'craft', need: 5, rw: { xp: 65, g: 35 } },
+  { id: 'dq12', n: 'Cartographer', d: 'Explore 4 different zones', t: 'explore', need: 4, rw: { xp: 85, g: 45 } },
+  { id: 'dq13', n: 'Actually Recovering', d: 'Rest twice at any campsite', t: 'rest', need: 2, rw: { xp: 45, g: 20 } },
+  { id: 'dq14', n: 'Deep Pockets', d: 'Earn 150 gold from any source', t: 'earn_gold', need: 150, rw: { xp: 95, g: 60 } },
+  { id: 'dq15', n: 'Focused Twice Over', d: 'Use focus mode twice', t: 'focus', need: 2, rw: { xp: 110, g: 65 } }
 ];
 
 const THEME_KEY = 'ldb_theme';
@@ -5417,6 +7676,38 @@ const GUILD_RANKS = [
   { rank: 10, name: 'Guild Eternal', repReq: 75000, desc: 'The Guild has nothing left to teach you. Another +5% crit chance, and the Eternal Vault \u2014 the last tier of the shop \u2014 finally opens.', critBonus: 0.05 }
 ];
 
+// A true whole-guild siege — every recruited member attacks each turn, not just
+// whoever's fielded (Guild War caps that deliberately; this is the opposite: the
+// entire roster showing up at once). Persistent HP across days — one attempt per
+// day, remaining HP carries over until the guild actually brings it down together.
+// Escalates through a new, named opponent after each kill, tied to the same Guild
+// Rank ladder the game already has, rather than a single entity regenerating forever
+// (which would just get trivially easy against an ever-growing roster) or an endless
+// dynamically-scaled grind (which this isn't meant to be — it's a real, finite ladder
+// matching the fixed 10-rank progression that already exists).
+const GUILD_BOSS_TIERS = [
+  { rank: 1, n: "What the Initiates Face Together", hp: 2000000, xp: 400000, g: 300000,
+    desc: "Nobody's first guild siege is supposed to be easy. It is supposed to be survivable, and only because there are enough hands on it at once." },
+  { rank: 2, n: "The Associates' Reckoning", hp: 4500000, xp: 650000, g: 480000,
+    desc: "Bigger than anything any one of them signed up to face alone. That was rather the point of joining in the first place." },
+  { rank: 3, n: "What the Adventurers Carry", hp: 8000000, xp: 950000, g: 700000,
+    desc: "Every contract before this one was practice. This is the first thing that actually needed the whole roster to mean it." },
+  { rank: 4, n: "The Veterans' Line", hp: 13000000, xp: 1350000, g: 980000,
+    desc: "The kind of fight that separates who just wears the sigil from who actually shows up when the sigil is tested." },
+  { rank: 5, n: "What the Champions Hold", hp: 20000000, xp: 1850000, g: 1350000,
+    desc: "It does not care how many titles are standing against it. It only cares how many are still standing by the end." },
+  { rank: 6, n: "The Guildmaster's Trial", hp: 29000000, xp: 2500000, g: 1800000,
+    desc: "Every Guildmaster before this one faced something like it. None of them faced it alone, and neither will this one." },
+  { rank: 7, n: "What the Legends Actually Cost", hp: 40000000, xp: 3300000, g: 2400000,
+    desc: "Reputation this size was never free. This is simply the bill finally coming due, all at once, to everyone who helped earn it." },
+  { rank: 8, n: "The Paragons' Reckoning", hp: 54000000, xp: 4300000, g: 3100000,
+    desc: "Almost nothing left that challenges any one of them individually. This was built to need all of them at once instead." },
+  { rank: 9, n: "What the Mythic Guild Faces", hp: 71000000, xp: 5500000, g: 4000000,
+    desc: "The kind of threat that does not show up for guilds that never got this far. It showed up because they did." },
+  { rank: 10, n: "The Eternal Vigil", hp: 92000000, xp: 7000000, g: 5100000,
+    desc: "There is, technically, nothing left to prove. They fight it together anyway \u2014 not because they have to, but because that was always the actual point of any of this." }
+];
+
 const GUILD_SHOP = [
   { n: 'Guild Sigil', slot: 'amulet', minRank: 2, cost: 100, atk: 3, def: 3, r: 'rare', d: 'Marks you as a Guild Associate in good standing.' },
   { n: 'Guildmark Blade', slot: 'weapon', minRank: 3, cost: 250, atk: 12, int: 3, r: 'rare', d: 'Forged for Guild Adventurers who\'ve proven themselves.' },
@@ -5450,8 +7741,474 @@ const TEMPLE_TRINKETS = [
 const TEMPLE_CONSUMABLES = [
   { n: 'Vial of Cleansing', t: 'pot', eff: 'cure_ailment', minRank: 1, cost: 60, r: 'uncommon', d: 'A portable version of the temple\'s own cure \u2014 no need to travel back for a single affliction.' },
   { n: 'Draught of Steady Hands', t: 'pot', eff: 'bless', minRank: 5, cost: 140, r: 'rare', d: 'Temple Chosen only. A blessing you can carry into the field instead of waiting for one.' },
-  { n: 'Elixir of Swift Growth', t: 'pot', eff: 'xp_boost', v: 30, boostPct: 0.5, minRank: 2, cost: 250, r: 'rare', d: '+50% XP for 30 real minutes. Only one can be active at a time \u2014 the Temple will not sell you a second bottle while the first still glows.' }
+  { n: 'Elixir of Swift Growth', t: 'pot', eff: 'xp_boost', v: 30, boostPct: 0.5, minRank: 2, cost: 250, r: 'rare', d: '+50% XP for 30 real minutes. Only one can be active at a time \u2014 the Temple will not sell you a second bottle while the first still glows.' },
+  { n: 'Elixir of Swift Growth (2 Hour)', t: 'pot', eff: 'xp_boost', v: 120, boostPct: 0.5, minRank: 2, cost: 900, r: 'rare', d: '+50% XP for 2 real hours. Same blessing, longer bottle. Only one growth elixir can be active at a time.' },
+  { n: 'Elixir of Swift Growth (4 Hour)', t: 'pot', eff: 'xp_boost', v: 240, boostPct: 0.5, minRank: 3, cost: 1600, r: 'epic', d: '+50% XP for 4 real hours. The Temple only trusts this size bottle to Chosen who have actually stuck around a while. Only one growth elixir can be active at a time.' },
+  { n: 'Elixir of Swift Growth (8 Hour)', t: 'pot', eff: 'xp_boost', v: 480, boostPct: 0.5, minRank: 4, cost: 2800, r: 'epic', d: '+50% XP for 8 real hours \u2014 long enough to just leave it running in the background of a whole session. Only one growth elixir can be active at a time.' },
+  { n: 'Elixir of Swift Growth (10 Hour)', t: 'pot', eff: 'xp_boost', v: 600, boostPct: 0.5, minRank: 4, cost: 3300, r: 'epic', d: '+50% XP for 10 real hours. Only one growth elixir can be active at a time.' },
+  { n: 'Elixir of Swift Growth (12 Hour)', t: 'pot', eff: 'xp_boost', v: 720, boostPct: 0.5, minRank: 5, cost: 3800, r: 'legendary', d: '+50% XP for a full 12 real hours. Temple Chosen only \u2014 the biggest bottle they keep behind the counter. Only one growth elixir can be active at a time.' }
 ];
+
+// === TEACH A DISCIPLE — core logic ===
+function getActiveDiscipleCount() {
+  return G.disciples.filter(d => !d.graduated).length;
+}
+
+function recruitDisciple() {
+  if (getActiveDiscipleCount() >= DISCIPLE_MAX_SLOTS) {
+    lg('📚 Already mentoring ' + DISCIPLE_MAX_SLOTS + ' disciples. Wait for one to graduate first.');
+    return;
+  }
+  const usedNames = G.disciples.map(d => d.name);
+  const availableNames = DISCIPLE_NAME_POOL.filter(n => !usedNames.includes(n));
+  const name = availableNames.length > 0
+    ? availableNames[Math.floor(Math.random() * availableNames.length)]
+    : DISCIPLE_NAME_POOL[Math.floor(Math.random() * DISCIPLE_NAME_POOL.length)];
+
+  const disciple = {
+    id: 'disciple_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    name: name,
+    confidence: 0,
+    independence: 0,
+    exchangeCount: 0,
+    usedDilemmaIds: [],
+    pendingOutcome: null,
+    graduated: false
+  };
+  G.disciples.push(disciple);
+  lg('📚 ' + name + ' has come to you asking to learn. A new mentorship begins.');
+  saveGame();
+}
+
+// Picks a dilemma this disciple hasn't seen yet — cycles back through the pool once
+// exhausted, since a single disciple's graduation only needs 6 of the 10 available.
+function getNextDiscipleDilemma(disciple) {
+  const unseen = DISCIPLE_DILEMMAS.filter(d => !disciple.usedDilemmaIds.includes(d.id));
+  const pool = unseen.length > 0 ? unseen : DISCIPLE_DILEMMAS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// San responds to a dilemma. Nothing resolves immediately — the choice nudges both
+// axes and schedules a future outcome, checked once per day advance, same as every
+// other delayed system in this game.
+function respondToDiscipleDilemma(discipleId, dilemmaId, optionIndex) {
+  const disciple = G.disciples.find(d => d.id === discipleId);
+  if (!disciple || disciple.graduated) return;
+  if (disciple.pendingOutcome) { lg('📚 ' + disciple.name + ' is still waiting to hear how the last thing turned out.'); return; }
+
+  const dilemma = DISCIPLE_DILEMMAS.find(d => d.id === dilemmaId);
+  if (!dilemma) return;
+  const option = dilemma.options[optionIndex];
+  if (!option) return;
+
+  disciple.confidence += option.confidenceNudge;
+  disciple.independence += option.independenceNudge;
+  if (!disciple.usedDilemmaIds.includes(dilemmaId)) disciple.usedDilemmaIds.push(dilemmaId);
+
+  disciple.pendingOutcome = {
+    dilemmaId: dilemmaId,
+    optionIndex: optionIndex,
+    resolveDay: G.gameDay + option.delayDays
+  };
+
+  lg('📚 You told ' + disciple.name + ': "' + option.label + '." It will take some time to see how that actually plays out.');
+  saveGame();
+}
+
+// Checked once per real day advance (from checkDayAdvance). Resolves any disciple
+// whose pending outcome has come due, fires the vignette, and checks graduation.
+function checkDiscipleOutcomes() {
+  for (let disciple of G.disciples) {
+    if (disciple.graduated || !disciple.pendingOutcome) continue;
+    if (G.gameDay < disciple.pendingOutcome.resolveDay) continue;
+
+    const dilemma = DISCIPLE_DILEMMAS.find(d => d.id === disciple.pendingOutcome.dilemmaId);
+    const option = dilemma ? dilemma.options[disciple.pendingOutcome.optionIndex] : null;
+    if (option) {
+      lg('📚 ' + disciple.name + ': "' + option.outcome + '"');
+    }
+    disciple.exchangeCount++;
+    disciple.pendingOutcome = null;
+
+    if (disciple.exchangeCount >= DISCIPLE_EXCHANGES_TO_GRADUATE) {
+      graduateDisciple(disciple);
+    }
+  }
+}
+
+// Converts a disciple into a real, fieldable Guild Member. Shape depends on which
+// quadrant their trajectory actually landed in — different response patterns produce
+// genuinely different people, not just a "better" or "worse" version of the same one.
+function graduateDisciple(disciple) {
+  disciple.graduated = true;
+
+  const highConf = disciple.confidence >= 0;
+  const highIndep = disciple.independence >= 0;
+
+  let role, icon, fieldBuff, flavor;
+  if (highConf && highIndep) {
+    role = 'Frontline'; icon = '\u2694\ufe0f';
+    fieldBuff = { atkPct: 0.04 };
+    flavor = 'bold and self-reliant, the kind of person who trusts their own read on a room';
+  } else if (highConf && !highIndep) {
+    role = 'Support'; icon = '\ud83c\udf1f';
+    fieldBuff = { critPct: 0.03 };
+    flavor = 'confident but collaborative, always the first to bring others in rather than go it alone';
+  } else if (!highConf && highIndep) {
+    role = 'Scout'; icon = '\ud83c\udf3f';
+    fieldBuff = { defPct: 0.04 };
+    flavor = 'quiet but genuinely self-sufficient, steady in a way that never needed to be loud';
+  } else {
+    role = 'Support'; icon = '\ud83e\udd0d';
+    fieldBuff = { defPct: 0.03 };
+    flavor = 'cautious and deeply collaborative, the kind of person who makes everyone around them steadier too';
+  }
+
+  const memberDef = {
+    id: 'graduate_' + disciple.id,
+    npcName: disciple.name,
+    role: role,
+    icon: icon,
+    recruitReq: { type: 'always' }, // graduation itself is the recruitment condition — see checkGuildRecruitment
+    fieldBuff: fieldBuff,
+    recruitLine: disciple.name + " has finished learning everything San can teach for now. \"I am ready. Thank you \u2014 for all of it.\"",
+    barks: [
+      disciple.name + ': "San taught me to trust what I actually see, not just what I am told."',
+      disciple.name + ': "I remember every single one of those conversations."',
+      disciple.name + ': "Whatever I am now, I built it with her help."'
+    ],
+    isGraduate: true,
+    graduateFlavor: flavor
+  };
+
+  GUILD_MEMBERS.push(memberDef);
+  G.graduatedDisciples = G.graduatedDisciples || [];
+  G.graduatedDisciples.push(memberDef);
+  if (!G.guildRoster.recruited.includes(memberDef.id)) {
+    G.guildRoster.recruited.push(memberDef.id);
+  }
+
+  lg('\ud83c\udf93 ' + disciple.name + ' has graduated \u2014 ' + flavor + '. They have joined the guild roster for good.');
+  checkAchievements();
+  saveGame();
+}
+
+function showDiscipleDilemma(discipleId) {
+  const disciple = G.disciples.find(d => d.id === discipleId);
+  if (!disciple || disciple.graduated || disciple.pendingOutcome) return;
+  const dilemma = getNextDiscipleDilemma(disciple);
+  G.activeDilemma = { discipleId: discipleId, dilemmaId: dilemma.id };
+  render();
+}
+
+function submitDiscipleResponse(optionIndex) {
+  if (!G.activeDilemma) return;
+  respondToDiscipleDilemma(G.activeDilemma.discipleId, G.activeDilemma.dilemmaId, optionIndex);
+  G.activeDilemma = null;
+  render();
+}
+
+// Toggles a swappable-pool member in or out of the active party, respecting the slot
+// cap and keeping linked pairs (Mimi/Brada) together — selecting one always selects
+// or deselects both, since they were never meant to be split apart.
+function toggleActivePartyMember(name) {
+  const p = G.party.find(x => x.n === name);
+  if (!p || !SWAPPABLE_PARTY_POOL.includes(name)) return;
+
+  const partner = getLinkedPartyPartner(name);
+  const currentlySelected = G.activePartySelection.includes(name);
+
+  if (currentlySelected) {
+    // Deselecting — remove this member and their linked partner, if any. Heal them to
+    // full immediately: combat has several "second wind" recovery spots that revive
+    // anyone at 0 HP by setting p.on=true directly, and a benched member left at 0 HP
+    // could otherwise get accidentally reactivated by one of those. Also just makes
+    // narrative sense — they're heading back to rest at the Guild, not staying downed.
+    for (const n of [name, partner]) {
+      if (!n) continue;
+      const member = G.party.find(x => x.n === n);
+      if (member) member.hp = member.mhp;
+    }
+    G.activePartySelection = G.activePartySelection.filter(n => n !== name && n !== partner);
+  } else {
+    if (!isSwappablePartyMemberUnlocked(p)) return; // can't select someone not yet met
+
+    const namesToAdd = [name];
+    if (partner && !G.activePartySelection.includes(partner)) {
+      const partnerP = G.party.find(x => x.n === partner);
+      if (!partnerP || !isSwappablePartyMemberUnlocked(partnerP)) return; // partner not unlocked, can't split the pair
+      namesToAdd.push(partner);
+    }
+
+    const roomNeeded = namesToAdd.length;
+    const roomAvailable = ACTIVE_PARTY_SLOTS - G.activePartySelection.length;
+    if (roomNeeded > roomAvailable) {
+      lg('👥 Not enough room in the active party for that \u2014 bench someone else first.');
+      return;
+    }
+
+    G.activePartySelection = G.activePartySelection.concat(namesToAdd);
+  }
+
+  syncActivePartyFlags();
+  saveGame();
+  render();
+}
+
+// Generates a specific, human-readable explanation of what's actually still needed to
+// unlock a recruit-gated party candidate — rather than a generic "not yet met", since
+// "met in the story" and "mechanically recruited" can be genuinely different things
+// (e.g. Dr. AA requires 10 trader visits at Lv.100+, not just having encountered him).
+function getPartyMemberUnlockHint(p) {
+  const guildId = PARTY_MEMBER_GUILD_GATE[p.n];
+  if (!guildId) return 'Not yet unlocked.';
+  const def = GUILD_MEMBERS.find(m => m.id === guildId);
+  if (!def) return 'Not yet unlocked.';
+  const req = def.recruitReq;
+  if (req.type === 'ally') return 'Recruit ' + p.n + ' as a Guild ally first.';
+  if (req.type === 'journal') return 'Requires reaching a specific point in the story.';
+  if (req.type === 'trader_visits') return 'Visit their trader stall ' + req.visits + '+ times, at Level 100 or higher.';
+  if (req.type === 'kindling') return 'Requires progressing the Kindling Network storyline.';
+  return 'Not yet unlocked.';
+}
+
+function rPartySelection() {
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">👥 Active Party</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:12px;">San, Joel, and Aisyah are always with you \u2014 the bonded trio never splits. Soel comes too, and never takes a slot. Everyone else below competes for ' + ACTIVE_PARTY_SLOTS + ' active spots \u2014 whoever is not chosen stays back and helps at the Guild instead.</div>';
+
+  h += '<div class="panel" style="text-align:center;margin-bottom:12px;">';
+  h += '<div class="panel-title">' + G.activePartySelection.length + ' / ' + ACTIVE_PARTY_SLOTS + ' active slots filled</div>';
+  h += '</div>';
+
+  const handledAsPair = new Set();
+
+  for (const name of SWAPPABLE_PARTY_POOL) {
+    if (handledAsPair.has(name)) continue;
+    const p = G.party.find(x => x.n === name);
+    if (!p) continue;
+
+    const partner = getLinkedPartyPartner(name);
+    const partnerP = partner ? G.party.find(x => x.n === partner) : null;
+    // A linked pair is only actually selectable once BOTH members are unlocked — the
+    // toggle function already enforces this, but the display was only checking the
+    // primary member, making a pair look available when it would silently fail.
+    const unlocked = isSwappablePartyMemberUnlocked(p) && (!partnerP || isSwappablePartyMemberUnlocked(partnerP));
+    const selected = G.activePartySelection.includes(name);
+
+    let label = p.n + ' \u2014 ' + p.r;
+    if (partner) {
+      handledAsPair.add(partner);
+      label = p.n + ' & ' + partner + ' (linked pair \u2014 2 slots)';
+    }
+
+    h += '<button onclick="toggleActivePartyMember(\'' + name + '\')" class="btn-outline-ghost" style="width:100%;text-align:left;margin-bottom:8px;' + (selected ? 'border-color:var(--accent);background:rgba(124,58,237,0.15);' : '') + (!unlocked ? 'opacity:0.5;' : '') + '"' + (!unlocked ? ' disabled' : '') + '>';
+    if (!unlocked) {
+      // Show whichever half of the pair is actually still locked, so the message
+      // points at the real blocker rather than defaulting to the primary member.
+      const lockedMember = !isSwappablePartyMemberUnlocked(p) ? p : partnerP;
+      h += '🔒 ' + label + '<br><span style="font-size:10px;opacity:0.7;">' + getPartyMemberUnlockHint(lockedMember) + '</span>';
+    } else {
+      h += (selected ? '✓ ' : '') + label + (selected ? '<br><span style="font-size:10px;opacity:0.7;">Active</span>' : '<br><span style="font-size:10px;opacity:0.7;">🪑 Benched \u2014 helping at the Guild</span>');
+    }
+    h += '</button>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function rDisciples() {
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">📚 Teach a Disciple</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">Nothing here resolves right away. What you tell them shapes who they become \u2014 you will not know how until you check back.</div>';
+
+  // Active dilemma prompt takes over the screen when one is showing
+  if (G.activeDilemma) {
+    const disciple = G.disciples.find(d => d.id === G.activeDilemma.discipleId);
+    const dilemma = DISCIPLE_DILEMMAS.find(d => d.id === G.activeDilemma.dilemmaId);
+    if (disciple && dilemma) {
+      h += '<div class="panel panel-gold">';
+      h += '<div class="panel-title" style="color:var(--gold);">' + disciple.name + ' asks:</div>';
+      h += '<div style="margin:10px 0;font-style:italic;">"' + dilemma.prompt + '"</div>';
+      for (let i = 0; i < dilemma.options.length; i++) {
+        h += '<button onclick="submitDiscipleResponse(' + i + ')" class="abtn" style="width:100%;margin-bottom:8px;text-align:left;">' + dilemma.options[i].label + '</button>';
+      }
+      h += '</div>';
+      h += '</div>';
+      return h;
+    }
+  }
+
+  if (G.disciples.length === 0) {
+    h += '<div class="panel" style="text-align:center;"><div class="btn-hint">No disciples yet.</div></div>';
+  }
+
+  for (let disciple of G.disciples) {
+    if (disciple.graduated) continue;
+    h += '<div class="panel" style="margin-bottom:10px;">';
+    h += '<div class="panel-title">' + disciple.name + '</div>';
+    h += '<div class="btn-hint" style="margin:6px 0;">' + disciple.exchangeCount + ' / ' + DISCIPLE_EXCHANGES_TO_GRADUATE + ' exchanges toward graduating</div>';
+    if (disciple.pendingOutcome) {
+      const daysLeft = disciple.pendingOutcome.resolveDay - G.gameDay;
+      h += '<div class="btn-hint" style="color:var(--gold);">🕯️ Waiting to see how it turns out' + (daysLeft > 0 ? ' (' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ')' : ' \u2014 check back soon') + '</div>';
+    } else {
+      h += '<button onclick="showDiscipleDilemma(\'' + disciple.id + '\')" class="abtn" style="width:100%;">Hear what they have to ask</button>';
+    }
+    h += '</div>';
+  }
+
+  const graduated = G.disciples.filter(d => d.graduated);
+  if (graduated.length > 0) {
+    h += '<div class="panel-title" style="margin:16px 0 8px;">Graduated</div>';
+    for (let disciple of graduated) {
+      const memberDef = GUILD_MEMBERS.find(m => m.id === 'graduate_' + disciple.id);
+      h += '<div class="panel" style="margin-bottom:8px;opacity:0.85;">';
+      h += '<div class="panel-title">' + (memberDef ? memberDef.icon + ' ' : '') + disciple.name + '</div>';
+      h += '<div class="btn-hint">' + (memberDef ? memberDef.graduateFlavor : 'Graduated') + '. Fieldable in the Guild War roster now.</div>';
+      h += '</div>';
+    }
+  }
+
+  if (getActiveDiscipleCount() < DISCIPLE_MAX_SLOTS) {
+    h += '<button onclick="recruitDisciple()" class="abtn" style="width:100%;margin-top:8px;">📚 Take On a New Disciple</button>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+
+function getGuildBossTier() {
+  const idx = Math.min(G.guildBoss.tierIndex, GUILD_BOSS_TIERS.length - 1);
+  return GUILD_BOSS_TIERS[idx];
+}
+
+// Ensures currentHp is initialized to the active tier's max whenever it's ever zero
+// or unset — covers first-ever access and the moment right after a tier advances.
+function ensureGuildBossHp() {
+  const tier = getGuildBossTier();
+  if (!G.guildBoss.currentHp || G.guildBoss.currentHp <= 0) {
+    G.guildBoss.currentHp = tier.hp;
+  }
+}
+
+function canAttemptGuildBossToday() {
+  return G.guildBoss.lastAttemptDay !== G.gameDay;
+}
+
+// A real 90-second battle, not a single instant tap. San attacks by tapping
+// repeatedly; every recruited guild member (not just fielded ones) auto-attacks
+// every 5 seconds regardless of tapping, so the "whole guild fighting together" is
+// visibly happening even if San's own taps are slow. Total damage across a full
+// session is calibrated to land close to what the old single-tap version dealt, just
+// spread across active engagement instead of resolved instantly — active tapping is
+// rewarded with more damage, but a player who barely taps still makes real progress
+// purely from the auto-hits.
+let guildBossSessionInterval = null;
+
+function startGuildBossSession() {
+  ensureGuildBossHp();
+  if (!canAttemptGuildBossToday()) { lg('⚔️ Already rallied the guild against this today. Come back tomorrow.'); return; }
+
+  G.guildBossSession = { active: true, endTime: Date.now() + 90000, tapCount: 0, sessionDamage: 0 };
+  // Locked in immediately, not when the session ends — otherwise reloading mid-session
+  // (before the timer completes) would leave canAttemptGuildBossToday() still open,
+  // letting a single day's attempt be repeated indefinitely while keeping all damage
+  // already dealt.
+  G.guildBoss.lastAttemptDay = G.gameDay;
+  lg('⚔️ The guild rallies. 90 seconds \u2014 attack!');
+  render();
+
+  if (guildBossSessionInterval) clearInterval(guildBossSessionInterval);
+  guildBossSessionInterval = setInterval(() => {
+    if (!G.guildBossSession.active) { clearInterval(guildBossSessionInterval); guildBossSessionInterval = null; return; }
+
+    tickGuildBossAutoHits();
+
+    if (G.guildBoss.currentHp <= 0 || Date.now() >= G.guildBossSession.endTime) {
+      endGuildBossSession();
+      return;
+    }
+    render();
+  }, 5000);
+}
+
+// San's own attack — called each time the player taps during an active session.
+function tapGuildBossAttack() {
+  if (!G.guildBossSession.active) return;
+  const tier = getGuildBossTier();
+  const playerPct = 0.0005 + Math.random() * 0.00035; // ~0.05%–0.085% per tap
+  const dmg = Math.max(1, Math.floor(tier.hp * playerPct));
+  G.guildBoss.currentHp = Math.max(0, G.guildBoss.currentHp - dmg);
+  G.guildBossSession.tapCount++;
+  G.guildBossSession.sessionDamage += dmg;
+  lg('⚔️ San strikes for ' + dmg.toLocaleString() + '!');
+
+  if (G.guildBoss.currentHp <= 0) {
+    endGuildBossSession();
+    return;
+  }
+  render();
+}
+
+// Every recruited guild member auto-attacks once per 5-second tick, independent of
+// how much (or little) San has tapped — this is what keeps the "whole roster
+// fighting together" visible and real, not just a flavor line.
+function tickGuildBossAutoHits() {
+  const tier = getGuildBossTier();
+  const hits = [];
+  for (let id of G.guildRoster.recruited) {
+    const def = getGuildMemberDef(id);
+    if (!def) continue;
+    const memberPct = 0.00035 + Math.random() * 0.00035; // ~0.035%–0.07% per tick
+    const dmg = Math.max(1, Math.floor(tier.hp * memberPct));
+    G.guildBoss.currentHp = Math.max(0, G.guildBoss.currentHp - dmg);
+    G.guildBossSession.sessionDamage += dmg;
+    hits.push('⚔️ ' + def.npcName + ' strikes for ' + dmg.toLocaleString() + '!');
+    if (G.guildBoss.currentHp <= 0) break;
+  }
+  for (const h of hits) lg(h);
+}
+
+function endGuildBossSession() {
+  if (guildBossSessionInterval) { clearInterval(guildBossSessionInterval); guildBossSessionInterval = null; }
+  const tier = getGuildBossTier();
+  // lastAttemptDay is already locked in at session start, not here — see startGuildBossSession
+  G.guildBossSession.active = false;
+
+  lg('🛡️ ' + tier.n + ': ' + G.guildBossSession.sessionDamage.toLocaleString() + ' total damage this session (' + G.guildBossSession.tapCount + ' attacks). ' + G.guildBoss.currentHp.toLocaleString() + ' / ' + tier.hp.toLocaleString() + ' HP remaining.');
+
+  if (G.guildBoss.currentHp <= 0) {
+    handleGuildBossDefeat(tier);
+  }
+  saveGame();
+  render();
+}
+
+function handleGuildBossDefeat(tier) {
+  const xp = tier.xp;
+  const gold = tier.g;
+  G.p.xp += xp;
+  G.p.gold += gold;
+  if (G.guildJoined) { G.guildRep += 150; G.guildRepBalance += 150; }
+  lg('🎉 ' + tier.n + ' falls! The whole guild did this together. +' + xp.toLocaleString() + ' XP, +' + gold.toLocaleString() + 'G' + (G.guildJoined ? ', +150 Guild Rep' : ''));
+
+  if (G.guildBoss.tierIndex < GUILD_BOSS_TIERS.length - 1) {
+    G.guildBoss.tierIndex++;
+    const nextTier = getGuildBossTier();
+    G.guildBoss.currentHp = nextTier.hp;
+    lg('⚔️ A new threat rises to meet the guild: ' + nextTier.n + '.');
+  } else {
+    // Already at the final tier (Guild Eternal) — it doesn't escalate further, it
+    // just gets fought again. Matches the rank's own description: "nothing left to
+    // prove" — they keep showing up anyway, not because they have to.
+    G.guildBoss.currentHp = tier.hp;
+    lg('🕯️ The Eternal Vigil returns. Not because it has to be faced again \u2014 because the guild chooses to, every time.');
+  }
+  checkAchievements();
+}
+
 
 function getGuildRank() {
   let rank = 0;
@@ -5481,8 +8238,9 @@ function checkGuildUnlock() {
 // announced these at all, so a player could hit 45 or 50 and have no idea Prestige,
 // all seven companion prestige paths, and San's Tier 4 capstones just became available.
 function checkPrestigeUnlockAnnouncements() {
-  if (G.p.lvl === PRESTIGE_MIN_LEVEL) {
-    lg('🌟 PRESTIGE UNLOCKED! Check the Prestige screen — bank a permanent bonus by resetting to Level 1.');
+  if (G.p.lvl === getPrestigeRequiredLevel()) {
+    const isFirst = (G.prestige.count || 0) === 0;
+    lg('🌟 PRESTIGE UNLOCKED! Check the Prestige screen — bank a permanent bonus by resetting to Level 1.' + (isFirst ? '' : ' (Tier ' + ((G.prestige.count || 0) + 1) + ')'));
     showToast('🌟 Prestige unlocked!', 'gold');
   }
   if (G.p.lvl === COMPANION_PRESTIGE_UNLOCK) {
@@ -5516,8 +8274,9 @@ function getTempleCost(baseCost) {
   return Math.max(1, Math.floor(baseCost * (1 - getTempleDiscount())));
 }
 function addTempleRep(amount) {
-  G.templeRep += amount;
-  lg('🙏 Temple standing +' + amount + ' (' + G.templeRep + ')');
+  const boosted = Math.floor(amount * (1 + getAllyTempleRepBonus()));
+  G.templeRep += boosted;
+  lg('🙏 Temple standing +' + boosted + ' (' + G.templeRep + ')');
 }
 
 function checkGuildRankUp(previousRank) {
@@ -5662,6 +8421,41 @@ function isElizActive() {
   return G.party.some(p => p.n === 'Eliz' && p.on && p.hp > 0);
 }
 
+// === SISTER WREN ABILITIES: INTERCESSION, TEMPLE'S GRACE ===
+// Deliberately distinct from Eliz rather than a reskinned copy — Wren leans protective
+// (a DEF buff, matching her being the highest-DEF healer-type character in the party)
+// rather than curative-first. She still carries some cure capability, since she comes
+// from the Temple and its own cure ritual (see TEMPLE_CURE_COST above) — but at a
+// lower chance than Eliz's Sacred Cleansing, since curing isn't her main identity the
+// way it is Eliz's. No level-gating here since Wren is recruit-gated, not level-gated.
+const WREN_INTERCESSION_CHANCE = 0.18;
+const WREN_GRACE_CHANCE = 0.20;
+
+function isWrenActive() {
+  return G.party.some(p => p.n === 'Sister Wren' && p.on && p.hp > 0);
+}
+
+function tickWrenHealerAbilities() {
+  if (!isWrenActive()) return;
+
+  // Intercession — a party-wide DEF buff, Wren's actual signature rather than Eliz's
+  // ATK-focused Bless. Reads as her standing between the party and whatever's coming,
+  // matching "the last thing she has left to have been right about."
+  const alreadyInterceded = G.p.buffs.some(b => b.n === 'Interceded');
+  if (!alreadyInterceded && Math.random() < WREN_INTERCESSION_CHANCE) {
+    G.p.buffs.push({ n: 'Interceded', t: 4, def: Math.ceil(G.p.lvl * 0.3) });
+    lg('🕯️ Sister Wren stands between the party and what comes next. DEF increased for a few turns.');
+  }
+
+  // Temple's Grace — a real but secondary cure chance, distinct in name and lower in
+  // rate than Eliz's Sacred Cleansing, tied specifically to Wren's Temple background
+  // rather than a generic "healer cures things" mechanic.
+  if (G.p.ailments.length > 0 && Math.random() < WREN_GRACE_CHANCE) {
+    cureAilments(true);
+    lg('🙏 Sister Wren calls on the Temple\u2019s grace. The affliction lifts.');
+  }
+}
+
 // === JOEL PALADIN ABILITIES: LAY ON HANDS, DIVINE STRENGTH, PROTECTION FROM EVIL, SMITE UNDEAD ===
 // Same standalone pattern as Eliz's abilities. Protection from Evil and Smite Undead are
 // checked directly at combat damage-calc time (see doEnemyAttack/doPartyAttack) since
@@ -5678,7 +8472,12 @@ const JOEL_SMITE_UNDEAD_UNLOCK = 42;
 // pattern: each path amplifies part of the companion's existing kit rather than
 // replacing it, so the choice deepens an established identity instead of contradicting
 // six-plus levels of built-up character.
-const COMPANION_PRESTIGE_UNLOCK = 50;
+const COMPANION_PRESTIGE_UNLOCK = 100;
+// A handful of unrelated late-game bonuses (gift amounts, affinity %, Soel's danger
+// sense) also used to step up exactly when Companion Prestige unlocked, purely by
+// coincidence of sharing a constant. Split out so raising the prestige-choice level
+// doesn't silently push those back too.
+const LATE_GAME_BONUS_LEVEL = 50;
 
 const COMPANION_PRESTIGE = {
   Joel: {
@@ -5876,7 +8675,7 @@ function tickSoelWarmPresence() {
   if (G.p.lvl < SOEL_WARM_PRESENCE_UNLOCK) return;
 
   // The Chosen Family (capstone, auto-granted at 50): the trickle runs deeper.
-  const pct = G.p.lvl >= COMPANION_PRESTIGE_UNLOCK ? 0.05 : 0.03;
+  const pct = G.p.lvl >= LATE_GAME_BONUS_LEVEL ? 0.05 : 0.03;
   const hpAmt = Math.max(1, Math.floor(G.p.mhp * pct));
   const mpAmt = Math.max(1, Math.floor(G.p.mmp * pct));
   let healedAnyone = false;
@@ -6009,8 +8808,9 @@ function tickAilments() {
 
 
 const FORGE_UNLOCK_LEVEL = 20;
-const FORGE_MAX_LEVEL = 5;
-const FORGE_COSTS = [200, 500, 1200, 2500, 5000]; // cost to go from level index to index+1
+const FORGE_MAX_LEVEL = 6;
+const FORGE_COSTS = [200, 500, 1200, 2500, 5000, 18000]; // cost to go from level index to index+1 — tier 6 also requires a Mendstone
+const FORGE_MENDSTONE_TIER = 6; // the level that requires consuming a Mendstone alongside gold
 const FORGE_STAT_KEYS = ['atk', 'def', 'spd', 'hp', 'str', 'dex', 'con', 'int', 'wis', 'cha',
   'fireDmg', 'iceDmg', 'lightDmg', 'voidDmg', 'fireRes', 'iceRes', 'lightRes', 'voidRes',
   'lifeSteal', 'critChance', 'mpRegen', 'hpRegen', 'goldFind'];
@@ -6028,6 +8828,9 @@ function forgeUpgradeItem(ownerName, slot) {
   if (level >= FORGE_MAX_LEVEL) { lg('⚒️ ' + item.n + ' is already fully forged (+' + FORGE_MAX_LEVEL + ').'); return; }
   const cost = FORGE_COSTS[level];
   if (G.p.gold < cost) { lg('❌ Need ' + cost + 'G to forge ' + item.n + ' to +' + (level + 1) + ' (have ' + G.p.gold + 'G).'); return; }
+  const needsMendstone = (level + 1) === FORGE_MENDSTONE_TIER;
+  const mendstoneIdx = needsMendstone ? G.p.inv.findIndex(it => it.n === 'Mendstone') : -1;
+  if (needsMendstone && mendstoneIdx === -1) { lg('❌ Forging to +' + FORGE_MENDSTONE_TIER + ' also requires a Mendstone \u2014 the Mended Sanctum is the only known source.'); return; }
 
   // Snapshot original stats the first time this item is ever forged, so repeated
   // upgrades compute from the true base rather than compounding on an already-boosted value.
@@ -6037,6 +8840,11 @@ function forgeUpgradeItem(ownerName, slot) {
   }
 
   G.p.gold -= cost;
+  if (needsMendstone) {
+    const stone = G.p.inv[mendstoneIdx];
+    stone.q = (stone.q || 1) - 1;
+    if (stone.q <= 0) G.p.inv.splice(mendstoneIdx, 1);
+  }
   item.upgradeLevel = level + 1;
   const mult = 1 + item.upgradeLevel * FORGE_GROWTH_PER_LEVEL;
   for (let key in item.baseStats) {
@@ -6045,7 +8853,7 @@ function forgeUpgradeItem(ownerName, slot) {
       : Math.max(1, Math.round(item.baseStats[key] * mult));
   }
 
-  lg('⚒️ ' + item.n + ' forged to +' + item.upgradeLevel + '!');
+  lg('⚒️ ' + item.n + ' forged to +' + item.upgradeLevel + (needsMendstone ? ' \u2014 the Mendstone hums once, then settles quietly into the metal.' : '') + '!');
 
   if (ownerName !== 'San') {
     const member = G.party.find(p => p.n === ownerName);
@@ -6106,27 +8914,192 @@ const STRONGHOLDS = {
   arcaneTower: {
     name: 'Arcane Planar Tower',
     icon: '🗼',
+    era: 'oldWorld',
     restSiteIds: ['apt_camp', 'apt_tavern'],
     desc: 'The tower answers to you now. Its camp and tavern are yours — free, and always open — whenever you need them.',
     stipend: { xp: 40, gold: 60 },
     tasks: [
-      { id: 'st_tower_upkeep', n: 'Tower Upkeep', d: "Defeat 3 Planar Wisps to keep the tower's wards charged", t: 'kill_specific', target: 'Planar Wisp', c: 0, need: 3, rw: { xp: 90, g: 70 }, done: false, refreshDay: -1 },
-      { id: 'st_tower_rift_ward', n: 'Rift Ward', d: "Defeat 2 Rift Stalkers threatening the tower's seal", t: 'kill_specific', target: 'Rift Stalker', c: 0, need: 2, rw: { xp: 110, g: 85 }, done: false, refreshDay: -1 },
-      { id: 'st_tower_armory', n: 'Armory Watch', d: "Defeat 3 Aether Golems guarding the Tower Armory", t: 'kill_specific', target: 'Aether Golem', c: 0, need: 3, rw: { xp: 130, g: 100 }, done: false, refreshDay: -1, minGuildLevel: 2 }
+      { id: 'st_tower_upkeep', n: 'Tower Upkeep', d: "Defeat 3 Planar Wisps (found in Arcane Planar Tower) to keep the tower's wards charged", t: 'kill_specific', target: 'Planar Wisp', c: 0, need: 3, rw: { xp: 90, g: 70 }, done: false, refreshDay: -1 },
+      { id: 'st_tower_rift_ward', n: 'Rift Ward', d: "Defeat 2 Rift Stalkers (found in Arcane Planar Tower) threatening the tower's seal", t: 'kill_specific', target: 'Rift Stalker', c: 0, need: 2, rw: { xp: 110, g: 85 }, done: false, refreshDay: -1 },
+      { id: 'st_tower_chrono', n: 'Steady the Clocks', d: "Defeat 2 Chronomancers (found in Arcane Planar Tower) before the tower's own time slips further", t: 'kill_specific', target: 'Chronomancer', c: 0, need: 2, rw: { xp: 100, g: 80 }, done: false, refreshDay: -1 },
+      { id: 'st_tower_armory', n: 'Armory Watch', d: "Defeat 3 Aether Golems (found in Arcane Planar Tower) guarding the Tower Armory", t: 'kill_specific', target: 'Aether Golem', c: 0, need: 3, rw: { xp: 130, g: 100 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_tower_void', n: 'What the Void Weaves', d: "Defeat 2 Void Weavers (found in Arcane Planar Tower) unraveling the tower's own wards", t: 'kill_specific', target: 'Void Weaver', c: 0, need: 2, rw: { xp: 150, g: 115 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_tower_wisp_ii', n: 'Wisp Tide', d: "Defeat 6 Planar Wisps (found in Arcane Planar Tower) as they surge past the second ward line", t: 'kill_specific', target: 'Planar Wisp', c: 0, need: 6, rw: { xp: 220, g: 170 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_tower_leviathan_i', n: 'The Deep Current', d: "Defeat 1 Planar Leviathan (found in Arcane Planar Tower) before it fully surfaces", t: 'kill_specific', target: 'Planar Leviathan', c: 0, need: 1, rw: { xp: 320, g: 260 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_tower_rift_ii', n: 'Rift Ward, Deepened', d: "Defeat 5 Rift Stalkers (found in Arcane Planar Tower) as the tower's seal is tested harder", t: 'kill_specific', target: 'Rift Stalker', c: 0, need: 5, rw: { xp: 380, g: 300 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_tower_golem_ii', n: 'The Vault Holds', d: "Defeat 5 Aether Golems (found in Arcane Planar Tower) still guarding what the Tower Vault protects", t: 'kill_specific', target: 'Aether Golem', c: 0, need: 5, rw: { xp: 430, g: 340 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_tower_leviathan_ii', n: 'What Surfaced Fully', d: "Defeat 2 Planar Leviathans (found in Arcane Planar Tower) now that the Sanctum draws them in whole", t: 'kill_specific', target: 'Planar Leviathan', c: 0, need: 2, rw: { xp: 600, g: 500 }, done: false, refreshDay: -1, minGuildLevel: 5 }
     ],
     // The Guild Hall is the core progression structure for this stronghold — everything
     // else added to it later checks the current level here. Level 1 is automatic on
     // claim (no cost); each level after that is a gold-gated upgrade with a concrete unlock.
+    // Materials are tiered by design: early levels lean on generic, widely-farmed mats;
+    // later levels lean harder on this zone's own specific loot, so the climb gets
+    // genuinely harder as the Guild Hall grows, not just more expensive.
     guildHall: [
       { level: 1, name: 'Tower Claimed', cost: 0, desc: 'Free rest and a daily stipend — the tower answers to you now.' },
-      { level: 2, name: 'Tower Armory', cost: 800, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
-      { level: 3, name: 'Tower Training Grounds', cost: 2500, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
-      { level: 4, name: 'Tower Vault', cost: 6000, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
-      { level: 5, name: 'Tower Sanctum', cost: 15000, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
+      { level: 2, name: 'Tower Armory', cost: 800, mats: { 'Iron Ore': 6 }, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
+      { level: 3, name: 'Tower Training Grounds', cost: 2500, mats: { 'Herb Bundle': 8, 'Planar Essence': 4 }, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
+      { level: 4, name: 'Tower Vault', cost: 6000, mats: { 'Aether Shard': 6, 'Chrono Sand': 4 }, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
+      { level: 5, name: 'Tower Sanctum', cost: 15000, mats: { 'Void Thread': 8, 'Rift Splinter': 8, 'Chrono Sand': 6 }, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
     ],
     zoneLv: 11, // used to scale siege-defense enemies
     siegeEnemies: ['Planar Wisp', 'Rift Stalker', 'Void Weaver', 'Astral Construct'],
     siegeReward: { xp: 350, gold: 300, guildRep: 25 }
+  },
+  mendedGrove: {
+    name: 'The Mended Grove',
+    icon: '🌿',
+    era: 'verdant',
+    restSiteIds: ['grove_camp', 'grove_tavern'],
+    desc: "Ground on the other side of everything that ever broke — the vale simply makes room for you, the way it apparently makes room for everyone who actually means to tend it instead of just passing through.",
+    stipend: { xp: 400, gold: 500 },
+    tasks: [
+      { id: 'st_grove_bramble', n: 'Bramble Watch', d: 'Defeat 3 Bramble Wardens (found in The Unbroken Vale) to keep the grove\'s borders soft instead of hostile', t: 'kill_specific', target: 'Bramble Warden', c: 0, need: 3, rw: { xp: 900, g: 700 }, done: false, refreshDay: -1 },
+      { id: 'st_grove_thistle', n: 'Thistle Clearing', d: 'Defeat 2 Thistle Stalkers (found in The Unbroken Vale) before they choke the new growth', t: 'kill_specific', target: 'Thistle Stalker', c: 0, need: 2, rw: { xp: 1100, g: 850 }, done: false, refreshDay: -1 },
+      { id: 'st_grove_wildroot', n: 'Wildroot Tending', d: 'Defeat 2 Wildroot Sprites (found in The Unbroken Vale) before their mischief spreads past the borders', t: 'kill_specific', target: 'Wildroot Sprite', c: 0, need: 2, rw: { xp: 1000, g: 780 }, done: false, refreshDay: -1 },
+      { id: 'st_grove_harvest', n: "Harvest Escort", d: 'Defeat 3 Harvest Golems (found in Sunreach Fields) threatening the Sunreach trade road', t: 'kill_specific', target: 'Harvest Golem', c: 0, need: 3, rw: { xp: 1300, g: 1000 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_grove_guardian', n: "What the Fields Keep Safe", d: 'Defeat 2 Sunreach Guardians (found in Sunreach Fields) before the harvest is put at risk', t: 'kill_specific', target: 'Sunreach Guardian', c: 0, need: 2, rw: { xp: 1450, g: 1150 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_grove_bloomwatcher', n: 'Bloomwatch', d: 'Defeat 2 Bloomwatchers (found in Sunreach Fields) drifting too close to the grove\'s own new growth', t: 'kill_specific', target: 'Bloomwatcher', c: 0, need: 2, rw: { xp: 1500, g: 1200 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_grove_bramble_ii', n: 'Bramble Watch, Widened', d: 'Defeat 6 Bramble Wardens (found in The Unbroken Vale) as the grove\'s borders push further out', t: 'kill_specific', target: 'Bramble Warden', c: 0, need: 6, rw: { xp: 2200, g: 1700 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_grove_thistle_ii', n: 'Thistle Clearing, Again', d: 'Defeat 5 Thistle Stalkers (found in The Unbroken Vale) as the choking growth keeps returning', t: 'kill_specific', target: 'Thistle Stalker', c: 0, need: 5, rw: { xp: 2500, g: 1950 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_grove_harvest_ii', n: 'The Full Harvest Road', d: 'Defeat 6 Harvest Golems (found in Sunreach Fields) escorting the trade road end to end', t: 'kill_specific', target: 'Harvest Golem', c: 0, need: 6, rw: { xp: 3200, g: 2600 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_grove_guardian_ii', n: 'The Fields, Fully Kept', d: 'Defeat 3 Sunreach Guardians (found in Sunreach Fields) now that the Sanctum draws the whole field\'s attention', t: 'kill_specific', target: 'Sunreach Guardian', c: 0, need: 3, rw: { xp: 4200, g: 3400 }, done: false, refreshDay: -1, minGuildLevel: 5 }
+    ],
+    guildHall: [
+      { level: 1, name: 'Grove Tended', cost: 0, desc: 'Free rest and a daily stipend — the vale already trusts you with this much.' },
+      { level: 2, name: "Root Cellar Stores", cost: 12000, mats: { 'Iron Ore': 10, 'Herb Bundle': 10 }, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
+      { level: 3, name: 'Sunlit Training Ground', cost: 35000, mats: { 'Unbroken Root': 8, 'Sunreach Grain': 8 }, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
+      { level: 4, name: "The Grove's Deep Roots", cost: 90000, mats: { 'First Bloom Petal': 6, "Guardian's Bramble": 6 }, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
+      { level: 5, name: 'Heartwood Sanctum', cost: 220000, mats: { 'Soil That Remembers Nothing': 8, 'A Harvest Nobody Rationed': 8, 'First Bloom Petal': 6 }, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
+    ],
+    zoneLv: 56,
+    siegeEnemies: ['Bramble Warden', 'Wildroot Sprite', 'Thistle Stalker', 'Harvest Golem'],
+    siegeReward: { xp: 3500, gold: 3000, guildRep: 40 }
+  },
+  wakingEdge: {
+    name: 'The Waking Edge',
+    icon: '🌄',
+    era: 'verdant',
+    restSiteIds: ['edge_camp', 'edge_tavern'],
+    desc: "Past the deepest root of the Vale, the ground simply stops being mapped — not blocked, not broken, just quietly unfinished, the way a sentence trails off instead of ending. Something out here is still deciding what it wants to grow into next.",
+    stipend: { xp: 900, gold: 1100 },
+    tasks: [
+      { id: 'st_edge_elder', n: "The Elder's Patience", d: 'Defeat 3 Root-Bound Elders (found in The Rootbound Sanctuary) before their patience runs out entirely', t: 'kill_specific', target: 'Root-Bound Elder', c: 0, need: 3, rw: { xp: 2200, g: 1700 }, done: false, refreshDay: -1 },
+      { id: 'st_edge_keeper', n: 'What the Sanctuary Keeps', d: 'Defeat 2 Sanctuary Keepers (found in The Rootbound Sanctuary) guarding whatever comes next', t: 'kill_specific', target: 'Sanctuary Keeper', c: 0, need: 2, rw: { xp: 2600, g: 2000 }, done: false, refreshDay: -1 },
+      { id: 'st_edge_sentinel', n: 'The Elderwood Line', c: 0, d: 'Defeat 3 Elderwood Sentinels (found in The Rootbound Sanctuary) holding the actual edge of the map', t: 'kill_specific', target: 'Elderwood Sentinel', need: 3, rw: { xp: 3000, g: 2400 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_edge_elder_ii', n: "The Elders, Pressed Further", c: 0, d: 'Defeat 6 Root-Bound Elders (found in The Rootbound Sanctuary) as the edge itself grows more restless', t: 'kill_specific', target: 'Root-Bound Elder', need: 6, rw: { xp: 4200, g: 3400 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_edge_keeper_ii', n: 'What Else the Sanctuary Guards', c: 0, d: 'Defeat 4 Sanctuary Keepers (found in The Rootbound Sanctuary) now that deeper watchers have taken notice', t: 'kill_specific', target: 'Sanctuary Keeper', need: 4, rw: { xp: 4800, g: 3900 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_edge_sentinel_ii', n: 'The Line, Held Longer', c: 0, d: 'Defeat 6 Elderwood Sentinels (found in The Rootbound Sanctuary) as the edge of the map pushes further out', t: 'kill_specific', target: 'Elderwood Sentinel', need: 6, rw: { xp: 5600, g: 4500 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_edge_elder_iii', n: "The Elders' Last Patience", c: 0, d: 'Defeat 10 Root-Bound Elders (found in The Rootbound Sanctuary) as the Training Ground pushes deeper still', t: 'kill_specific', target: 'Root-Bound Elder', need: 10, rw: { xp: 7000, g: 5600 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_edge_keeper_iii', n: 'The Deepest Keepers', c: 0, d: 'Defeat 6 Sanctuary Keepers (found in The Rootbound Sanctuary) now guarding something the Edge itself is only beginning to understand', t: 'kill_specific', target: 'Sanctuary Keeper', need: 6, rw: { xp: 8200, g: 6600 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_edge_sentinel_iii', n: 'Where the Map Actually Ends', c: 0, d: 'Defeat 8 Elderwood Sentinels (found in The Rootbound Sanctuary) at the true, final edge of anything mapped', t: 'kill_specific', target: 'Elderwood Sentinel', need: 8, rw: { xp: 9800, g: 8000 }, done: false, refreshDay: -1, minGuildLevel: 5 },
+      { id: 'st_edge_elder_iv', n: 'What Even the Elders Fear', c: 0, d: 'Defeat 12 Root-Bound Elders (found in The Rootbound Sanctuary) as the Sanctum draws in everything this deep', t: 'kill_specific', target: 'Root-Bound Elder', need: 12, rw: { xp: 11500, g: 9200 }, done: false, refreshDay: -1, minGuildLevel: 5 }
+    ],
+    guildHall: [
+      { level: 1, name: 'Edge Claimed', cost: 0, desc: 'Free rest and a daily stipend — the first foothold past everything that has ever been mapped.' },
+      { level: 2, name: 'Provisions at the Threshold', cost: 30000, mats: { 'Unbroken Root': 12, 'Sunreach Grain': 10 }, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
+      { level: 3, name: 'Watchfire Training Ground', cost: 85000, mats: { 'Heartwood Shard': 10 }, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
+      { level: 4, name: 'The Edge Deepens', cost: 220000, mats: { 'What the Roots Kept': 8, 'Heartwood Shard': 8 }, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
+      { level: 5, name: "Where the Map Ends", cost: 550000, mats: { 'The First Bloom, Still Sealed': 6, 'What the Roots Kept': 10 }, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
+    ],
+    zoneLv: 95,
+    siegeEnemies: ['Root-Bound Elder', 'Sanctuary Keeper', 'Elderwood Sentinel'],
+    siegeReward: { xp: 9000, gold: 7000, guildRep: 90 }
+  },
+  // === STRONGHOLDS ADDED AS WORLDS EXPAND ===
+  // Each new world eventually earns its own stronghold, same as the original three —
+  // claimed once the party has real standing there, tasks and materials drawn from that
+  // world's own zones so the theme carries through rather than reusing generic content.
+  bunniesWarren: {
+    name: "The Bunnies' Warren",
+    icon: '🐇',
+    era: 'threshold',
+    restSiteIds: ['warren_camp', 'warren_tavern'],
+    desc: "Reyes never called it a stronghold, exactly — she called it \"the place we finally stopped having to defend so carefully.\" Close enough. The Warren is yours to help hold now, the same way it has always been theirs.",
+    stipend: { xp: 2200, gold: 1400 },
+    tasks: [
+      { id: 'st_warren_sentry', n: 'Sentry Sweep', d: 'Defeat 3 Idle Sentry Units (found in The Threshold District) still looping their old patrol routes near the Warren', t: 'kill_specific', target: 'Idle Sentry Unit', c: 0, need: 3, rw: { xp: 3800, g: 2400 }, done: false, refreshDay: -1 },
+      { id: 'st_warren_walker', n: 'Walker Watch', d: 'Defeat 2 Unmanned Response Walkers (found in The Threshold District) drifting too close to the Warren\'s edge', t: 'kill_specific', target: 'Unmanned Response Walker', c: 0, need: 2, rw: { xp: 4200, g: 2700 }, done: false, refreshDay: -1 },
+      { id: 'st_warren_ghost', n: 'Ghost Inventory', d: 'Defeat 3 Ghost Inventory Drones (found in The Unpaid Ledger) still trying to fulfill orders no one placed', t: 'kill_specific', target: 'Ghost Inventory Drone', c: 0, need: 3, rw: { xp: 4600, g: 3000 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_warren_enforcement', n: 'Collections, Cancelled', d: 'Defeat 2 Collections Enforcement Units (found in The Unpaid Ledger) before they reach the Warren\'s own accounts', t: 'kill_specific', target: 'Collections Enforcement Unit', c: 0, need: 2, rw: { xp: 5000, g: 3300 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_warren_relay', n: 'Relay Silence', d: 'Defeat 3 Relay Ghosts (found in The Signal Dark) still broadcasting the cascade\'s first failsafe', t: 'kill_specific', target: 'Relay Ghost', c: 0, need: 3, rw: { xp: 5400, g: 3600 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_warren_perimeter', n: 'Perimeter, Held', d: 'Defeat 4 Perimeter Drones (found in Where the Bunnies Ran) patrolling the edge Liang used to hold alone', t: 'kill_specific', target: 'Perimeter Drone', c: 0, need: 4, rw: { xp: 6200, g: 4100 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_warren_salvage', n: 'Salvage Run', d: 'Defeat 3 Salvage Constructs (found in Where the Bunnies Ran) picking through what the Warren still needs', t: 'kill_specific', target: 'Salvage Construct', c: 0, need: 3, rw: { xp: 6800, g: 4500 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_warren_sentinel', n: 'What Still Guards This', d: 'Defeat 4 Warren Sentinels (found in The Last Warren) still standing post out of pure old habit', t: 'kill_specific', target: 'Warren Sentinel', c: 0, need: 4, rw: { xp: 7600, g: 5100 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_warren_alarm', n: 'The Last Alarm, Silenced', d: 'Defeat 3 instances of The Last Alarm (found in The Last Warren) still sounding for a crisis long since over', t: 'kill_specific', target: 'The Last Alarm', c: 0, need: 3, rw: { xp: 8400, g: 5600 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_warren_guarding', n: 'Whatever It Turns Out To Mean', d: 'Defeat 4 things Still Guarding This (found in The Last Warren) even now that the Warren is genuinely safe', t: 'kill_specific', target: 'Something Still Guarding This', c: 0, need: 4, rw: { xp: 9800, g: 6600 }, done: false, refreshDay: -1, minGuildLevel: 5 }
+    ],
+    guildHall: [
+      { level: 1, name: 'Warren Claimed', cost: 60000, desc: 'Free rest and a daily stipend — Reyes\'s people already trust you with this much, and now it is official.' },
+      { level: 2, name: 'Warren Stores, Restocked', cost: 180000, mats: { "Threshold District Access Card": 8, 'A Receipt For Nothing': 8 }, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
+      { level: 3, name: 'Warren Training Ground', cost: 420000, mats: { 'Sentry Unit Core': 10, 'A Loop That Never Resolved': 8 }, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
+      { level: 4, name: "The Warren's Deeper Stores", cost: 900000, mats: { 'Relay Core Fragment': 10, "A Tally Someone Kept": 10 }, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
+      { level: 5, name: 'Kaya Kaya Sanctum', cost: 2000000, mats: { 'A Warren Left In A Hurry': 12, "The Last Thing Anyone Wrote Down": 10, 'Proof, Whatever It Turns Out To Mean': 8 }, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
+    ],
+    zoneLv: 250,
+    siegeEnemies: ['Idle Sentry Unit', 'Relay Ghost', 'Warren Sentinel', 'The Last Alarm'],
+    siegeReward: { xp: 40000, gold: 26000, guildRep: 180 }
+  },
+  settledPlace: {
+    name: 'The Settled Place',
+    icon: '✨',
+    era: 'unstableReach',
+    restSiteIds: ['settled_camp', 'settled_tavern'],
+    desc: "It never told anyone what to call it, only that it wanted to be walked into rather than simply witnessed. \"The Settled Place\" is San's own name for it, offered once, quietly — and it seemed to like the sound of that well enough to keep it.",
+    stipend: { xp: 3400, gold: 2100 },
+    tasks: [
+      { id: 'st_settled_unsettled', n: 'What Hasn\'t Settled Yet', d: 'Defeat 3 Unsettled Forms (found in The First Uncertainty) still deciding what they want to be near the Settled Place\'s own edge', t: 'kill_specific', target: 'Unsettled Form', c: 0, need: 3, rw: { xp: 5200, g: 3300 }, done: false, refreshDay: -1 },
+      { id: 'st_settled_flicker', n: 'Steadying the Flicker', d: 'Defeat 2 Flickering Presences (found in The First Uncertainty) before the uncertainty spreads back in', t: 'kill_specific', target: 'Flickering Presence', c: 0, need: 2, rw: { xp: 5600, g: 3600 }, done: false, refreshDay: -1 },
+      { id: 'st_settled_walker', n: 'The Ground Disagrees', d: 'Defeat 3 Contradiction Walkers (found in Where the Map Gives Up) still arranging the ground two ways at once', t: 'kill_specific', target: 'Contradiction Walker', c: 0, need: 3, rw: { xp: 6000, g: 3900 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_settled_moved', n: 'A Place That Kept Moving', d: 'Defeat 2 instances of A Place That Moved (found in Where the Map Gives Up) before they unsettle what the Settled Place already decided', t: 'kill_specific', target: 'A Place That Moved', c: 0, need: 2, rw: { xp: 6400, g: 4200 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_settled_wraith', n: 'Scaffold Watch', d: 'Defeat 3 Scaffold Wraiths (found in The Half-Finished Hall) still half-building things nobody asked for anymore', t: 'kill_specific', target: 'Scaffold Wraith', c: 0, need: 3, rw: { xp: 6900, g: 4500 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_settled_guardian', n: 'What the Hall Still Guards', d: 'Defeat 4 Unfinished Guardians (found in The Half-Finished Hall) protecting architecture that finished deciding without them', t: 'kill_specific', target: 'Unfinished Guardian', c: 0, need: 4, rw: { xp: 7800, g: 5100 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_settled_almost', n: 'The Almost-Formed', d: 'Defeat 3 of the Almost-Formed (found in The Waiting Shape) still patiently waiting for a decision already made', t: 'kill_specific', target: 'The Almost-Formed', c: 0, need: 3, rw: { xp: 8600, g: 5700 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_settled_patient', n: 'Patience, Answered', d: 'Defeat 4 Patient Shapes (found in The Waiting Shape) that have been waiting since long before the Settled Place chose anything', t: 'kill_specific', target: 'Patient Shape', c: 0, need: 4, rw: { xp: 9600, g: 6400 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_settled_nearly', n: "What's Still Nearly Here", d: 'Defeat 3 things that are Nearly Here (found in The Waiting Shape) as more of this world keeps arriving', t: 'kill_specific', target: "What's Nearly Here", c: 0, need: 3, rw: { xp: 10600, g: 7100 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_settled_watching', n: 'Something Watching Itself Decide', d: 'Defeat 3 things Watching Themselves Decide (found in What It Was Becoming) even now that this place has already chosen', t: 'kill_specific', target: 'Something Watching Itself Decide', c: 0, need: 3, rw: { xp: 12800, g: 8600 }, done: false, refreshDay: -1, minGuildLevel: 5 }
+    ],
+    guildHall: [
+      { level: 1, name: 'A Name It Kept', cost: 100000, desc: 'Free rest and a daily stipend — the first place in its own world that got to decide what it wanted to be, and it wanted this too.' },
+      { level: 2, name: 'What It Chose to Keep', cost: 300000, mats: { 'A Footprint That Moved After': 8, 'Ground That Remembered Being Asked': 8 }, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
+      { level: 3, name: 'A Ground That Finally Agrees', cost: 700000, mats: { 'A Map That Disagreed With Itself': 10, 'Ground Still Arguing': 8 }, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
+      { level: 4, name: 'Halls, Actually Finished', cost: 1500000, mats: { 'A Column Not Yet Decided On': 10, 'Proof Someone Is Still Working': 10 }, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
+      { level: 5, name: 'What It Was Always Becoming', cost: 3500000, mats: { 'A Future Not Yet Settled': 12, 'Proof Nothing Here Is Fixed': 10, "What It Chose, In The End": 8 }, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
+    ],
+    zoneLv: 310,
+    siegeEnemies: ['Unsettled Form', 'Contradiction Walker', 'Scaffold Wraith', 'The Almost-Formed'],
+    siegeReward: { xp: 65000, gold: 43000, guildRep: 260 }
+  },
+  watchedHall: {
+    name: 'The Watched Hall',
+    icon: '📐',
+    era: 'unfinishedBlueprint',
+    restSiteIds: ['hall_camp', 'hall_tavern'],
+    desc: "Nobody put the Architect's plan to rest by stopping it once. Something this old needs actual, ongoing stewardship — which is, Varel points out more than once, exactly the kind of work he has apparently been training for his whole life without knowing it.",
+    stipend: { xp: 4200, gold: 2700 },
+    tasks: [
+      { id: 'st_hall_remnant', n: 'What Kept Drafting', d: 'Defeat 3 Drafting Remnants (found in A Door Never Finished) still sketching lines nobody asked for', t: 'kill_specific', target: 'Drafting Remnant', c: 0, need: 3, rw: { xp: 6800, g: 4400 }, done: false, refreshDay: -1 },
+      { id: 'st_hall_echo', n: 'Blueprint Echoes', d: 'Defeat 2 Blueprint Echoes (found in A Door Never Finished) still repeating a plan long since interrupted', t: 'kill_specific', target: 'Blueprint Echo', c: 0, need: 2, rw: { xp: 7300, g: 4700 }, done: false, refreshDay: -1 },
+      { id: 'st_hall_ward', n: 'Structural Watch', d: 'Defeat 3 Structural Wards (found in The Scaffold Behind Everything) still guarding architecture with no one left to report to', t: 'kill_specific', target: 'Structural Ward', c: 0, need: 3, rw: { xp: 7900, g: 5100 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_hall_loadbearing', n: 'What Still Holds This Up', d: 'Defeat 2 Load-Bearing Ghosts (found in The Scaffold Behind Everything) keeping the connection between worlds standing', t: 'kill_specific', target: 'Load-Bearing Ghost', c: 0, need: 2, rw: { xp: 8500, g: 5500 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_hall_unopened', n: 'The Unopened, Left Unopened', d: 'Defeat 3 Unopened Doors (found in Every Door It Ever Drew) that have decided, on their own, to stop staying shut', t: 'kill_specific', target: 'Unopened Door', c: 0, need: 3, rw: { xp: 9200, g: 6000 }, done: false, refreshDay: -1, minGuildLevel: 2 },
+      { id: 'st_hall_behind', n: 'Something Behind It', d: 'Defeat 4 things waiting Behind It (found in Every Door It Ever Drew) before they find a door willing to let them through', t: 'kill_specific', target: 'Something Behind It', c: 0, need: 4, rw: { xp: 10200, g: 6700 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_hall_recognizes', n: 'A Door That Recognizes You', d: 'Defeat 3 Doors That Recognize You (found in Every Door It Ever Drew) — unsettling company, whichever of you they actually mean', t: 'kill_specific', target: 'A Door That Recognizes You', c: 0, need: 3, rw: { xp: 11200, g: 7400 }, done: false, refreshDay: -1, minGuildLevel: 3 },
+      { id: 'st_hall_guarding', n: 'Guarding It Gently', d: "Defeat 3 things Guarding It Gently (found in The Door With a Familiar Shape) — patient, careful, never actually hostile", t: 'kill_specific', target: 'Something Guarding It Gently', c: 0, need: 3, rw: { xp: 12800, g: 8500 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_hall_waits', n: 'A Door That Waits', d: "Defeat 4 Doors That Wait (found in The Door With a Familiar Shape) — nothing urgent about any of them, which is somehow the hardest part", t: 'kill_specific', target: 'A Door That Waits', c: 0, need: 4, rw: { xp: 14200, g: 9400 }, done: false, refreshDay: -1, minGuildLevel: 4 },
+      { id: 'st_hall_almost', n: 'The Weight of Almost Knowing', d: "Defeat 3 instances of The Weight Of Almost Knowing (found in The Door With a Familiar Shape) — a feeling, mostly, given just enough shape to fight", t: 'kill_specific', target: 'The Weight Of Almost Knowing', c: 0, need: 3, rw: { xp: 16000, g: 10600 }, done: false, refreshDay: -1, minGuildLevel: 5 }
+    ],
+    guildHall: [
+      { level: 1, name: 'The Hall, Watched', cost: 160000, desc: 'Free rest and a daily stipend — someone has to actually keep watch here, and it may as well be people who already know what this place is capable of.' },
+      { level: 2, name: 'What the Vigil Keeps', cost: 480000, mats: { "A Line Drawn After The Architect Fell": 8, 'Blueprint Fragment, Still Warm': 8 }, desc: '+50% daily stipend, and a third stronghold task becomes available.', stipendMult: 1.5 },
+      { level: 3, name: "The Scaffold, Reinforced", cost: 1100000, mats: { 'A Support Beam Older Than The Breaking': 10, 'Scaffold Key': 8 }, desc: '+5% XP from every victory, permanently.', xpBonus: 0.05 },
+      { level: 4, name: 'The Index, Catalogued', cost: 2400000, mats: { 'A Door Not Yet Opened': 8, "The Architect's Full Index": 10 }, desc: '+10% gold from every victory, permanently.', goldBonus: 0.10 },
+      { level: 5, name: 'The Vigil, Permanent', cost: 5500000, mats: { 'A Handle Warm To The Touch': 6, 'Proof This One Is Different': 8, 'The Courage To Actually Open It': 4 }, desc: 'Another +10% XP and +10% gold, plus resting here grants a 3-fight blessing of +10% to all stats.', xpBonus: 0.10, goldBonus: 0.10, blessing: true }
+    ],
+    zoneLv: 350,
+    siegeEnemies: ['Drafting Remnant', 'Structural Ward', 'Unopened Door', 'Something Guarding It Gently'],
+    siegeReward: { xp: 95000, gold: 63000, guildRep: 340 }
   }
 };
 
@@ -6168,7 +9141,23 @@ function upgradeGuildHall(strongholdId) {
   const nextTier = def.guildHall.find(t => t.level === currentLevel + 1);
   if (!nextTier) { lg('🏰 ' + def.name + "'s Guild Hall is already at maximum level."); return; }
   if (G.p.gold < nextTier.cost) { lg('❌ Need ' + nextTier.cost + 'G to build ' + nextTier.name + ' (have ' + G.p.gold + 'G).'); return; }
+  // Materials cost — checked in full before anything is deducted, same as craft().
+  // Tiered by design: earlier levels lean on generic, widely-farmed materials, later
+  // levels lean harder on materials specific to this stronghold's own zone, so the
+  // climb genuinely gets harder as the Guild Hall grows rather than just costing more gold.
+  if (nextTier.mats) {
+    for (let [mn, mq] of Object.entries(nextTier.mats)) {
+      const iv = G.p.inv.find(x => x.n === mn);
+      if (!iv || iv.q < mq) { lg('❌ Missing materials for ' + nextTier.name + ': need ' + mq + 'x ' + mn + (iv ? ' (have ' + iv.q + ')' : ' (have none)') + '.'); return; }
+    }
+  }
   G.p.gold -= nextTier.cost;
+  if (nextTier.mats) {
+    for (let [mn, mq] of Object.entries(nextTier.mats)) {
+      const iv = G.p.inv.find(x => x.n === mn);
+      iv.q -= mq; if (iv.q <= 0) { const ix = G.p.inv.indexOf(iv); G.p.inv.splice(ix, 1); }
+    }
+  }
   G.guildHallLevel[strongholdId] = nextTier.level;
   lg('🏰 GUILD HALL UPGRADED: ' + nextTier.name + ' (Level ' + nextTier.level + ')!');
   lg('   ' + nextTier.desc);
@@ -6196,11 +9185,17 @@ function grantStrongholdStipend(site) {
   const level = getGuildHallLevel(strongholdId);
   const stipendTier = def.guildHall.find(t => t.stipendMult && t.level <= level);
   const mult = stipendTier ? stipendTier.stipendMult : 1;
-  const xp = Math.floor(def.stipend.xp * mult);
-  const gold = Math.floor(def.stipend.gold * mult);
+  // Graduated disciples genuinely help run the Guild's operations, strongholds
+  // included — a small, capped bonus per disciple rather than a full assignment
+  // system, so the payoff for teaching them through is felt everywhere, not just
+  // in Guild War/Guild Boss where they're already fielded.
+  const discipleCount = (G.graduatedDisciples || []).length;
+  const discipleBonus = Math.min(0.30, discipleCount * 0.02); // +2% per disciple, capped at +30%
+  const xp = Math.floor(def.stipend.xp * mult * (1 + discipleBonus));
+  const gold = Math.floor(def.stipend.gold * mult * (1 + discipleBonus));
   G.p.xp += xp;
   G.p.gold += gold;
-  lg('🏰 The tower provides for you: +' + xp + ' XP, +' + gold + 'G.');
+  lg('🏰 The tower provides for you: +' + xp + ' XP, +' + gold + 'G.' + (discipleBonus > 0 ? ' (+' + Math.round(discipleBonus * 100) + '% from your graduated disciples helping run things.)' : ''));
   if (getGuildHallStat(strongholdId, 'blessing')) {
     G.p.buffs.push({ n: "Guildmaster's Blessing", t: 3, atk: Math.round(G.p.stats.int * 0.1) || 1, def: 1 });
     lg("✨ The Guild Sanctum's blessing settles over you — +10% to all stats for your next 3 fights.");
@@ -6220,6 +9215,7 @@ function checkStrongholdSiege() {
     if (!G.strongholds[id]) continue;
     const def = STRONGHOLDS[id];
     if (!def || !def.siegeEnemies) continue;
+    if (def.era === 'oldWorld' && hasEnteredVerdantReach()) continue; // left behind — cannot be reached to defend
     if (!G.strongholdSiege[id]) G.strongholdSiege[id] = { active: false, day: -1 };
     const siege = G.strongholdSiege[id];
     if (siege.day === G.gameDay) continue; // already rolled today
@@ -6251,7 +9247,7 @@ function startSiegeWave() {
   G.cbt.en = [];
   G.state = 'combat';
   G.currentBoss = null;
-
+  G.cbt.autoCombat = isAutoCombatPreferred();
   const waveSize = 2 + Math.floor(G.siegeDefense.wave / 2); // waves 0-1: 2 enemies, wave 2: 3 enemies
   for (let i = 0; i < waveSize; i++) {
     const name = def.siegeEnemies[Math.floor(Math.random() * def.siegeEnemies.length)];
@@ -6330,10 +9326,29 @@ function exitSiegeDefense() {
 // quests, achievements, guild rep, mercenary tier, and dragon hunt clears are untouched;
 // this only resets the level/xp/base-stat track, since that's the part the curve problem
 // actually lives in.
-const PRESTIGE_MIN_LEVEL = 45;
+const PRESTIGE_MIN_LEVEL = 100;
+const PRESTIGE_TIER_STEP = 50;           // each successive prestige requires 50 levels more than the last
 const PRESTIGE_XP_PCT_PER_LEVEL = 0.4;   // % permanent XP bonus banked per level at reset
 const PRESTIGE_GOLD_PCT_PER_LEVEL = 0.3; // % permanent gold bonus banked per level at reset
-const PRESTIGE_BONUS_CAP = 200;          // sanity ceiling so repeated resets can't run away
+const PRESTIGE_BONUS_CAP = 50000;        // sanity ceiling so a genuine bug can't run away completely — not a realistic constraint at any tier a player would actually reach
+
+// Tiered unlock — first prestige needs Level 100, then each subsequent one raises the
+// bar further. Tiers 1-3 stay flat at PRESTIGE_TIER_STEP apart (100/150/200) since
+// those are already locked in and actively being worked toward. From Tier 4 onward,
+// the gap itself grows by 10 each additional tier (260, 330, 410, ...) — otherwise a
+// flat +50 forever becomes a proportionally smaller ask the higher prestige count
+// climbs, exactly backwards for a game explicitly designed to never end.
+function getPrestigeRequiredLevel() {
+  const tier = (G.prestige.count || 0) + 1; // the tier being worked toward
+  if (tier <= 3) return PRESTIGE_MIN_LEVEL + (tier - 1) * PRESTIGE_TIER_STEP;
+  let level = PRESTIGE_MIN_LEVEL + 2 * PRESTIGE_TIER_STEP; // Tier 3's level = 200
+  let increment = PRESTIGE_TIER_STEP; // 50
+  for (let t = 4; t <= tier; t++) {
+    increment += 10;
+    level += increment;
+  }
+  return level;
+}
 
 // Milestones tied to prestige COUNT specifically, not the stacking level-scaled bonus
 // above — without these, prestiging once versus ten times was mechanically identical
@@ -6368,7 +9383,7 @@ function getExpBoosterMult() {
   }
   return 1;
 }
-function getPrestigeGoldMult() { return 1 + (G.prestige.goldBonusPct || 0) / 100 + getPrestigeMilestoneBonus('goldBonusFlat'); }
+function getPrestigeGoldMult() { return 1 + (G.prestige.goldBonusPct || 0) / 100 + getPrestigeMilestoneBonus('goldBonusFlat') + getGuildWarFieldBonus('goldPct'); }
 
 // Mimi and Aisy — restored as passive, always-on bonuses once unlocked, rather than
 // the chance-based Dreamsight/Shadow Step flavor text that was never actually wired
@@ -6380,20 +9395,109 @@ function isAllyUnlocked(name) {
   const npc = G.npcs.find(n => n.n === name && n.t === 'ally');
   return npc ? npc.unlocked : false;
 }
+
+// === THE VISION MACHINE ===
+// Varel Farseer + Mimi's trained Dreamsight, built at the Mended Grove after journal_095.
+// Deliberately expensive and deliberately once-per-real-day — a window, not a door, and
+// never meant to become infrastructure. San's side stays strictly one-directional (a
+// vision, never a conversation) to keep the "no certainty" arc from the Cellphone chapters
+// intact. Joel's side rides his own already-established letter-writing thread instead, and
+// can rarely surface a small reply from his mother the more letters he's sent through it.
+const VISION_MACHINE_COST = 1000000;
+
+const VISION_VIGNETTES = [
+  "Your mother is in the kitchen, mid-afternoon light through the curtain, humming something you cannot quite place. She sets the kettle down and does not look toward the window. She has no reason to.",
+  "Your father is asleep in the good chair, a blanket someone else must have draped over him, the television on low with the sound turned down further than it needs to be. He looks tired. He also looks, for now, at rest.",
+  "Both your parents are on the porch, not talking, just sitting the way people do after decades of not needing to fill every silence. Your mother is peeling something into a bowl. Your father is watching her do it.",
+  "Your mother is on the phone, laughing at something, one hand braced on the counter. You cannot hear who she is talking to. You decide, for tonight, that it does not matter — only that she is laughing.",
+  "Your father is slower getting up from the chair than he used to be. He makes it anyway, unhurried, and pauses to steady himself against the doorframe for exactly as long as he needs to, then keeps going.",
+  "Your mother is fussing over a pot that clearly does not need fussing over, the exact same way she always has, muttering at it under her breath like it might argue back.",
+  "One of your cousins is there too, sitting across from your mother at the small table, the two of them going through something \u2014 bills, maybe, or nothing important at all. You cannot tell which, and for once it is a relief not to know.",
+  "Your father is in the garden, crouched slower than he used to crouch, tending something green that is doing better than it has any right to. He straightens up, presses a hand to his back, and keeps going anyway.",
+  "The house is quiet, mid-morning, nobody visibly in frame — just light through familiar windows, a ceiling fan turning, a kettle steaming on the stove that someone will come back for in a moment. Ordinary. Undramatic. Still standing.",
+  "Your mother is folding laundry on the bed, the same unhurried rhythm she has always folded laundry in, and for just a moment she pauses, mid-fold, and looks toward the window — and you will never know if she felt anything at all, or if it was nothing, just a mother pausing in an ordinary afternoon.",
+  "An old friend of your father's has stopped by \u2014 someone from the old sales days, still telling the same stories he always told, still making your father laugh at the parts he has heard a hundred times already. Some friendships, apparently, never needed an occasion.",
+  "The window catches on someone you did not expect \u2014 Jeff's wife, though she does not carry that name anymore, laughing at something across a table with someone new. Someone who is actually looking at her children, not past them. She found out about all of it eventually, you learn, and it was not even the first time. She simply decided, finally, that she did not have to keep choosing him. Some doors, it turns out, were always hers to close."
+];
+
+const JOEL_LETTER_REPLIES = [
+  "The window holds a moment longer than usual. Something comes back through with it this time — his mother's handwriting, familiar even distorted through whatever this is. \"I keep them all,\" it says. \"Every one. I do not need you to come home to know you are still my son.\"",
+  "A reply, brief, unmistakably hers: \"Your daughter asked about you today. I told her the truth — that you are far away, and that you write, and that far away has never once meant gone.\"",
+  "This time something answers: \"Stop apologizing in every letter. I forgave you before you ever thought to ask. A mother does not keep score the way you are afraid I do.\"",
+  "Her handwriting again, shorter than usual: \"She drew you a picture today. I do not have a way to send it to you. I am keeping it anyway, for whenever that changes.\""
+];
+
+function isVisionMachineUnlocked() {
+  return G.storyJournal.read.includes('journal_095');
+}
+
+function canUseVisionMachine() {
+  return isVisionMachineUnlocked() && G.visionMachine.lastUseDay !== G.gameDay && G.p.gold >= VISION_MACHINE_COST;
+}
+
+function useVisionMachine() {
+  if (!isVisionMachineUnlocked()) { lg('🔮 The Vision Machine has not been built yet.'); return; }
+  if (G.visionMachine.lastUseDay === G.gameDay) { lg('🔮 The window already opened once today. It needs to rest before it can hold that much again.'); return; }
+  if (G.p.gold < VISION_MACHINE_COST) { lg('🔮 Varel: "It is not stubbornness. The frame genuinely needs that much to hold open. Come back when you have it."'); return; }
+
+  G.p.gold -= VISION_MACHINE_COST;
+  G.visionMachine.lastUseDay = G.gameDay;
+  G.visionMachine.joelLetterCount = (G.visionMachine.joelLetterCount || 0) + 1;
+
+  // Chapter 103 unlocks specifically on the very first use, not a level or boss —
+  // the window's first glimpse deserves to be earned by actually opening it, not
+  // handed out alongside the setup chapters.
+  if (G.visionMachine.joelLetterCount === 1) {
+    const ch103 = G.storyJournal.entries.find(e => e.chapter === 103);
+    if (ch103 && !G.storyJournal.unlocked.includes(ch103.id)) {
+      G.storyJournal.unlocked.push(ch103.id);
+      lg('📖 Journal unlocked: ' + ch103.title + '!');
+      showToast('📖 New story chapter unlocked!', 'gold');
+    }
+  }
+
+  const vignette = VISION_VIGNETTES[Math.floor(Math.random() * VISION_VIGNETTES.length)];
+  lg('👁️ ' + vignette);
+
+  lg('✉️ Joel sends another letter through. "For my mother," he says, same as always.');
+  if (G.visionMachine.joelLetterCount >= 3 && Math.random() < 0.15) {
+    const reply = JOEL_LETTER_REPLIES[Math.floor(Math.random() * JOEL_LETTER_REPLIES.length)];
+    lg('   ' + reply);
+  }
+
+  render();
+}
+
+const VAREL_BANTER = [
+  'Varel Farseer: "You are allowed to just sit here without opening it, you know. It does not mind waiting."',
+  'Varel Farseer: "Most people who find me are looking for a way to fix something. Watching is not fixing. I have made my peace with that. You may need longer."',
+  'Varel Farseer: "Discipline is not the same as certainty. I have been doing this a very long time and I still do not know most of what I am looking at."',
+  'Varel Farseer: "Mimi asks better questions than I did, at her age. I was mostly just trying to make the noise stop."',
+  'Varel Farseer: "A window shows you a moment. It does not show you tomorrow. People forget that, and then are surprised when tomorrow still worries them."',
+  'Varel Farseer: "I do not charge that much because I am cruel. I charge that much because I want you to actually mean it, every time you choose to look."',
+  'Varel Farseer: "Soel does not trust me yet. Good. That cat has better instincts than most people I have met."',
+  'Varel Farseer: "The Split Horizon and the Unmended Wound. Strange, is it not, how the materials that build a window are always something that broke first."',
+  'Varel Farseer: "You do not have to open it today. Loving someone from a distance does not require proof on a schedule."',
+  'Varel Farseer: "I watched a great many boundaries in my life before I ever met either of you. This is the first one I have actually cared what was on the other side of."'
+];
+
 function getAllyXpBonus() {
-  return isAllyUnlocked('Mimi') ? 0.08 : 0;
+  return (isAllyUnlocked('Mimi') ? 0.08 : 0) + getGuildWarFieldBonus('xpPct');
 }
 function getAllyAtkBonus() {
-  return isAllyUnlocked('Aisy') ? 0.08 : 0;
+  return (isAllyUnlocked('Aisy') ? 0.08 : 0) + getGuildWarFieldBonus('atkPct');
+}
+function getAllyTempleRepBonus() {
+  return isAllyUnlocked('Sister Wren') ? 0.08 : 0;
 }
 
 function isPrestigeUnlocked() {
-  return G.p.lvl >= PRESTIGE_MIN_LEVEL;
+  return G.p.lvl >= getPrestigeRequiredLevel();
 }
 
 function doPrestige() {
   if (!isPrestigeUnlocked()) {
-    lg('🔒 Prestige unlocks at Level ' + PRESTIGE_MIN_LEVEL + '.');
+    lg('🔒 Prestige unlocks at Level ' + getPrestigeRequiredLevel() + '.');
     return;
   }
   const xpGain = +(G.p.lvl * PRESTIGE_XP_PCT_PER_LEVEL).toFixed(1);
@@ -6403,6 +9507,7 @@ function doPrestige() {
   G.prestige.xpBonusPct = Math.min(PRESTIGE_BONUS_CAP, (G.prestige.xpBonusPct || 0) + xpGain);
   G.prestige.goldBonusPct = Math.min(PRESTIGE_BONUS_CAP, (G.prestige.goldBonusPct || 0) + goldGain);
   G.prestige.count = (G.prestige.count || 0) + 1;
+  G.prestige.highestLvlEver = Math.max(G.prestige.highestLvlEver || 1, oldLvl); // feeds the Rite of Return's catch-up scaling below
 
   // Reset the level/xp/base-stat track back to the start of the game.
   G.p.lvl = 1;
@@ -6461,11 +9566,75 @@ const DRAGONS = [
     mechanic: 'phase', phases: 4, currentPhase: 1, phaseHp: 27500,
     desc: "Every other wound in this world eventually closed. This one refused, out of pure spite, and grew something that could fight back. It does not get weaker as it bleeds \u2014 it gets angrier, in four distinct, escalating stages. This is the fight that actually asks whether everything you have built \u2014 every path chosen, every reset banked, every rank earned \u2014 was for something, or just for its own sake.",
     hoardGoldMin: 48000, hoardGoldMax: 78000, itemLevel: 55
+  },
+  {
+    id: 'corvenna',
+    n: 'Corvenna, the Root That Waited',
+    unlockLevel: 65,
+    hp: 200000, mhp: 200000, atk: 650, def: 380, xp: 95000, g: 65000,
+    mechanic: 'devour', devourTurn: 4,
+    desc: "Even the Vale had to bury something to become the Vale. It coiled in the deep roots so long ago that the ground simply grew over it and called it soil. It does not rampage. It waits, patient as everything else down here, then reaches up through the dark for exactly one of you at a time.",
+    hoardGoldMin: 90000, hoardGoldMax: 140000, itemLevel: 65
+  },
+  {
+    id: 'skarrowyn',
+    n: 'Skarrowyn, the Split Horizon',
+    unlockLevel: 80,
+    hp: 340000, mhp: 340000, atk: 850, def: 480, xp: 150000, g: 100000,
+    mechanic: 'phase', phases: 5, currentPhase: 1, phaseHp: 68000,
+    desc: "Sunreach Fields grows toward it without knowing why \u2014 every harvest here has always quietly leaned the same direction. Five distinct stages, each one less like a dragon and more like whatever a dragon becomes after outliving the reason dragons exist.",
+    hoardGoldMin: 150000, hoardGoldMax: 220000, itemLevel: 80
+  },
+  {
+    id: 'aetherum',
+    n: 'Aetherum, the Last Question',
+    unlockLevel: 92,
+    hp: 550000, mhp: 550000, atk: 1100, def: 620, xp: 240000, g: 165000,
+    mechanic: 'apocalypse', apocalypseTurn: 6,
+    desc: "Past the deepest root, past the reason the Vale was ever unbroken to begin with. It does not ask whether you are strong enough. It asks, once, at turn six, whether everything still standing behind you was worth what it cost to keep standing \u2014 and it does not wait politely for the answer.",
+    hoardGoldMin: 260000, hoardGoldMax: 380000, itemLevel: 90
+  },
+  // === THE ELDER WYRM — endless-style dragon, level 100+ ===
+  // Every dragon above is a fixed, hand-authored stat block — eventually outlevelled
+  // by prestige stacking and endgame gear the same way the old 95-100 zones were,
+  // which is exactly the problem the Fraying Frontier was built to solve for regular
+  // encounters. This is that same fix applied to Dragon Hunt: no hp/atk/def/xp/g/hoard
+  // fields baked in here at all — `scaled: true` tells startDragonHunt and rDragonHunt
+  // to generate them fresh off the player's CURRENT level every single fight, via
+  // getElderDragonStats(), so this dragon never goes stale no matter how high level
+  // eventually climbs.
+  {
+    id: 'elder_dragon',
+    n: 'The Elder Wyrm',
+    unlockLevel: 100,
+    scaled: true,
+    mechanic: 'apocalypse', apocalypseTurn: 6,
+    desc: "Older than any hoard has ever had a name for. It does not have a fixed size \u2014 it has never once stopped growing, and it has no intention of starting now."
   }
 ];
 // Kept for backward compat — old code/save fields that only knew about one dragon.
 const DRAGON_HUNT_UNLOCK_LEVEL = DRAGONS[0].unlockLevel;
 const VAELITHORN = DRAGONS[0];
+
+// Reuses the Fraying Frontier's safe polynomial curve, then pads it further — a dragon
+// is still supposed to hit noticeably harder than an equivalent-level Frontier trash
+// mob, matching how every hand-authored dragon above already sits well above the
+// Frontier's own level-100 anchor (340,000 HP) at a comparable unlock level.
+const ELDER_DRAGON_MULT = 1.6;
+function getElderDragonStats(playerLevel) {
+  const base = getFrayingFrontierScaledStats(playerLevel);
+  const g = Math.floor(base.g * ELDER_DRAGON_MULT);
+  return {
+    hp: Math.floor(base.hp * ELDER_DRAGON_MULT),
+    atk: Math.floor(base.atk * ELDER_DRAGON_MULT),
+    def: Math.floor(base.def * ELDER_DRAGON_MULT),
+    xp: Math.floor(base.xp * ELDER_DRAGON_MULT),
+    g: g,
+    hoardGoldMin: Math.floor(g * 0.55),
+    hoardGoldMax: Math.floor(g * 0.9),
+    itemLevel: playerLevel
+  };
+}
 
 function getDragonById(id) {
   return DRAGONS.find(d => d.id === id);
@@ -6491,7 +9660,19 @@ function startDragonHunt(dragonId) {
   G.cbt.turn = 0;
   G.cbt.en = [];
   G.state = 'combat';
-  G.currentBoss = JSON.parse(JSON.stringify(dragon));
+  G.cbt.autoCombat = isAutoCombatPreferred();
+  if (dragon.scaled) {
+    const stats = getElderDragonStats(G.p.lvl);
+    G.currentBoss = Object.assign({}, dragon, {
+      hp: stats.hp, mhp: stats.hp,
+      atk: stats.atk, def: stats.def,
+      xp: stats.xp, g: stats.g,
+      hoardGoldMin: stats.hoardGoldMin, hoardGoldMax: stats.hoardGoldMax,
+      itemLevel: stats.itemLevel
+    });
+  } else {
+    G.currentBoss = JSON.parse(JSON.stringify(dragon));
+  }
   G.currentBoss.id = 98;
   G.cbt.en.push(G.currentBoss);
   lg('🐉 ' + dragon.n + ' opens one eye. This will take everything you have.');
@@ -6501,6 +9682,11 @@ function startDragonHunt(dragonId) {
 
 function handleDragonHuntVictory() {
   const dragon = getDragonById(G.dragonHunt.currentId) || DRAGONS[0];
+  // Scaled dragons carry no static hoard/itemLevel of their own — pull the numbers
+  // that were actually generated for THIS fight off G.currentBoss instead.
+  const hoardMin = dragon.scaled ? G.currentBoss.hoardGoldMin : dragon.hoardGoldMin;
+  const hoardMax = dragon.scaled ? G.currentBoss.hoardGoldMax : dragon.hoardGoldMax;
+  const itemLvl = dragon.scaled ? G.currentBoss.itemLevel : dragon.itemLevel;
   const txp = Math.floor(G.cbt.en.reduce((s, e) => s + e.xp, 0) * getPrestigeXpMult() * getExpBoosterMult() * (1 + getAllyXpBonus()));
   const tg2 = Math.floor(G.cbt.en.reduce((s, e) => s + e.g, 0) * getPrestigeGoldMult());
   G.p.xp += txp;
@@ -6516,14 +9702,14 @@ function handleDragonHuntVictory() {
 
   // The massive hoard — a large flat gold bonus plus guaranteed high-rarity loot,
   // separate from and on top of the normal combat rewards above.
-  const hoardGold = dragon.hoardGoldMin + Math.floor(Math.random() * (dragon.hoardGoldMax - dragon.hoardGoldMin));
+  const hoardGold = hoardMin + Math.floor(Math.random() * (hoardMax - hoardMin));
   G.p.gold += hoardGold;
   lg('💰 HOARD: +' + hoardGold + 'G');
 
   const hoardSlots = ['weapon', 'armor', 'amulet'];
   showBattleRewardPopup(txp, tg2 + hoardGold, '🐉 ' + dragon.n + ' \u2014 Hoard claimed!');
   for (let slot of hoardSlots) {
-    const item = generateItem(slot, dragon.itemLevel, 'legendary');
+    const item = generateItem(slot, itemLvl, 'legendary');
     if (item) {
       addI(item);
       lg('✨ HOARD: ' + item.n + ' (Legendary)');
@@ -6531,7 +9717,7 @@ function handleDragonHuntVictory() {
   }
   const epicSlots = ['ring', 'head', 'hands'];
   const epicSlot = epicSlots[Math.floor(Math.random() * epicSlots.length)];
-  const epicItem = generateItem(epicSlot, dragon.itemLevel, 'epic');
+  const epicItem = generateItem(epicSlot, itemLvl, 'epic');
   if (epicItem) {
     addI(epicItem);
     lg('✨ HOARD: ' + epicItem.n + ' (Epic)');
@@ -6574,6 +9760,7 @@ function startTempleHunt(bossName) {
   G.cbt.turn = 0;
   G.cbt.en = [];
   G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
   // No custom victory handler needed here, unlike Dragon Hunt — boss_specific quest
   // tracking and templeRep rewards both already work generically off G.currentBoss
   // inside the unmodified base handleVictory()/checkQ() pipeline.
@@ -6686,13 +9873,28 @@ function spawnBossRushEncounter() {
   G.cbt.turn = 0;
   G.cbt.en = [];
   G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
 
   const boss = JSON.parse(JSON.stringify(bossDef));
   boss.id = 99;
-  boss.hp = Math.floor(boss.hp * RAID_BOSS_BUFF.hpMult * statMult);
-  boss.mhp = boss.hp;
-  boss.atk = Math.floor(boss.atk * RAID_BOSS_BUFF.atkMult * statMult);
-  boss.def = Math.floor(boss.def * RAID_BOSS_BUFF.defMult * statMult);
+  if (bossDef.scaled) {
+    // No baked-in hp/atk/def to multiply — this boss's stats don't exist until
+    // generated fresh off the player's current level (see sc()'s zone boss spawn).
+    // Skipping that here would leave hp/atk/def as undefined and silently break
+    // the whole encounter with NaN math.
+    const stats = getFrayingFrontierScaledStats(G.p.lvl);
+    boss.hp = Math.floor(stats.hp * RAID_BOSS_BUFF.hpMult * statMult);
+    boss.mhp = boss.hp;
+    boss.atk = Math.floor(stats.atk * RAID_BOSS_BUFF.atkMult * statMult);
+    boss.def = Math.floor(stats.def * RAID_BOSS_BUFF.defMult * statMult);
+    boss.xp = stats.xp;
+    boss.g = stats.g;
+  } else {
+    boss.hp = Math.floor(boss.hp * RAID_BOSS_BUFF.hpMult * statMult);
+    boss.mhp = boss.hp;
+    boss.atk = Math.floor(boss.atk * RAID_BOSS_BUFF.atkMult * statMult);
+    boss.def = Math.floor(boss.def * RAID_BOSS_BUFF.defMult * statMult);
+  }
   G.currentBoss = boss;
   G.cbt.en.push(boss);
 
@@ -6705,9 +9907,62 @@ function continueBossRush() {
   spawnBossRushEncounter();
 }
 
+// Queues up several fights in a row without needing to tap "Continue the Rush"
+// between each one — auto-combat carries each individual fight, and this carries the
+// gap between them. Stops naturally on defeat (handleDefeat already keeps everything
+// earned along the way), same behavior as ending the rush manually.
+function continueBossRushBatch(n) {
+  G.bossRush.batchRemaining = Math.max(0, n - 1);
+  continueBossRush();
+}
+
 function retreatBossRush() {
   lg('🏳️ Retreat — the rush ends at a streak of ' + G.bossRush.streak + '. Everything earned is kept.');
   G.bossRush.active = false;
+  G.currentBoss = null;
+  G.state = 'menu';
+  render();
+}
+
+function startFrayingFrontier() {
+  if (G.p.lvl < 100) { lg('🔒 The Fraying Frontier only opens past Level 100.'); return; }
+  G.frayingFrontier.active = true;
+  G.frayingFrontier.streak = 0;
+  spawnFrayingFrontierEncounter();
+}
+
+function spawnFrayingFrontierEncounter() {
+  const streak = G.frayingFrontier.streak;
+  const boss = generateFrontierBoss(G.p.lvl, streak);
+
+  G.cbt.on = true;
+  G.cbt.turn = 0;
+  G.cbt.en = [];
+  G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
+
+  G.currentBoss = boss;
+  G.cbt.en.push(boss);
+
+  lg('🌫️ The Fraying Frontier [Streak ' + streak + ']: ' + boss.n + ' appears!' + (streak > 0 ? ' (+' + Math.floor(streak * 6) + '% tougher)' : ''));
+  render();
+}
+
+function continueFrayingFrontier() {
+  if (!G.frayingFrontier.active) return;
+  spawnFrayingFrontierEncounter();
+}
+
+// Same batching pattern as Boss Rush — queues several pushes in a row, stops naturally
+// on defeat with everything earned along the way kept.
+function continueFrayingFrontierBatch(n) {
+  G.frayingFrontier.batchRemaining = Math.max(0, n - 1);
+  continueFrayingFrontier();
+}
+
+function retreatFrayingFrontier() {
+  lg('🏳️ Retreat — the frontier run ends at a streak of ' + G.frayingFrontier.streak + '. Everything earned is kept.');
+  G.frayingFrontier.active = false;
   G.currentBoss = null;
   G.state = 'menu';
   render();
@@ -6743,7 +9998,45 @@ const CHAIN_QUESTS = [
         rw: { xp: 26000, g: 17000 } },
       { title: 'What Was Sealed', type: 'boss', name: 'The Horizon Keeper',
         flavor: 'The last door. Whatever\'s behind it, the rest of this vault was built just to keep it there.',
-        rw: { xp: 60000, g: 38000 } }
+        rw: { xp: 60000, g: 38000 } },
+      // A sixth floor, well past what the original vault was ever mapped to have —
+      // gated on character level rather than the chain's own unlockLevel, so it stays
+      // closed to anyone who hasn't actually caught up to end-game, but keeps paying
+      // out a real fight to anyone descending again once they have. Stats scale off
+      // the player's current level using the same safe polynomial curve as the
+      // Fraying Frontier, rather than a second hand-authored number that would just
+      // go stale the same way the first five eventually will.
+      { title: 'The Floor With No Map', type: 'boss_scaled', name: 'What the Vault Kept Writing',
+        minLevel: 100,
+        flavor: 'Nobody sealed a sixth floor. Nobody built one, either \u2014 not on purpose. Something down here just kept going after the original wards stopped, and never noticed nobody was watching anymore.',
+        mechanic: 'phase', phases: 3 }
+    ]
+  },
+  {
+    id: 'old_names_wait',
+    name: 'Where the Old Names Wait',
+    icon: '🕯️',
+    unlockLevel: 68,
+    repeatable: false, // a one-time closure, not a grind \u2014 once these five names are set
+                        // down they stay down. Unlike the Sunken Archive, there is
+                        // deliberately nothing left to "descend again" into afterward.
+    intro: 'Not a place. Not really. Somewhere the Vale lets you go when you are finally ready to stop carrying something instead of setting it down \u2014 one old name at a time, until there are none left waiting.',
+    stages: [
+      { title: 'What Doesn\'t Stay Buried', type: 'boss', name: 'The Ex-Mother-in-Law',
+        flavor: 'She never once called San a daughter-in-law. Whatever waits here still doesn\'t.',
+        rw: { xp: 34000, g: 22000 } },
+      { title: 'What You Chose Instead', type: 'boss', name: 'The Ex-Husband',
+        flavor: 'Every cage looks like a home from the inside, right up until someone finally opens the door.',
+        rw: { xp: 38000, g: 25000 } },
+      { title: 'The Roads Not Taken', type: 'boss', name: 'The Village Ex',
+        flavor: 'Two years at a time, in someone else\'s hands, on someone else\'s schedule \u2014 the shape of a whole childhood, glimpsed.',
+        rw: { xp: 42000, g: 28000 } },
+      { title: 'What the Pandemic Took', type: 'boss', name: 'The Brunei Ex',
+        flavor: 'A ring that never got bought, a border that never reopened in time, and money sent home that only ever made the drinking worse.',
+        rw: { xp: 46000, g: 31000 } },
+      { title: 'Loyalty and Its Cost', type: 'boss', name: 'The Stepfather',
+        flavor: 'Younger than both of you, and somehow already family \u2014 the specific exhaustion of defending someone you are also, quietly, furious with.',
+        rw: { xp: 50000, g: 34000 } }
     ]
   }
 ];
@@ -6767,6 +10060,10 @@ function startChainQuest(chainId) {
   if (!isChainQuestUnlocked(chain)) { lg('🔒 ' + chain.name + ' unlocks at Level ' + chain.unlockLevel + '.'); return; }
   const prog = getChainProgress(chainId);
   if (prog.cleared) {
+    if (chain.repeatable === false) {
+      lg('🕯️ ' + chain.name + ' is finished. Some doors, once closed, stay closed.');
+      return;
+    }
     // Repeatable — reset to floor 1 for a fresh descent rather than blocking entirely.
     prog.stageIndex = 0;
     prog.cleared = false;
@@ -6783,10 +10080,22 @@ function spawnChainQuestStage() {
   const stage = chain.stages[prog.stageIndex];
   if (!stage) { lg('⚠️ Chain quest data error. Ending.'); prog.active = false; G.state = 'menu'; render(); return; }
 
+  // Level-gated floors (e.g. the Sunken Archive's scaled sixth floor) don't force a
+  // fight the player can't reasonably take — just hold the door shut and drop them
+  // back at the entrance, without consuming or advancing their progress.
+  if (stage.minLevel && G.p.lvl < stage.minLevel) {
+    lg('🔒 ' + stage.title + ' does not open yet \u2014 requires Level ' + stage.minLevel + ' (currently Level ' + G.p.lvl + ').');
+    prog.active = false;
+    G.state = 'menu';
+    render();
+    return;
+  }
+
   G.cbt.on = true;
   G.cbt.turn = 0;
   G.cbt.en = [];
   G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
 
   if (stage.type === 'boss') {
     const bossDef = G.bosses.find(b => b.n === stage.name);
@@ -6799,6 +10108,35 @@ function spawnChainQuestStage() {
     G.currentBoss.atk = Math.floor(G.currentBoss.atk * RAID_BOSS_BUFF.atkMult);
     G.currentBoss.def = Math.floor(G.currentBoss.def * RAID_BOSS_BUFF.defMult);
     G.cbt.en.push(G.currentBoss);
+  } else if (stage.type === 'boss_scaled') {
+    // Not a hand-authored stat block — generated fresh off the player's CURRENT level
+    // every time, same safe polynomial curve the Fraying Frontier uses, so this floor
+    // never goes stale the way a fixed number eventually would at higher levels.
+    const scaled = getFrayingFrontierScaledStats(G.p.lvl);
+    const boss = Object.assign({}, stage, {
+      n: stage.name,
+      zone: chain.name,
+      elem: stage.elem || 'arcane',
+      hp: scaled.hp, mhp: scaled.hp,
+      atk: scaled.atk, def: scaled.def,
+      xp: scaled.xp, g: scaled.g,
+      // Regular bosses carry a `desc` field that the combat screen's "Boss Ability"
+      // badge reads directly. This stage object only ever had `flavor` — leaving
+      // `desc` undefined crashed that badge's tooltip (undefined.replace()) partway
+      // through rendering the combat screen, which meant the screen never actually
+      // finished switching to combat even though the fight was running underneath.
+      desc: stage.flavor,
+      // The phase mechanic also needs currentPhase/phaseHp to actually fire (every
+      // other 'phase' boss in the file sets both) — the stage definition only had
+      // `phases`, so the 3-phase escalation was silently a no-op. phaseHp can't be
+      // hand-authored like it is elsewhere since this boss's HP is generated fresh
+      // off the player's level every fight, so it's derived here instead.
+      currentPhase: 1,
+      phaseHp: Math.floor(scaled.hp / (stage.phases || 3)),
+      id: 97
+    });
+    G.currentBoss = boss;
+    G.cbt.en.push(boss);
   } else {
     G.currentBoss = null;
     for (let i = 0; i < stage.enemies.length; i++) {
@@ -6823,11 +10161,15 @@ function handleChainQuestVictory() {
   const prog = getChainProgress(G.activeChainQuestId);
   const stage = chain.stages[prog.stageIndex];
 
-  const txp = Math.floor(stage.rw.xp * getPrestigeXpMult() * getExpBoosterMult() * (1 + getAllyXpBonus()));
-  const tg2 = Math.floor(stage.rw.g * getPrestigeGoldMult());
+  // Scaled floors have no fixed reward table — their payout was generated fresh, off
+  // the player's level, at spawn time and lives on the boss object itself.
+  const rewardXp = stage.type === 'boss_scaled' ? G.currentBoss.xp : stage.rw.xp;
+  const rewardGold = stage.type === 'boss_scaled' ? G.currentBoss.g : stage.rw.g;
+  const txp = Math.floor(rewardXp * getPrestigeXpMult() * getExpBoosterMult() * (1 + getAllyXpBonus()));
+  const tg2 = Math.floor(rewardGold * getPrestigeGoldMult());
   G.p.xp += txp;
   G.p.gold += tg2;
-  if (stage.type === 'boss') {
+  if (stage.type === 'boss' || stage.type === 'boss_scaled') {
     G.p.bossKills = (G.p.bossKills || 0) + 1;
     if (stage.name) checkBountyKill(stage.name, true);
   } else if (stage.enemies) {
@@ -6936,12 +10278,755 @@ const RAIDS = [
       { type: 'boss', name: 'Echo of Joel' }
     ],
     rw: { xp: 22000, gold: 17500 },
-    desc: "Aisyah's market, the flooded ledger, the docks, and the lighthouse — the whole shattered future, end to end, with elite remnants of that future guarding every threshold." }
+    desc: "Aisyah's market, the flooded ledger, the docks, and the lighthouse — the whole shattered future, end to end, with elite remnants of that future guarding every threshold." },
+  { id: 'long_silence_reckoning', name: 'The Long Silence, Reckoned', unlockLevel: 44, icon: '🌾',
+    stages: [
+      { type: 'elite', zoneLv: 36, enemies: ['Road Wraith', 'Toll Ghost'] },
+      { type: 'boss', name: 'The Vanished Guide' },
+      { type: 'elite', zoneLv: 37, enemies: ['Nursery Wraith', 'Quiet Sentinel'] },
+      { type: 'boss', name: 'Hollow Eliz' },
+      { type: 'elite', zoneLv: 38, enemies: ['Barracks Wraith', 'Hollow Drillmaster'] },
+      { type: 'boss', name: 'Rustbound Zaki' },
+      { type: 'elite', zoneLv: 39, enemies: ['Stormbound Wraith', 'Static Husk'] },
+      { type: 'boss', name: 'Mezstorm Unbound' }
+    ],
+    rw: { xp: 30000, gold: 24000 },
+    desc: "Senedra's roads, Eliz's nursery, Zaki's barracks, Mezstorm's storm — every echo from the Long Silence that the first gauntlet through this era never actually made you face." },
+  { id: 'weight_of_reckoning', name: 'The Weight of the Reckoning', unlockLevel: 47, icon: '⚖️',
+    stages: [
+      { type: 'elite', zoneLv: 40, enemies: ['Guttering Wisp', 'Forgotten Familiar'] },
+      { type: 'boss', name: 'The Fading Familiar' },
+      { type: 'elite', zoneLv: 41, enemies: ['Ledger Phantom', 'Route Ghost'] },
+      { type: 'boss', name: 'Echo of Aisyah' },
+      { type: 'elite', zoneLv: 42, enemies: ['Doubt Wraith', 'Silent Weight'] },
+      { type: 'boss', name: 'The Tired Version' },
+      { type: 'elite', zoneLv: 43, enemies: ['Chamber Sentinel', 'Time-Loop Wraith'] },
+      { type: 'boss', name: 'The Architect' }
+    ],
+    rw: { xp: 42000, gold: 33000 },
+    desc: "Soel's last ember, Aisyah's desperation, your own exhaustion given a face, and the one who built the door the Planarch fell through — the Reckoning's first half, unflinching." },
+  { id: 'reckonings_end', name: "The Reckoning's End", unlockLevel: 50, icon: '🕊️',
+    stages: [
+      { type: 'elite', zoneLv: 44, enemies: ['Remnant Guard', 'Echo Legion'] },
+      { type: 'boss', name: 'The Splinter Court' },
+      { type: 'elite', zoneLv: 45, enemies: ['Fracture Remnant', 'Broken Reality'] },
+      { type: 'boss', name: 'The First Break' },
+      { type: 'elite', zoneLv: 46, enemies: ['Rust Remnant', 'Unmended Shard'] },
+      { type: 'boss', name: 'The Unmended' },
+      { type: 'elite', zoneLv: 47, enemies: ['Backslide Wraith', 'Setback Sentinel'] },
+      { type: 'boss', name: 'The Relapse' }
+    ],
+    rw: { xp: 58000, gold: 46000 },
+    desc: 'Every echo fused into one tribunal, the original fracture itself, and the slow, unglamorous work of mending it — including the days it does not go forward. This is where the family stops surviving the world and starts actually repairing it.' },
+  { id: 'mending_complete', name: 'The Mending, Complete', unlockLevel: 53, icon: '🌅',
+    stages: [
+      { type: 'elite', zoneLv: 48, enemies: ['Question Wraith', 'Quiet Fear'] },
+      { type: 'boss', name: 'The Question of After' },
+      { type: 'elite', zoneLv: 49, enemies: ['Unity Sentinel', 'Chorus Wisp'] },
+      { type: 'boss', name: 'The Unity Ward' },
+      { type: 'elite', zoneLv: 50, enemies: ['Dawnlight Sentinel', 'Last Shadow'] },
+      { type: 'boss', name: 'Daybreak Incarnate' }
+    ],
+    rw: { xp: 78000, gold: 62000 },
+    desc: 'What happens after survival stops being the whole point, faced by the whole family at once — and the last resistance to a morning this family has spent a lifetime earning.' },
+  { id: 'the_long_walk_raid', name: 'The Long Walk', unlockLevel: 58, icon: '🧭',
+    stages: [
+      { type: 'elite', zoneLv: 51, enemies: ['Threshold Warden', 'Waymarker Construct'] },
+      { type: 'boss', name: 'The Wayfinder' },
+      { type: 'elite', zoneLv: 52, enemies: ['Riptide Fiend', 'Driftwood Horror'] },
+      { type: 'boss', name: 'The Tidereaver' },
+      { type: 'elite', zoneLv: 53, enemies: ['Salt Wraith', 'Ledger Enforcer'] },
+      { type: 'boss', name: 'The Ledgerbound' },
+      { type: 'elite', zoneLv: 54, enemies: ['Undertow Whisper', 'Silent Agitator'] },
+      { type: 'boss', name: 'The Undertow' },
+      { type: 'elite', zoneLv: 55, enemies: ['Horizon Sentinel', 'Wandering Star Wisp'] },
+      { type: 'boss', name: 'The Horizon Keeper' }
+    ],
+    rw: { xp: 115000, gold: 92000 },
+    desc: 'Past every border this family ever fought to hold — the unmapped road, the borrowed coast, the settlement built on debt, and the edge of how far anyone has bothered to map. Five trials, back to back, for a family that is finally curious instead of afraid.' },
+  { id: 'into_the_verdant_reach', name: 'Into the Verdant Reach', unlockLevel: 62, icon: '🌿',
+    stages: [
+      { type: 'elite', zoneLv: 56, enemies: ['Bramble Warden', 'Thistle Stalker'] },
+      { type: 'boss', name: 'The Vale Warden' },
+      { type: 'elite', zoneLv: 60, enemies: ['Associate Wraith', 'Non-Compete Bramble'] },
+      { type: 'boss', name: 'Robin C.' }
+    ],
+    rw: { xp: 150000, gold: 120000 },
+    desc: 'The first ground since the Breaking that was never actually broken — and, standing in the middle of it regardless, one more piece of unfinished business from a world that was supposed to have ended.' },
+  { id: 'the_verdant_heart_raid', name: "The Verdant Reach's Heart", unlockLevel: 80, icon: '🌳',
+    stages: [
+      { type: 'elite', zoneLv: 75, enemies: ['Harvest Golem', 'Bloomwatcher'] },
+      { type: 'boss', name: 'The Sunreach Elder' },
+      { type: 'elite', zoneLv: 82, enemies: ['Overtime Wraith', 'Off-Day Enforcer'] },
+      { type: 'boss', name: 'Jeff, the SK* Son-in-Law' },
+      { type: 'elite', zoneLv: 95, enemies: ['Root-Bound Elder', 'Elderwood Sentinel'] },
+      { type: 'boss', name: 'The Verdant Heart' },
+      { type: 'elite', zoneLv: 96, enemies: ['Fraying Wisp', 'Unwoven Stalker'] },
+      { type: 'boss', name: 'The Unmade' },
+      { type: 'elite', zoneLv: 97, enemies: ['Line-Breaker', 'Corrosion Vessel'] },
+      { type: 'boss', name: 'What Alone Becomes' },
+      { type: 'elite', zoneLv: 98, enemies: ['Testing Current', 'Patience-Eater'] },
+      { type: 'boss', name: 'Before It Wears Through' },
+      { type: 'elite', zoneLv: 99, enemies: ['Remnant Current', 'Half-Won Vessel'] },
+      { type: 'boss', name: 'What Was Almost Enough' }
+    ],
+    rw: { xp: 900000, gold: 700000 },
+    desc: "A community that kept growing things through the end of the world, and, deeper still, whatever is actually doing the mending. As close to the source of it as this family has ever gotten — and very little worth reaching this deep comes easily, least of all the parts that never had anything to do with the Vale at all. Beyond the Rootbound Sanctuary, the ground itself starts to thin — every line held here is one more line the Frontier never gets to take." }
 ];
 
 // Raid bosses hit harder than their solo zone-encounter versions — a raid should feel
 // like a real escalation, not the same fight you've already had elsewhere.
 const RAID_BOSS_BUFF = { hpMult: 1.35, atkMult: 1.25, defMult: 1.15 };
+
+// === THE FRAYING FRONTIER — endless mode, level 100+ ===
+// The hand-authored zones (95-100) have a real ceiling on how fast new content can be
+// written. This is the answer: a single endless zone whose bosses scale their stats
+// dynamically off the player's CURRENT level at the moment of the fight, using
+// polynomial (not compounding/exponential) growth so it never risks the same overflow
+// the old XP curve had, no matter how high level climbs. Variety comes from a pool of
+// pre-written boss identities rather than infinite unique authorship — the numbers
+// scale forever, but who you're actually fighting still varies.
+// === THE KINDLING NETWORK ===
+// A registry of other Kindled pairs met along the way — the counterweight to the
+// endless Frontier's pure mechanical scaling. Where the Frontier is bottomless
+// numbers, this is the part that stays a story: who you've actually met, and what
+// became of them, tracked as an ongoing thread rather than a one-off chapter beat.
+const KINDLING_NETWORK = [
+  {
+    id: 'iris_ash',
+    name: 'Iris & Ash',
+    familiarType: 'a fox',
+    metChapter: 97,
+    unlockType: 'level',
+    unlockAt: 100,
+    status: 'Traveling with you',
+    desc: "Ash chose her during her own worst night, same as Soel chose Joel — she just never knew there was a name for it, or anyone else doing the same thing, until you found her holding a line alone. Asked to travel on with you afterward. Still does."
+  }
+];
+
+const FRAYING_FRONTIER_IDENTITIES = [
+  { n: 'A Line Still Being Tested', mechanic: 'phase', phases: 3,
+    desc: "Not broken yet. Not close to broken. Just testing, patiently, exactly how much pressure this particular stretch of ground can actually take before something gives." },
+  { n: 'What Patience Wears Down', mechanic: 'crush', crushTurn: 5,
+    desc: "It does not attack so much as it simply continues existing, the way erosion continues existing — nothing dramatic in any single moment, everything dramatic in the accumulation." },
+  { n: 'The Unmaking, Concentrated', mechanic: 'cosmic',
+    desc: "A denser pocket of the same thing that swallowed the rest of the Thinning, drawn tight enough in one place that even standing near it costs something." },
+  { n: 'Something That Forgot Where It Started', mechanic: 'resurrect', resurrectHp: 0.15,
+    desc: "It does not remember being anything before this. It just keeps reforming, patient and unbothered, the way water finds its way back into a shape no matter how many times you scatter it." },
+  { n: 'The Gap Between Two Held Lines', mechanic: ['billable_hours', 'freeze'],
+    billableDmg: 90, billableMsg: "The gap widens another inch, quietly, whether anyone is watching or not.",
+    freezeChance: 0.2, freezeMsg: "\uD83C\uDF2B\uFE0F The gap swallows a step you were certain you had already taken \u2014 you lose your footing!",
+    desc: "Ground that fell between two lines someone else is holding, too far from either to get backup in time. It knows exactly how isolated it has you, and it is not in any hurry." },
+  { n: 'What the Frontier Keeps Producing', mechanic: 'rampage', rampageTurn: 4, rampageDmg: 130,
+    desc: "The Fraying does not run out of these. That is the actual shape of the problem, out here — not one great enemy to finish, just an endless, patient supply of smaller ones." },
+  { n: 'An Old Fraying, Grown Patient', mechanic: 'phase', phases: 4,
+    desc: "Old enough that it stopped being in a hurry a long time ago. It has learned that patience costs it nothing and eventually wins nearly everything, unless someone actually shows up to interrupt it." },
+  { n: 'The Line That Keeps Almost Breaking', mechanic: 'crush', crushTurn: 4,
+    desc: "Somewhere between held and lost, permanently, the exact tipping point stretched out indefinitely. It has been almost-breaking for longer than it can remember not almost-breaking." }
+];
+
+// Daily Kindling Commissions — bounded, ritual-style daily tasks distinct from the
+// Frontier's open-ended "push until you fall" structure. A small, fixed number of
+// quick things to do each day: 3 Tend a Line encounters (single quick fights, no
+// streak, no pressure) and 2 Check on a Pair moments (non-combat, just a small
+// reward and a short beat). The goal is a bounded daily ritual, not more grinding.
+function getKindlingCommissionEnemyStats(playerLevel) {
+  // Reuses the Frontier's proven-safe polynomial scaling, scaled down heavily since
+  // this is a quick regular encounter, not a boss fight. The old linear formula
+  // (generateEnemyStats) would produce absurdly weak enemies at very high levels —
+  // same failure mode already fixed once for loot this session.
+  const bossStats = getFrayingFrontierScaledStats(playerLevel);
+  return {
+    hp: Math.max(20, Math.floor(bossStats.hp / 15)),
+    atk: Math.max(3, Math.floor(bossStats.atk / 15)),
+    def: Math.max(1, Math.floor(bossStats.def / 15)),
+    xp: Math.max(10, Math.floor(bossStats.xp / 8)),
+    g: Math.max(5, Math.floor(bossStats.g / 8))
+  };
+}
+
+// Safety net — ensures the daily count is current regardless of exactly when this
+// gets checked, rather than relying solely on checkDayAdvance()'s own timing.
+function ensureKindlingCommissionsCurrent() {
+  if (G.kindlingCommissions.refreshDay !== G.gameDay) {
+    G.kindlingCommissions = { linesToday: 0, checksToday: 0, refreshDay: G.gameDay };
+  }
+}
+
+const KINDLING_LINE_NAMES = ['A Line Worth Tending', 'Ground Someone Left Undefended', 'A Small, Patient Fraying'];
+function tendAKindlingLine() {
+  ensureKindlingCommissionsCurrent();
+  if (G.kindlingCommissions.linesToday >= 3) { lg('🕯️ Already tended three lines today. Come back tomorrow.'); return; }
+  const stats = getKindlingCommissionEnemyStats(G.p.lvl);
+  const name = KINDLING_LINE_NAMES[Math.floor(Math.random() * KINDLING_LINE_NAMES.length)];
+  const enemy = { n: name, elem: 'void', hp: stats.hp, mhp: stats.hp, atk: stats.atk, def: stats.def, xp: stats.xp, g: stats.g, id: 99, isKindlingCommission: true };
+
+  G.cbt.on = true;
+  G.cbt.turn = 0;
+  G.cbt.en = [enemy];
+  G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
+  lg('🕯️ Tending a line: ' + name);
+  render();
+}
+
+const KINDLING_CHECK_LINES = [
+  "Iris sends word she's fine — a line held, nothing dramatic, just checking in the way you both do now.",
+  "You think of everyone still out there doing this without knowing anyone else is too, and hope, quietly, that someone finds them soon.",
+  "A short message from Iris: \"Quiet day. Good quiet.\" You send the same back.",
+  "Nothing needs fixing today. You check anyway. That's the whole point of the practice.",
+  "Ash sends nothing, being a fox, but Iris says he's been unusually pleased with himself all week."
+];
+function checkOnAKindlingPair() {
+  ensureKindlingCommissionsCurrent();
+  if (G.kindlingCommissions.checksToday >= 2) { lg('🦊 Already checked in twice today. Come back tomorrow.'); return; }
+  G.kindlingCommissions.checksToday++;
+  const stats = getKindlingCommissionEnemyStats(G.p.lvl);
+  const xp = Math.floor(stats.xp * 0.6);
+  const g = Math.floor(stats.g * 0.6);
+  G.p.xp += xp;
+  G.p.gold += g;
+  const line = KINDLING_CHECK_LINES[Math.floor(Math.random() * KINDLING_CHECK_LINES.length)];
+  lg('🦊 ' + line + ' (+' + xp + ' XP, +' + g + 'G)');
+  lvlup();
+  saveGame();
+  render();
+}
+
+function getFrayingFrontierScaledStats(playerLevel) {
+  // Anchored to the real, hand-authored level-100 boss (340,000 HP) — polynomial
+  // growth from there, safe indefinitely, no compounding risk at any level.
+  const hpBase = 1704.04;
+  const hp = Math.floor(hpBase * Math.pow(Math.max(playerLevel, 100), 1.15));
+  const atk = Math.floor(hp * 0.00244); // ratio matches the level-100 boss (830 atk / 340,000 hp)
+  const def = Math.floor(hp * 0.00146); // ratio matches the level-100 boss (495 def / 340,000 hp)
+  const xp = Math.floor(hp * 0.485);    // ratio matches the level-100 boss (165,000 xp / 340,000 hp)
+  const g = Math.floor(hp * 0.347);     // ratio matches the level-100 boss (118,000 g / 340,000 hp)
+  return { hp, atk, def, xp, g };
+}
+
+function generateFrontierBoss(playerLevel, streak) {
+  const identity = FRAYING_FRONTIER_IDENTITIES[Math.floor(Math.random() * FRAYING_FRONTIER_IDENTITIES.length)];
+  const stats = getFrayingFrontierScaledStats(playerLevel);
+  const streakMult = 1 + (streak || 0) * 0.06; // gentler per-encounter growth than Boss Rush, since base stats already scale with level
+  const boss = JSON.parse(JSON.stringify(identity));
+  boss.zone = 'The Fraying Frontier';
+  boss.hp = Math.floor(stats.hp * streakMult);
+  boss.mhp = boss.hp;
+  boss.atk = Math.floor(stats.atk * streakMult);
+  boss.def = Math.floor(stats.def * streakMult);
+  boss.xp = Math.floor(stats.xp * streakMult);
+  boss.g = Math.floor(stats.g * streakMult);
+  boss.id = 99;
+  return boss;
+}
+
+// === THE GUILD (recruitable roster) & GUILD WAR ===
+// Unlocked after the party learns it's not alone anymore — gated on having actually
+// met Iris & Ash (journal_101) plus a level floor, same "story beat before number"
+// pattern the Verdant Reach transition already uses. Pulled specifically from people
+// who already have real history with San or Joel (old office, Joel's dorm-mates, or
+// already-established allies) rather than the flavor-only shop NPCs — narrative-first
+// by design. No separate leveling/gear system: each member just adds a small, fixed
+// combat bonus while actively fielded for a muster, on top of whatever they already
+// give as a shop/ally (Mimi/Aisy/Sister Wren's existing always-on bonuses are
+// untouched — this stacks an ADDITIONAL bonus only while fielded).
+const GUILD_WAR_MIN_LEVEL = 105;
+const GUILD_WAR_UNLOCK_CHAPTER = 'journal_101'; // Iris & Ash join
+const GUILD_WAR_BASE_FIELDED = 3;
+// Field size scales with earned Guild Rank rather than level or streak — rank never
+// goes down, so this reads as trust genuinely earned over time rather than something
+// that could shrink after a bad run.
+function getGuildWarMaxFielded() {
+  const rank = getGuildRank();
+  let max = GUILD_WAR_BASE_FIELDED;
+  if (rank >= 4) max++;  // Guild Veteran
+  if (rank >= 7) max++;  // Guild Legend
+  if (rank >= 10) max++; // Guild Eternal
+  return max;
+}
+
+// === TEACH A DISCIPLE ===
+// A slower, delayed-consequence system distinct from every other daily mechanic —
+// San's choices don't resolve immediately. A response nudges a hidden trajectory, and
+// the actual outcome surfaces days or weeks later, the way real mentorship works. Two
+// disciple slots, drawing from a name pool kept fully separate from any existing NPC
+// or Guild Member name, since these are meant to stay their own people, not echoes of
+// anyone already established. Real-life-inspired characters (Liang, etc.) are
+// deliberately NOT part of this system — reserved for direct, personal storylines in
+// future seasons rather than diluted into a repeatable mechanic.
+const DISCIPLE_NAME_POOL = [
+  'Farah', 'Hakim', 'Dayang', 'Rizal', 'Sofea', 'Idris', 'Mardhiah', 'Zulkifli',
+  'Ainul', 'Firdaus', 'Nadhirah', 'Suhaimi', 'Qistina', 'Aznan', 'Hazwani', 'Rusydi',
+  'Fatimah', 'Kamarul', 'Adawiyah', 'Syafiq'
+];
+
+const DISCIPLE_MAX_SLOTS = 2;
+const DISCIPLE_EXCHANGES_TO_GRADUATE = 6;
+
+// Each dilemma has 2 response options. Every option nudges both axes (can be
+// negative), sets a resolution delay in days, and has its own outcome vignette.
+// Axes are intentionally not "good vs bad" — different combinations shape genuinely
+// different people, reflected in which fieldBuff a graduate ends up with.
+const DISCIPLE_DILEMMAS = [
+  {
+    id: 'client_story',
+    prompt: "A client's story doesn't add up, but pushing on it might unravel the whole case. What do I do?",
+    options: [
+      { label: 'Trust your own read on it', confidenceNudge: 3, independenceNudge: 2, delayDays: 2,
+        outcome: "You pushed, gently, the way I showed you how. It turned out to be nothing \u2014 just an old habit of leaving things half-explained. But you were right to check. That instinct is worth trusting." },
+      { label: "Bring it to me first, next time", confidenceNudge: -1, independenceNudge: -2, delayDays: 1,
+        outcome: "You waited, brought it to me before deciding anything. That's not a bad instinct either \u2014 knowing when a second set of eyes matters is its own kind of skill." }
+    ]
+  },
+  {
+    id: 'junior_mistake',
+    prompt: "Someone newer than me made a mistake I could have caught earlier. Do I say something, or let it go this once?",
+    options: [
+      { label: "Say something, kindly", confidenceNudge: 2, independenceNudge: 1, delayDays: 3,
+        outcome: "You said something. Careful, not sharp \u2014 exactly the way it needs to be said. They thanked you for it, later. That matters more than being right." },
+      { label: "Let it go, just this once", confidenceNudge: -1, independenceNudge: 0, delayDays: 5,
+        outcome: "You let it go. It came up again, a few weeks later, the same mistake. Not a disaster \u2014 just a reminder that kindness and silence aren't always the same thing." }
+    ]
+  },
+  {
+    id: 'overtime_request',
+    prompt: "I was asked to stay late again, off the books. Everyone else just does it without saying anything. Should I?",
+    options: [
+      { label: 'It is alright to say no', confidenceNudge: 3, independenceNudge: 3, delayDays: 1,
+        outcome: "You said no. Quietly, without making it a whole thing. Nobody pushed back the way you were afraid they would. Sometimes the fear is bigger than the actual moment." },
+      { label: "Just this once won't hurt", confidenceNudge: -2, independenceNudge: -1, delayDays: 7,
+        outcome: "You stayed. It became the expectation within a month, the way these things always do. I should have been clearer with you the first time it came up." }
+    ]
+  },
+  {
+    id: 'wrong_answer',
+    prompt: "A senior colleague gave a client the wrong information. I noticed. Do I correct it in front of everyone, or handle it quietly after?",
+    options: [
+      { label: 'Handle it quietly, after', confidenceNudge: 1, independenceNudge: 2, delayDays: 4,
+        outcome: "You waited, said it privately. They were grateful rather than embarrassed \u2014 you read the room correctly. That kind of judgment doesn't come from a manual." },
+      { label: "Correct it in the moment", confidenceNudge: 2, independenceNudge: -1, delayDays: 2,
+        outcome: "You corrected it right there. It was the right information, but it landed harder than it needed to. Being right and being kind about it are two different skills." }
+    ]
+  },
+  {
+    id: 'burnout_signs',
+    prompt: "I have not been sleeping well. I think I am close to something I do not want to admit out loud yet. What do I even say to you?",
+    options: [
+      { label: 'Just tell me, whatever it is', confidenceNudge: 1, independenceNudge: -2, delayDays: 3,
+        outcome: "You told me. It helped more than either of us expected \u2014 not because I fixed anything, but because you did not have to carry it alone for once." },
+      { label: 'I will figure it out myself first', confidenceNudge: 2, independenceNudge: 3, delayDays: 10,
+        outcome: "You worked through it on your own, mostly. It took longer than it needed to. I wish you had said something sooner \u2014 but you got there, and that matters too." }
+    ]
+  },
+  {
+    id: 'takes_credit',
+    prompt: "Someone took credit for something I actually did. Do I say anything, or let it go?",
+    options: [
+      { label: 'Say something, calmly', confidenceNudge: 3, independenceNudge: 1, delayDays: 5,
+        outcome: "You brought it up, evenly, no accusation in it. It got sorted out quietly. People noticed you handled it well \u2014 more than they noticed the credit itself." },
+      { label: "Let the work speak for itself", confidenceNudge: -1, independenceNudge: 2, delayDays: 14,
+        outcome: "You let it go. Weeks later, the pattern was clear enough that others noticed it without you having to say a word. Sometimes patience does the work anger can't." }
+    ]
+  },
+  {
+    id: 'new_responsibility',
+    prompt: "I've been offered something bigger than what I have done before. I am not sure I am actually ready.",
+    options: [
+      { label: 'You are more ready than you think', confidenceNudge: 3, independenceNudge: 2, delayDays: 6,
+        outcome: "You took it. It was hard, some days genuinely too hard, but you did not fall apart the way you were afraid you would. Neither did I, watching you." },
+      { label: 'It is alright to wait for the next one', confidenceNudge: 0, independenceNudge: -1, delayDays: 9,
+        outcome: "You waited. The next opportunity came, and this time you did not hesitate at all. Sometimes waiting is not the same as not being ready \u2014 it is just timing." }
+    ]
+  },
+  {
+    id: 'disagreement_with_san',
+    prompt: "I actually think you are wrong about something, but I am not sure I am allowed to say that to you.",
+    options: [
+      { label: 'You are always allowed to say that', confidenceNudge: 3, independenceNudge: 3, delayDays: 2,
+        outcome: "You said it. You were half right, as it turned out \u2014 and I told you so. That conversation mattered more than either of us being correct." },
+      { label: 'Trust that I have my reasons', confidenceNudge: -2, independenceNudge: -2, delayDays: 4,
+        outcome: "You held back. I found out what you had actually thought later, secondhand. I would rather you had told me directly \u2014 I hope you know that now." }
+    ]
+  },
+  {
+    id: 'family_emergency',
+    prompt: "Something came up at home. I do not know how to ask for time without it looking like I cannot handle the job.",
+    options: [
+      { label: 'Family comes first, always', confidenceNudge: 2, independenceNudge: 0, delayDays: 1,
+        outcome: "You asked. It was handled without a single question about whether you could do the job. I made sure of that much, at least." },
+      { label: 'I will manage both somehow', confidenceNudge: -2, independenceNudge: 1, delayDays: 8,
+        outcome: "You tried to manage both. It cost you more than it should have. I noticed, eventually \u2014 I wish I had noticed sooner." }
+    ]
+  },
+  {
+    id: 'someone_elses_mentee',
+    prompt: "Another mentor's disciple came to me instead of them, with something real. Do I help, or send them back?",
+    options: [
+      { label: 'Help them, this once', confidenceNudge: 1, independenceNudge: 1, delayDays: 5,
+        outcome: "You helped. It went well, and it did not step on anyone's toes the way you worried it might. Sometimes the door is just supposed to be open." },
+      { label: 'Gently point them back', confidenceNudge: 0, independenceNudge: -1, delayDays: 3,
+        outcome: "You sent them back, kindly. Their actual mentor thanked you for it, later \u2014 for trusting the process instead of just solving it yourself." }
+    ]
+  }
+];
+
+const GUILD_MEMBERS = [
+  { id: 'mezstorm', npcName: 'Mezstorm', role: 'Stormsinger', icon: '⛈️',
+    recruitReq: { type: 'always' }, // party-linked — recruited automatically the moment they're unlocked as a party candidate, see syncActivePartyFlags
+    fieldBuff: { spellDmgPct: 0.04 },
+    recruitLine: "Mezstorm doesn't need asking. \"Guild work, party work \u2014 same storm, different name for it. I'll help however you actually need it.\"",
+    barks: [
+      'Mezstorm: "The storm has opinions about this. It usually does."',
+      'Mezstorm: "Family. Complicated. Still useful."',
+      'Mezstorm: "I hear it before it arrives. Convenient, sometimes."'
+    ] },
+  { id: 'eliz', npcName: 'Eliz', role: 'Healer', icon: '💚',
+    recruitReq: { type: 'always' },
+    fieldBuff: { healPct: 0.04 },
+    recruitLine: "Eliz smiles the way she always does \u2014 quiet, certain. \"I can help here too. I like helping here too.\"",
+    barks: [
+      'Eliz: "Everyone here feels warm. I like that."',
+      'Eliz: "I can still feel it from here. The magic. The colors."',
+      'Eliz: "I am not tired. I promise."'
+    ] },
+  { id: 'senedra', npcName: 'Senedra', role: 'Ranger', icon: '🏹',
+    recruitReq: { type: 'always' },
+    fieldBuff: { critPct: 0.04 },
+    recruitLine: "Senedra is already scouting the Guild grounds before you finish asking. \"Good paths in and out of here too. I checked already.\"",
+    barks: [
+      'Senedra: "The real money is still in dried goods. I stand by that."',
+      'Senedra: "I learned to read a room the way I read a trail. Same skill."',
+      'Senedra: "Nobody sneaks up on this place while I am around."'
+    ] },
+  { id: 'zaki', npcName: 'Zaki', role: 'Warrior', icon: '🗡️',
+    recruitReq: { type: 'always' },
+    fieldBuff: { atkPct: 0.04 },
+    recruitLine: "Zaki straightens up immediately, trying and failing to look like he wasn't checking his pack again. \"I can help. I want to help. Just tell me what to do.\"",
+    barks: [
+      'Zaki: "I checked my gear seventeen times before coming here. Just so you know."',
+      'Zaki: "I still do not feel brave. I am trying anyway."',
+      'Zaki: "Somebody has to hold this line. Might as well be me."'
+    ] },
+  { id: 'mimi', npcName: 'Mimi', role: 'Divination Mage', icon: '🦋',
+    recruitReq: { type: 'ally' },
+    fieldBuff: { xpPct: 0.04 },
+    recruitLine: "Mimi already knew you'd ask before you finished asking. \"Guild business? I'm in. I've always wanted an official reason to know things before everyone else does.\"",
+    barks: [
+      'Mimi: "That one\'s favoring its left side. Just so you know."',
+      'Mimi: "I already knew this was coming. Doesn\'t make it less annoying."',
+      'Mimi: "Two floors away, I\'d have heard about this fight before it started."'
+    ] },
+  { id: 'brada', npcName: 'Brada Shah', role: 'Artillery', icon: '🎯',
+    recruitReq: { type: 'journal', journalId: 'journal_111' },
+    fieldBuff: { atkPct: 0.04 },
+    recruitLine: "Brada doesn't need much convincing. \"Mimi already told me you'd probably ask eventually. Ballistas, siege lines, anything that needs a steady hand and a longer memory than most people have \u2014 that's mine. Glad to actually put it to use.\"",
+    barks: [
+      'Brada: "Line up the shot. Wait. Then wait a little longer than that."',
+      'Brada: "Mimi already knows how this ends. I\'m just here to make sure it ends fast."',
+      'Brada: "Machinery doesn\'t lie to you. People, sometimes. Not this."'
+    ] },
+  { id: 'aisy', npcName: 'Aisy', role: 'Rogue', icon: '🌙',
+    recruitReq: { type: 'ally' },
+    fieldBuff: { critPct: 0.03 },
+    recruitLine: "Aisy just appears at your side, like she'd already decided before you asked. \"Nobody ever notices me leave a room. Let's see what they make of me showing up to one.\"",
+    barks: [
+      'Aisy: "They didn\'t see me. They still don\'t."',
+      'Aisy: "I was standing right there. The whole time."',
+      'Aisy: "Some habits from the old office never really left."'
+    ] },
+  { id: 'kw_liang', npcName: 'KW Liang', role: 'Scout', icon: '🐇',
+    recruitReq: { type: 'journal', journalId: 'journal_109' },
+    fieldBuff: { defPct: 0.04 },
+    recruitLine: "Liang doesn't hesitate for even a second. \"Kaya kaya taught me some deals are worth honoring properly. This is the first one I've ever actually wanted to.\"",
+    barks: [
+      'KW Liang: "Kaya kaya! Business is business, even out here."',
+      'KW Liang: "The bunnies and I have your exit covered. Always."',
+      'KW Liang: "Aisy taught me patience. San taught me to actually ask questions before I break something."'
+    ] },
+  { id: 'sister_wren', npcName: 'Sister Wren', role: 'Support', icon: '🕯️',
+    recruitReq: { type: 'ally' },
+    fieldBuff: { defPct: 0.10 },
+    recruitLine: "Sister Wren doesn't hesitate. \"I spent a long time devoted to something that was never real. I know real when I finally get to stand next to it.\"",
+    barks: [
+      'Sister Wren: "Hold the line. I\'ve seen worse hold longer."',
+      'Sister Wren: "Faith was never the problem. I just aimed it wrong once."',
+      'Sister Wren: "Steady. That\'s all this ever takes."'
+    ] },
+  { id: 'ser_aldric', npcName: 'Ser Aldric', role: 'Frontline', icon: '⚔️',
+    recruitReq: { type: 'ally' },
+    fieldBuff: { defPct: 0.04 },
+    recruitLine: 'Ser Aldric considers it for exactly as long as it takes to answer. "I spent a long time being found by things. This feels like the other version of that. Count me in."',
+    barks: [
+      'Ser Aldric: "Properly, this time. All the way through."',
+      'Ser Aldric: "I know exactly how long a person can keep going on nothing but momentum. Let\'s make sure it doesn\'t have to."',
+      'Ser Aldric: "Company. That\'s all I ever actually needed."'
+    ] },
+  { id: 'dudin', npcName: 'Dudin', role: 'Frontline', icon: '🎖️',
+    recruitReq: { type: 'trader_visits', visits: 10 },
+    fieldBuff: { atkPct: 0.05 },
+    recruitLine: "Dudin sets down the ration crate he's been rebuilding all week. \"Joel already told me you'd ask eventually. Wasn't going to say no to backing up my old dorm-mate's whole family.\"",
+    barks: [
+      'Dudin: "Eat first, fight second. Same rule as always."',
+      'Dudin: "I fed a whole barracks on less than this. This is nothing."',
+      'Dudin: "Joel taught me that too — feed everyone first, then hit hard."'
+    ] },
+  { id: 'jorvin', npcName: 'Jorvin', role: 'Engineer', icon: '🔧',
+    recruitReq: { type: 'trader_visits', visits: 10 },
+    fieldBuff: { critPct: 0.03 },
+    recruitLine: "Jorvin wipes his hands on a rag that hasn't been clean in years. \"Same admin desk, different apocalypse. Sure, I'll come find the weak point in whatever this is.\"",
+    barks: [
+      'Jorvin: "Everything has a weak point. Even this."',
+      'Jorvin: "Same principle as the phone. Just bigger, angrier parts."',
+      'Jorvin: "There. Right there. That\'s the seam."'
+    ] },
+  { id: 'wahyu', npcName: 'Wahyu', role: 'Utility', icon: '👕',
+    recruitReq: { type: 'trader_visits', visits: 10 },
+    fieldBuff: { goldPct: 0.04 },
+    recruitLine: "Wahyu grins, already measuring you for something. \"Guild work? Sure. Somebody's got to notice what's actually worth grabbing off this thing once it's down.\"",
+    barks: [
+      'Wahyu: "Custom fit, custom timing. I\'ll know when to move."',
+      'Wahyu: "That\'s definitely worth something. Grab it after."',
+      'Wahyu: "Extra room in the seams. Extra room to work with."'
+    ] },
+  { id: 'jonathan', npcName: 'Jonathan', role: 'Striker', icon: '⚙️',
+    recruitReq: { type: 'trader_visits', visits: 10 },
+    fieldBuff: { atkPct: 0.04 },
+    recruitLine: "Jonathan's already halfway to yes before you finish asking. \"Been chasing whatever's trending since the old office. This is definitely trending.\"",
+    barks: [
+      'Jonathan: "Never done this professionally before. Great time to start!"',
+      'Jonathan: "Nobody\'s here to tell me it\'s not my job. Love that for me."',
+      'Jonathan: "Same energy as fixing a car nobody asked me to fix."'
+    ] },
+  { id: 'lewis', npcName: 'Lewis', role: 'Opportunist', icon: '🧳',
+    recruitReq: { type: 'trader_visits', visits: 10 },
+    fieldBuff: { goldPct: 0.05 },
+    recruitLine: "Lewis is already calculating margins before you've explained the mission. \"Guild work pays in reputation. Reputation's worth something eventually. I'm in.\"",
+    barks: [
+      'Lewis: "I could sell this thing\'s teeth. Probably. Later, though."',
+      'Lewis: "Two rows from San\'s desk, forever loyal, terrible instincts. Let\'s go."',
+      'Lewis: "Whatever this drops, I get first look."'
+    ] },
+  { id: 'dr_aa', npcName: 'Dr. AA', role: 'Healer', icon: '🩺',
+    recruitReq: { type: 'trader_visits', visits: 10 },
+    fieldBuff: { xpPct: 0.04 },
+    recruitLine: "Dr. AA is already packing the cart. \"Guild work. Good. I've got a new ghost story and nobody to tell it to on the way there.\"",
+    barks: [
+      'Dr. AA: "Take with food. Not that anyone ever does."',
+      'Dr. AA: "This reminds me of a story. Later, though — fight first."',
+      'Dr. AA: "Vitamins and ghost stories. Works every time."'
+    ] },
+  { id: 'iris', npcName: 'Iris', role: 'Scout', icon: '🦊',
+    recruitReq: { type: 'kindling' },
+    fieldBuff: { critPct: 0.04 },
+    recruitLine: "Iris and Ash don't need asking twice. \"Guild work. Finally, something with actual structure. Ash has opinions about structure.\"",
+    barks: [
+      'Iris: "Ash smells something. Ash is usually right."',
+      'Iris: "I held a line alone for years. This is so much better."',
+      'Iris: "Ash says hello. Ash means \'attack now.\'"',
+      'Iris: "Ash catches what should have missed. Ash is always sure it was never actually going to miss at all."'
+    ] }
+];
+
+function getGuildMemberDef(id) { return GUILD_MEMBERS.find(m => m.id === id); }
+function isGuildMemberRecruited(id) { return G.guildRoster.recruited.includes(id); }
+
+function recruitGuildMember(id) {
+  if (isGuildMemberRecruited(id)) return;
+  const def = getGuildMemberDef(id);
+  if (!def) return;
+  G.guildRoster.recruited.push(id);
+  lg('🛡️ ' + def.npcName + ' has joined the Guild roster! ' + def.recruitLine);
+}
+
+// Checked from checkNPCUnlocks() so it rides the same call sites (level-up, load,
+// render init) without needing its own separate polling loop.
+function checkGuildRecruitment() {
+  for (let def of GUILD_MEMBERS) {
+    if (isGuildMemberRecruited(def.id)) continue;
+    if (def.recruitReq.type === 'ally') {
+      const npc = G.npcs.find(n => n.n === def.npcName && n.t === 'ally');
+      if (npc && npc.unlocked) recruitGuildMember(def.id);
+    } else if (def.recruitReq.type === 'trader_visits') {
+      const npc = G.npcs.find(n => n.n === def.npcName && n.t === 'trader');
+      if (npc && npc.unlocked && (npc.visitCount || 0) >= def.recruitReq.visits && G.p.lvl >= 100) recruitGuildMember(def.id);
+    } else if (def.recruitReq.type === 'kindling') {
+      if (G.storyJournal.read.includes('journal_101')) recruitGuildMember(def.id);
+    } else if (def.recruitReq.type === 'journal') {
+      if (G.storyJournal.read.includes(def.recruitReq.journalId)) recruitGuildMember(def.id);
+    }
+  }
+}
+
+function isGuildWarUnlocked() {
+  return G.p.lvl >= GUILD_WAR_MIN_LEVEL && G.storyJournal.read.includes(GUILD_WAR_UNLOCK_CHAPTER);
+}
+
+function toggleGuildWarField(id) {
+  if (!isGuildMemberRecruited(id)) return;
+  const idx = G.guildWar.fielded.indexOf(id);
+  if (idx >= 0) {
+    G.guildWar.fielded.splice(idx, 1);
+  } else {
+    if (G.guildWar.fielded.length >= getGuildWarMaxFielded()) { lg('🛡️ Only ' + getGuildWarMaxFielded() + ' guild members can be fielded per muster.'); return; }
+    G.guildWar.fielded.push(id);
+  }
+  render();
+}
+
+// Sums a fieldBuff stat across whoever is actually fielded right now — this is the
+// single thing every combat-facing hook below reads from.
+function getGuildWarFieldBonus(statKey) {
+  if (!G.guildWar.active) return 0;
+  let total = 0;
+  for (let id of G.guildWar.fielded) {
+    const def = getGuildMemberDef(id);
+    if (def && def.fieldBuff[statKey]) total += def.fieldBuff[statKey];
+  }
+  return total;
+}
+
+// Fielded guild members were previously a purely passive stat bonus — no combat
+// presence of their own, no name ever appearing in the log. This gives each one an
+// actual, visible attack each turn, matching the same "Name hits Target for X" format
+// regular party members use. Scoped strictly to active guild war encounters (checked
+// by the caller), and damage is a fraction of the player's own attack rather than a
+// full independent stat block, since these members were designed narrative-first
+// without their own gear/leveling.
+function doGuildWarMemberAttack(memberDef) {
+  const aliveEnemies = G.cbt.en.filter(e => e.hp > 0);
+  if (aliveEnemies.length === 0) return;
+  const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+
+  const eqStats = getEquippedStats();
+  const playerAtk = G.p.stats.str + (eqStats.atk || 0) + (eqStats.str || 0);
+  const abilityScore = Math.floor(playerAtk * 1.2); // a fielded member hits meaningfully, but noticeably lighter than San herself
+
+  const attackResult = DICE.attackRoll({
+    attackerLevel: G.p.lvl,
+    abilityScore: abilityScore,
+    proficiency: true,
+    bonus: 0,
+    targetAC: getEnemyAC(target),
+    advantage: 'normal'
+  });
+
+  // Ash — Iris's fox. She never gets targeted in this abstracted combat system (Guild
+  // War members only ever attack, never defend), so a dodge mechanic wouldn't apply to
+  // her the way it does Liang's Snowball. "Ash smells something, Ash is usually right"
+  // translates instead into a genuine chance her instinct simply overrides a miss.
+  let attackHit = attackResult.hit;
+  let ashSaved = false;
+  if (!attackHit && memberDef.id === 'iris' && Math.random() < 0.20) {
+    attackHit = true;
+    ashSaved = true;
+  }
+
+  if (!attackHit) {
+    lg('❌ ' + memberDef.npcName + ' misses ' + target.n + ' (' + attackResult.d20.roll + ')');
+    return;
+  }
+
+  const damageResult = DICE.damageRoll({
+    diceExpr: '1d6',
+    abilityScore: abilityScore,
+    isCrit: attackResult.isCrit
+  });
+  const finalDamage = Math.max(1, damageResult.total - Math.floor((target.def || 0) / 3));
+  target.hp = Math.max(0, target.hp - finalDamage);
+
+  const critTag = attackResult.isCrit ? ' 💥 CRIT!' : '';
+  const ashTag = ashSaved ? ' 🦊 (Ash smelled it coming)' : '';
+  lg('⚔️ ' + memberDef.npcName + ' hits ' + target.n + ' for ' + finalDamage + critTag + ashTag);
+}
+
+function guildWarBark() {
+  if (!G.guildWar.active || G.guildWar.fielded.length === 0) return;
+  const id = G.guildWar.fielded[Math.floor(Math.random() * G.guildWar.fielded.length)];
+  const def = getGuildMemberDef(id);
+  if (!def || !def.barks || def.barks.length === 0) return;
+  lg(def.barks[Math.floor(Math.random() * def.barks.length)]);
+}
+
+// Rival guilds — other survivor groups who found their own version of the same
+// practice and now treat this as structured, competitive musters rather than
+// anything actually hostile. Same mechanic vocabulary as the Frontier's identity
+// pool, since that's already proven safe at any scaled stat range.
+const GUILD_WAR_RIVALS = [
+  { n: 'The Emberwatch Vanguard', mechanic: 'rampage', rampageTurn: 4, rampageDmg: 110,
+    desc: "A muster out of a fire-scarred outpost past the Aftermath Roads. They lead with everything they have, every single time, on principle." },
+  { n: 'The Ledger Reclaimers', mechanic: 'phase', phases: 3,
+    desc: "Former accountants, of all things, who turned precision into a fighting style. Three exact, escalating phases, because sloppy is the one thing this crew refuses to be." },
+  { n: 'The Static Chorus', mechanic: 'crush', crushTurn: 5,
+    desc: "Salvagers running old-world tech nobody else figured out how to keep alive. Nothing dramatic in any one hit — just relentless, and it adds up." },
+  { n: 'The Kindling Rivals', mechanic: 'resurrect', resurrectHp: 0.15,
+    desc: "Another pair-guild, out here doing the exact same thing you are, who've decided a friendly muster is the fastest way to actually meet you. They keep getting back up. So do you." },
+  { n: 'The Root Wardens', mechanic: 'devour', devourTurn: 4,
+    desc: "Verdant Reach natives, patient and territorial about ground they've spent years mending. They don't rampage. They wait, then reach for exactly one of you at a time." },
+  { n: 'The Last Ledger', mechanic: 'apocalypse', apocalypseTurn: 6,
+    desc: "The oldest, toughest guild anyone's found out here. Everyone survives to turn six, or almost no one does — and they've never once lost that bet." }
+];
+
+function getGuildWarScaledStats(playerLevel) {
+  // Same anchor formula as the Frontier — proven safe at any level, and Guild War
+  // opens at a similar band of the game (Lv 105+) so no separate curve is needed.
+  return getFrayingFrontierScaledStats(Math.max(playerLevel, 100));
+}
+
+function startGuildWar() {
+  if (!isGuildWarUnlocked()) { lg('🔒 Guild War unlocks at Level ' + GUILD_WAR_MIN_LEVEL + ', after meeting Iris & Ash.'); return; }
+  G.guildWar.active = true;
+  G.guildWar.streak = 0;
+  spawnGuildWarEncounter();
+}
+
+function spawnGuildWarEncounter() {
+  const identity = GUILD_WAR_RIVALS[Math.floor(Math.random() * GUILD_WAR_RIVALS.length)];
+  const streak = G.guildWar.streak;
+  const stats = getGuildWarScaledStats(G.p.lvl);
+  const streakMult = 1 + streak * 0.06;
+
+  G.cbt.on = true;
+  G.cbt.turn = 0;
+  G.cbt.en = [];
+  G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
+
+  const rival = JSON.parse(JSON.stringify(identity));
+  rival.zone = 'Guild War';
+  rival.id = 99;
+  rival.hp = Math.floor(stats.hp * streakMult);
+  rival.mhp = rival.hp;
+  rival.atk = Math.floor(stats.atk * streakMult);
+  rival.def = Math.floor(stats.def * streakMult);
+  rival.xp = Math.floor(stats.xp * streakMult);
+  rival.g = Math.floor(stats.g * streakMult);
+  G.currentBoss = rival;
+  G.cbt.en.push(rival);
+
+  lg('⚔️ Guild War [Streak ' + streak + ']: ' + rival.n + ' musters against you!' + (streak > 0 ? ' (+' + Math.floor(streak * 6) + '% tougher)' : ''));
+  guildWarBark();
+  render();
+}
+
+function continueGuildWar() {
+  if (!G.guildWar.active) return;
+  spawnGuildWarEncounter();
+}
+
+// Same batching pattern as Boss Rush and Fraying Frontier.
+function continueGuildWarBatch(n) {
+  G.guildWar.batchRemaining = Math.max(0, n - 1);
+  continueGuildWar();
+}
+
+function retreatGuildWar() {
+  lg('🏳️ Retreat — the muster ends at a streak of ' + G.guildWar.streak + '. Everything earned is kept.');
+  G.guildWar.active = false;
+  G.currentBoss = null;
+  G.state = 'menu';
+  render();
+}
 
 // Generates an elite trash-wave enemy, reusing the existing 'elite' stat template and
 // pulling elemental typing from ENEMY_REGISTRY when the name is already registered there,
@@ -6990,6 +11075,7 @@ function startRaidStage() {
   G.cbt.turn = 0;
   G.cbt.en = [];
   G.state = 'combat';
+  G.cbt.autoCombat = isAutoCombatPreferred();
 
   if (stage.type === 'boss') {
     const bossDef = G.bosses.find(b => b.n === stage.name);
@@ -7145,7 +11231,18 @@ const TALENTS = [
   { id: 'rift_walker', name: 'Rift Walker', icon: '🌀', lv: 24, desc: 'Dimensional Instability triggers 1 fight sooner', effect: { riftReduce: 1 } },
   { id: 'elemental_mastery', name: 'Elemental Mastery', icon: '🔥', lv: 26, desc: '+15% elemental weakness damage', effect: { elemWeakBonus: 0.15 } },
   { id: 'void_resistance', name: 'Void Resistance', icon: '🛡️', lv: 28, desc: '-50% Void Bleed HP drain', effect: { voidRed: 0.50 } },
-  { id: 'ascension', name: 'Ascension', icon: '⭐', lv: 30, desc: 'All stats +3. Something greater awaits...', effect: { allStats: 3 } }
+  { id: 'ascension', name: 'Ascension', icon: '⭐', lv: 30, desc: 'All stats +3. Something greater awaits...', effect: { allStats: 3 } },
+
+  // The original 8 talents were designed as a complete, level-30 capstone set for a
+  // shorter game than this became. These extend the same tradition through the new
+  // level-300 ceiling, each tied to a real story beat, stacking further value onto the
+  // same proven multiplier categories above rather than introducing new mechanics.
+  { id: 'what_remains_after', name: 'What Remains After', icon: '🕯️', lv: 50, desc: 'Further -8% MP costs — the capstone was never actually the end.', effect: { mpCostRed: 0.08 } },
+  { id: 'guilds_weight', name: "The Guild's Weight", icon: '🛡️', lv: 100, desc: '+10% elemental weakness damage — carrying less alone hits harder.', effect: { elemWeakBonus: 0.10 } },
+  { id: 'kindled_patience', name: 'Kindled Patience', icon: '🔥', lv: 150, desc: '-20% further Void Bleed HP drain — a small flame that has learned to wait.', effect: { voidRed: 0.20 } },
+  { id: 'threshold_readiness', name: 'Threshold Readiness', icon: '🌌', lv: 200, desc: '+10% further Planar Resonance bonus — something on the other side is already listening.', effect: { resonanceBonus: 0.10 } },
+  { id: 'what_chocolates_kept', name: 'What Chocolates Kept', icon: '🍚', lv: 250, desc: 'Further -7% MP costs — some things are worth remembering exactly as they were.', effect: { mpCostRed: 0.07 } },
+  { id: 'eternal_vigil', name: 'The Eternal Vigil', icon: '👑', lv: 300, desc: '+10% further elemental weakness damage — nothing left to prove, faced anyway.', effect: { elemWeakBonus: 0.10 } }
 ];
 
 function getTalentEffect(id) {
@@ -7155,9 +11252,15 @@ function getTalentEffect(id) {
 function getTalentMultiplier(type) {
   let mult = 1;
   if (type === 'mpCost' && getTalentEffect('spellweaver')) mult -= 0.10;
+  if (type === 'mpCost' && getTalentEffect('what_remains_after')) mult -= 0.08;
+  if (type === 'mpCost' && getTalentEffect('what_chocolates_kept')) mult -= 0.07;
   if (type === 'resonance' && getTalentEffect('planar_attunement')) mult += 0.10;
+  if (type === 'resonance' && getTalentEffect('threshold_readiness')) mult += 0.10;
   if (type === 'elemWeak' && getTalentEffect('elemental_mastery')) mult += 0.15;
+  if (type === 'elemWeak' && getTalentEffect('guilds_weight')) mult += 0.10;
+  if (type === 'elemWeak' && getTalentEffect('eternal_vigil')) mult += 0.10;
   if (type === 'voidDrain' && getTalentEffect('void_resistance')) mult -= 0.50;
+  if (type === 'voidDrain' && getTalentEffect('kindled_patience')) mult -= 0.20;
   return mult;
 }
 
@@ -7236,9 +11339,9 @@ function addRuneLoot(zoneName) {
 }
 
 // Rune combine modal state
-G.runeCombineModal = { open: false, selected: [], batchSize: 3 };
+G.runeCombineModal = { open: false, selected: [], batchSize: 3, typeFilter: null };
 
-const RUNE_COMBINE_BATCH_SIZES = [3, 5, 8, 10];
+const RUNE_COMBINE_BATCH_SIZES = [3, 6, 9];
 const RUNE_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic'];
 
 // Larger batches jump more rarity tiers and apply a bigger stat multiplier on top of
@@ -7260,8 +11363,106 @@ function openCombineModal() {
   render();
 }
 
+// Combines every possible matching batch across the whole inventory in one pass,
+// including cascading combines — since combining produces a new, higher-tier type
+// string, a freshly-created rune can itself become part of another combine if enough
+// matching ones already exist. Built specifically to avoid the manual tap-through-and-
+// scroll workflow, since that's what was causing the reported lag on large inventories.
+// Works on a value-based map rather than array indices, so nothing shifts mid-process.
+// typeFilter is optional — omit it (or pass null) to combine every type at once,
+// matching the original behavior. Pass a specific rune type key to only touch that
+// type, leaving everything else in the inventory untouched.
+function autoCombineRunes(typeFilter) {
+  const batchSize = G.runeCombineModal.batchSize || 3;
+  let totalCombines = 0;
+  const producedCounts = {}; // name -> count, for the summary message
+
+  // Group by type AND rarity together, not type alone — a rune's `type` field does
+  // NOT change after being upgraded (a combined common "power" rune is still type
+  // "power", just rarity "uncommon"), so grouping by type only would incorrectly
+  // mix a freshly-upgraded rune back in with lower-rarity ones of the same type,
+  // undervaluing it in the next combine. Composite key prevents that entirely.
+  //
+  // Runes excluded by typeFilter are kept in a separate, untouched list — the final
+  // inventory rebuild below reassembles from groups PLUS this list, since anything
+  // that never entered groups would otherwise just vanish from G.runes entirely.
+  const groupKey = (r) => r.type + '|' + r.r;
+  let groups = new Map();
+  const excludedByFilter = [];
+  for (const rune of G.runes) {
+    if (typeFilter && rune.type !== typeFilter) { excludedByFilter.push(rune); continue; }
+    const key = groupKey(rune);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(rune);
+  }
+
+  let keepGoing = true;
+  while (keepGoing) {
+    keepGoing = false;
+    for (const [key, runeList] of groups) {
+      if (runeList.length < batchSize) continue;
+
+      const batch = runeList.splice(0, batchSize);
+      const types = [...new Set(batch.map(r => r.type))];
+      if (types.length !== 1) continue; // shouldn't happen given the grouping, but stay safe
+
+      const base = RUNE_TYPES[types[0]];
+      if (!base) continue;
+      const tierJump = getCombineTierJump(batchSize);
+      // Use the ACTUAL rarity of the batch being combined, not the type's base
+      // definition rarity — otherwise an already-upgraded batch would incorrectly
+      // jump from the type's original tier instead of its current one.
+      const actualRarity = batch[0].r;
+      const currentTierIdx = RUNE_RARITY_ORDER.indexOf(actualRarity);
+      const upgradeRarity = RUNE_RARITY_ORDER[Math.min(RUNE_RARITY_ORDER.length - 1, currentTierIdx + tierJump)];
+      const baseMult = actualRarity === 'common' ? 1.5 : 2;
+      const mult = baseMult * getCombineBatchMult(batchSize);
+      const newName = base.name + ' +'.repeat(RUNE_RARITY_ORDER.indexOf(upgradeRarity));
+      const newRune = {
+        type: types[0],
+        name: newName,
+        icon: base.icon,
+        stat: base.stat,
+        val: Math.floor(batch.reduce((s, r) => s + r.val, 0) / batchSize * mult),
+        r: upgradeRarity,
+        color: base.color,
+        pct: base.pct ? Math.min(0.40, (batch[0].pct || base.pct) * mult) : null,
+        id: Date.now() + Math.random()
+      };
+
+      const newKey = groupKey(newRune);
+      if (!groups.has(newKey)) groups.set(newKey, []);
+      groups.get(newKey).push(newRune);
+
+      totalCombines++;
+      producedCounts[newRune.name] = (producedCounts[newRune.name] || 0) + 1;
+      keepGoing = true; // this group (or the new one) might have enough for another pass
+      break; // restart the for-loop scan since a new group may have just been created
+    }
+  }
+
+  if (totalCombines === 0) {
+    lg('🔮 No matching batches of ' + batchSize + ' found to combine' + (typeFilter && RUNE_TYPES[typeFilter] ? ' for ' + RUNE_TYPES[typeFilter].name : '') + '.');
+    render();
+    return;
+  }
+
+  // Flatten the final state of every group back into G.runes, plus anything that was
+  // excluded by the type filter and never entered a group in the first place — without
+  // this, filtering to a specific type would silently delete every other type's runes.
+  G.runes = [];
+  for (const [, runeList] of groups) {
+    for (const r of runeList) G.runes.push(r);
+  }
+  for (const r of excludedByFilter) G.runes.push(r);
+
+  const summary = Object.entries(producedCounts).map(([name, count]) => count + '× ' + name).join(', ');
+  lg('✨ Auto-combined ' + totalCombines + ' batch' + (totalCombines === 1 ? '' : 'es') + ': ' + summary + '!');
+  render();
+}
+
 function closeCombineModal() {
-  G.runeCombineModal = { open: false, selected: [], batchSize: 3 };
+  G.runeCombineModal = { open: false, selected: [], batchSize: 3, typeFilter: null };
   render();
 }
 
@@ -7272,6 +11473,20 @@ function setCombineBatchSize(size) {
     G.runeCombineModal.selected = G.runeCombineModal.selected.slice(0, size);
   }
   render();
+}
+
+function setCombineTypeFilter(typeKey) {
+  G.runeCombineModal.typeFilter = typeKey;
+  render();
+}
+
+// Sets the batch size and immediately combines at that size, in one pass — avoids
+// calling setCombineBatchSize (which renders on its own) followed by a second combine
+// call and a second render, which was wasteful for a screen already flagged as
+// feeling slow to use.
+function combineRunesAtSize(size) {
+  G.runeCombineModal.batchSize = size;
+  autoCombineRunes(G.runeCombineModal.typeFilter);
 }
 
 function toggleCombineRune(runeIndex) {
@@ -7612,13 +11827,16 @@ function trackBestiary(enemy) {
   if (!G.bestiary[enemy.n]) {
     G.bestiary[enemy.n] = {
       kills: 0,
-      firstSeen: Date.now(),
-      elem: enemy.elem || 'none',
-      mhp: enemy.mhp,
-      atk: enemy.atk,
-      def: enemy.def
+      firstSeen: Date.now()
     };
   }
+  // Always refresh stats to the current version, not just on first encounter —
+  // otherwise a later rebalance leaves the bestiary permanently showing whatever
+  // stats happened to be live the very first time this enemy was ever fought.
+  G.bestiary[enemy.n].elem = enemy.elem || 'none';
+  G.bestiary[enemy.n].mhp = enemy.mhp;
+  G.bestiary[enemy.n].atk = enemy.atk;
+  G.bestiary[enemy.n].def = enemy.def;
   G.bestiary[enemy.n].kills++;
   G.bestiary[enemy.n].lastSeen = Date.now();
 }
@@ -7804,8 +12022,14 @@ function doPartyAttack(member, noBonus) {
   });
   
   if (!attackResult.hit) {
-    lg('❌ ' + member.n + ' misses ' + target.n + ' (' + attackResult.d20.roll + ')');
-    return;
+    // Ash — Iris's fox, same mechanic here as in Guild War: her own miss has a real
+    // chance to land anyway, on the strength of "Ash smelled it coming."
+    if (member.n === 'Iris' && Math.random() < 0.20) {
+      lg('🦊 ' + member.n + "'s attack should have missed " + target.n + ' \u2014 Ash smelled it coming, and it lands anyway.');
+    } else {
+      lg('❌ ' + member.n + ' misses ' + target.n + ' (' + attackResult.d20.roll + ')');
+      return;
+    }
   }
   
   const damageResult = DICE.damageRoll({
@@ -7950,7 +12174,14 @@ function doPartyAttack(member, noBonus) {
 
 function doEnemyAttack(enemy) {
   if (enemy.hp <= 0) return;
-  
+
+  // Generic boss-taunt hook — any boss with a `taunts` array occasionally speaks
+  // mid-fight. Purely flavor; does not affect combat math.
+  if (enemy.taunts && enemy.taunts.length > 0 && Math.random() < 0.25) {
+    const line = enemy.taunts[Math.floor(Math.random() * enemy.taunts.length)];
+    lg('💬 ' + enemy.n + ': "' + line + '"');
+  }
+
   let wasPinned = false;
   if (enemy.status && enemy.status.length > 0) {
     for (let s of enemy.status) {
@@ -8039,12 +12270,20 @@ function doEnemyAttack(enemy) {
     return;
   }
 
+  // Snowball — Liang's rabbit, small and quick enough to slip a hit that should have
+  // landed. Same shape as Senedra's Evasion, distinct flavor, tied to Liang rather than
+  // a level threshold since he's recruit-gated rather than level-gated.
+  if (target !== G.p && target.n === 'KW Liang' && Math.random() < 0.18) {
+    lg('🐇 Snowball darts between Liang and ' + enemy.n + "'s attack — it never actually lands!");
+    return;
+  }
+
   // Soel's Danger Sense — wards against the OPENING hit of a fight specifically,
   // whoever it's aimed at. Distinct from every other protection in the party's kit,
   // all of which are either always-on or triggered by low HP — this one only ever
   // matters in the first round, before anyone's actually been hurt yet.
   const soelActive = G.party.some(p => p.n === 'Soel' && p.on && p.hp > 0);
-  if (soelActive && G.cbt.turn === 0 && G.p.lvl >= SOEL_DANGER_SENSE_UNLOCK && Math.random() < (G.p.lvl >= COMPANION_PRESTIGE_UNLOCK ? 0.40 : 0.25)) {
+  if (soelActive && G.cbt.turn === 0 && G.p.lvl >= SOEL_DANGER_SENSE_UNLOCK && Math.random() < (G.p.lvl >= LATE_GAME_BONUS_LEVEL ? 0.40 : 0.25)) {
     lg('🐱 Soel senses it coming! ' + (target === G.p ? 'You step' : target.n + ' steps') + ' aside before ' + enemy.n + "'s opening strike lands.");
     return;
   }
@@ -8075,7 +12314,7 @@ function doEnemyAttack(enemy) {
     let finalDamage = damageResult.total;
   const zakiCourageDef = (target !== G.p && target.n === 'Zaki' && checkZakiCourage()) ? 4 : 0;
   const targetDef = target === G.p 
-    ? ((G.p.eq.armor ? G.p.eq.armor.def : 0) + G.p.buffs.reduce((s, b) => s + (b.def || 0), 0)) * getAilmentMult('def')
+    ? ((G.p.eq.armor ? G.p.eq.armor.def : 0) + G.p.buffs.reduce((s, b) => s + (b.def || 0), 0) + getStatBoosterBonus('def')) * getAilmentMult('def')
     : (target.def || 0) + getBlessDef(target) + zakiCourageDef;
 
   finalDamage = Math.max(1, finalDamage - Math.floor(targetDef / 2));
@@ -8234,7 +12473,7 @@ function doEnemyAttack(enemy) {
       protectionMsg = '💫 Death Ward flares! ' + (target === G.p ? 'You are' : target.n + ' is') + ' pulled back from the brink!';
     } else {
       target.hp = 0;
-      protectionMsg = '💀 ' + (target.n || 'You') + ' fall unconscious!';
+      protectionMsg = '💀 ' + (target === G.p ? 'You fall' : (target.n || 'Ally') + ' falls') + ' unconscious!';
     }
   }
 
@@ -8267,7 +12506,12 @@ function handleBossMechanics() {
     
     G.cbt.turn = G.cbt.turn || 0;
     
-    switch (e.mechanic) {
+    // Supports a boss having multiple simultaneous mechanics (e.g. Robin's Billable
+    // Hours + Can't Break the Retainer) — a plain string still works exactly as before
+    // for every existing single-mechanic boss, this just wraps it into a one-item list.
+    const mechanicsToRun = Array.isArray(e.mechanic) ? e.mechanic : [e.mechanic];
+    for (let activeMechanic of mechanicsToRun) {
+    switch (activeMechanic) {
       case 'rampage':
         if (G.cbt.turn >= e.rampageTurn) {
           lg('🔥 ' + e.n + ' ENRAGES! All party members take ' + e.rampageDmg + ' damage!');
@@ -8312,8 +12556,14 @@ function handleBossMechanics() {
           const targets = [G.p, ...G.party.filter(p => p.on && p.hp > 0)];
           const target = targets[Math.floor(Math.random() * targets.length)];
           target.frozen = true;
-          lg('❄️ ' + e.n + ' freezes ' + (target.n || 'you') + '! Skip next turn!');
+          lg((e.freezeMsg || ('❄️ ' + e.n + ' freezes ' + (target.n || 'you') + '!')) + ' Skip next turn!');
         }
+        break;
+      case 'billable_hours':
+        // A slow, constant drain every single turn rather than a periodic burst —
+        // meant to feel like accumulating cost rather than a dramatic attack.
+        lg('📋 ' + (e.billableMsg || (e.n + ' racks up another billable hour.')) + ' -' + e.billableDmg + ' HP.');
+        G.p.hp = Math.max(1, G.p.hp - e.billableDmg);
         break;
       case 'devour':
         if (G.cbt.turn >= e.devourTurn) {
@@ -8611,6 +12861,7 @@ function handleBossMechanics() {
         break;
 
     }
+    }
   }        
 }
 
@@ -8681,6 +12932,15 @@ function finishPlayerTurn() {
   for (let p of G.party) {
     if (p.on && p.hp > 0) doPartyAttack(p);
   }
+
+  // Fielded guild members now actually attack each turn too, not just provide a
+  // passive stat bonus — scoped strictly to active guild war encounters.
+  if (G.guildWar.active) {
+    for (let id of G.guildWar.fielded) {
+      const def = getGuildMemberDef(id);
+      if (def) doGuildWarMemberAttack(def);
+    }
+  }
   
   eturn();
   // Soel's The Choice: if the whole party — San included — is on the brink at once,
@@ -8706,6 +12966,7 @@ function finishPlayerTurn() {
   
   tickAilments();
   tickElizHealerAbilities();
+  tickWrenHealerAbilities();
   tickJoelPaladinAbilities();
   tickZakiFighterAbilities();
   tickSoelWarmPresence();
@@ -8747,10 +13008,13 @@ function handleVictory() {
    checkDailyQuests('kill', G.cbt.en.length); 
     if (G.party.filter(p => p.on).length >= 3) checkDailyQuests('full_party_battle', 1); 
   if (G.currentBoss) { G.p.bossKills = (G.p.bossKills || 0) + 1; }
+  if (G.currentBoss) { G.sessionRecap.bosses.push(G.currentBoss.n); }
+  if (G.currentBoss && G.currentBoss.defeatLine) { lg('💬 ' + G.currentBoss.defeatLine); }
     // Check boss-based journal unlocks
   for (let entry of G.storyJournal.entries) {
     if (entry.unlockType === 'boss' && G.currentBoss && G.currentBoss.n === entry.unlockAt && !G.storyJournal.unlocked.includes(entry.id)) {
       G.storyJournal.unlocked.push(entry.id);
+      G.sessionRecap.chapters.push(entry.title);
       lg('📖 Journal unlocked: ' + entry.title + '!');
       showToast('📖 New story chapter unlocked!', 'gold');
     }
@@ -8759,6 +13023,16 @@ function handleVictory() {
     lg('🏆 You have conquered the Arcane Planar Tower!');
     lg('   The spire bends to your will. Planar energy surges through your veins.');
     claimStronghold('arcaneTower'); // guaranteed on defeat, independent of any quest-chain state
+  }
+  if (G.currentBoss && G.currentBoss.n === 'The Vale Warden') {
+    lg('🌿 The Unbroken Vale settles, and the ground itself seems to exhale.');
+    lg('   The Mended Grove opens to you — the first foothold on the other side of everything.');
+    claimStronghold('mendedGrove'); // guaranteed on defeat, independent of any quest-chain state
+  }
+  if (G.currentBoss && G.currentBoss.n === 'The Verdant Heart') {
+    lg('🌄 Whatever the Verdant Heart was actually protecting settles, quietly, into something closer to peace.');
+    lg('   The Waking Edge opens ahead of you — the last solid ground before the map simply runs out.');
+    claimStronghold('wakingEdge'); // guaranteed on defeat, independent of any quest-chain state
   }
   if (G.p.hp === 1) { G.p.survivedCritical = true; }
   checkAchievements();
@@ -9039,6 +13313,13 @@ function pa(si, ti, isFreeCast) {
   if (!isCrit && getGuildBonus('critBonus') > 0 && Math.random() < getGuildBonus('critBonus')) {
     isCrit = true;
     lg('🛡️ Guild-honed instincts! ' + sk.n + ' strikes true!');
+  }
+
+  // Guild War fielded members' crit bonus — Aisy/Jorvin/Iris/etc, only while actually fielded.
+  const guildWarCritBonus = getGuildWarFieldBonus('critPct');
+  if (!isCrit && guildWarCritBonus > 0 && Math.random() < guildWarCritBonus) {
+    isCrit = true;
+    lg('🛡️ The guild finds the opening! ' + sk.n + ' strikes true!');
   }
 
   // Prestige Milestone "The Reborn" — permanent crit bonus that persists across resets.
@@ -9366,6 +13647,12 @@ function doAutoCombatTick() {
       lg('🤖 Auto-combat: No MP for attacks. Passing turn...');
       for (let p of G.party) {
         if (p.on && p.hp > 0) doPartyAttack(p);
+      }
+      if (G.guildWar.active) {
+        for (let id of G.guildWar.fielded) {
+          const def = getGuildMemberDef(id);
+          if (def) doGuildWarMemberAttack(def);
+        }
       }
       
       if (G.cbt.en.every(e => e.hp <= 0)) { handleVictory(); return; }
@@ -10390,6 +14677,8 @@ function enterGrindRoom() {
   G.endlessGrind.totalXp = 0;
   G.endlessGrind.totalGold = 0;
   G.endlessGrind.sessionStart = Date.now();
+  G.endlessGrind.startLevel = G.p.lvl;
+  G.endlessGrind.legendaryItemsGained = [];
   G.endlessGrind.maxZoneLevel = Math.max(1, G.p.lvl);
   G.state = 'grind_room';
   lg('🌀 Entered the Endless Grind Room!');
@@ -10436,12 +14725,18 @@ function startGrindWave() {
   // the victory would route to the wrong handler since 'active' was still false.
   G.endlessGrind.active = true;
 
+  // Same reasoning as afkAdventureNextEncounter(): if the player is browsing Quests/
+  // Items/etc. while AFK Grind runs in the background, don't yank them back to the
+  // combat screen just because a new wave needs G.state='combat' to actually run.
+  const screenBeforeWave = G.state;
+
   G.endlessGrind.wave++;
   G.cbt.on = true;
   G.cbt.turn = 0;
   G.cbt.en = [];
   G.state = 'combat';
   G.currentBoss = null;
+  G.cbt.autoCombat = isAutoCombatPreferred();
   
   const wave = G.endlessGrind.wave;
   const playerLv = G.p.lvl;
@@ -10556,11 +14851,24 @@ function startGrindWave() {
       return zone && zone.lv <= maxZoneLv;
     });
     if (bossPool.length > 0) {
-      const boss = JSON.parse(JSON.stringify(bossPool[Math.floor(Math.random() * bossPool.length)]));
+      const bossDef = bossPool[Math.floor(Math.random() * bossPool.length)];
+      const boss = JSON.parse(JSON.stringify(bossDef));
       boss.id = 99;
-      boss.hp = Math.floor(boss.hp * diffMult * (1 + (wave / 50)));
-      boss.mhp = boss.hp;
-      boss.atk = Math.floor(boss.atk * diffMult * (1 + (wave / 50)));
+      if (bossDef.scaled) {
+        // Same reasoning as Boss Rush: no baked-in stats to multiply for a scaled
+        // boss — generate them fresh off the player's current level first.
+        const stats = getFrayingFrontierScaledStats(playerLv);
+        boss.hp = Math.floor(stats.hp * diffMult * (1 + (wave / 50)));
+        boss.mhp = boss.hp;
+        boss.atk = Math.floor(stats.atk * diffMult * (1 + (wave / 50)));
+        boss.def = stats.def;
+        boss.xp = stats.xp;
+        boss.g = stats.g;
+      } else {
+        boss.hp = Math.floor(boss.hp * diffMult * (1 + (wave / 50)));
+        boss.mhp = boss.hp;
+        boss.atk = Math.floor(boss.atk * diffMult * (1 + (wave / 50)));
+      }
       G.currentBoss = boss;
       G.cbt.en.push(boss);
       lg('⚠️ BOSS WAVE ' + wave + ': ' + boss.n + ' appears!');
@@ -10579,6 +14887,9 @@ function startGrindWave() {
   
   triggerSoelCommentary('explore');
   checkSoelFortune();
+  if (G.grindAfkMode && screenBeforeWave !== 'combat') {
+    G.state = screenBeforeWave;
+  }
   render();
 }
 
@@ -10760,6 +15071,7 @@ function startAfkGrind() {
 }
 
 function stopAfkGrind() {
+  showSessionSummaryPopup(G.endlessGrind.sessionStart, G.endlessGrind.startLevel, G.endlessGrind.totalXp, G.endlessGrind.totalGold, G.endlessGrind.legendaryItemsGained, '\uD83C\uDF00 AFK Grind Complete');
   G.grindAfkMode = false;
   G.cbt.autoCombat = isAutoCombatPreferred();
   G.endlessGrind.active = false;
@@ -10906,6 +15218,15 @@ function getMercenaryTier() {
   return Math.floor((G.mercenary.completed || 0) / MERCENARY_CONTRACTS_PER_TIER);
 }
 
+// Queues up several contracts to auto-chain without needing to re-tap "Take the Job"
+// between each one — combined with auto-combat already being on by default, this
+// means a whole batch can resolve with a single initial tap instead of one tap per
+// contract, which was turning into real repetitive strain over long sessions.
+function startMercenaryBatch(n) {
+  G.mercenary.batchRemaining = Math.max(0, n - 1); // this call itself starts contract #1
+  startMercenaryContract();
+}
+
 function startMercenaryContract() {
   const contract = getMercenaryContract();
   const zoneLv = Math.max(1, Math.min(G.p.lvl, 50));
@@ -10917,6 +15238,7 @@ function startMercenaryContract() {
   G.cbt.en = [];
   G.state = 'combat';
   G.currentBoss = null;
+  G.cbt.autoCombat = isAutoCombatPreferred();
 
   rollWeather();
 
@@ -10959,6 +15281,13 @@ function handleMercenaryVictory() {
   G.mercenary.current = null; // ready for a fresh contract next visit
   G.state = 'mercenary';
   lvlup();
+
+  if (G.mercenary.batchRemaining > 0) {
+    G.mercenary.batchRemaining--;
+    startMercenaryContract();
+    return;
+  }
+
   render();
 }
 
@@ -10979,6 +15308,7 @@ handleDefeat = function() {
     G.cbt.on = false;
     G.mercenary.active = false;
     G.mercenary.current = null;
+    G.mercenary.batchRemaining = 0; // a loss stops the batch outright — no silent continuation
     G.state = 'mercenary';
     render();
   } else {
@@ -11003,6 +15333,13 @@ const ELITE_AFK_REWARD_MULT = 1.5;
 
 function afkAdventureNextEncounter() {
   if (!G.afkAdventure.active) return;
+  // If the player has navigated away to browse Quests/Items/etc. while AFK Adventure
+  // runs in the background (non-visible mode), sc() below still forces G.state to
+  // 'combat' to actually run the fight — but that shouldn't yank the screen out from
+  // under someone just checking their inventory. Combat itself doesn't depend on which
+  // screen is displayed (G.cbt.on / doAutoCombatTick() run regardless), so it's safe to
+  // restore whatever screen they were actually looking at once the encounter is set up.
+  const screenBeforeEncounter = G.state;
   const zi = G.afkAdventure.zoneIndices[Math.floor(Math.random() * G.afkAdventure.zoneIndices.length)];
   sc(zi, true);
   if (G.afkAdventure.eliteMode && G.cbt.on && G.cbt.en.length > 0) {
@@ -11022,6 +15359,10 @@ function afkAdventureNextEncounter() {
     G.autoCombatHeartbeat = Date.now();
     doAutoCombatTick();
   }
+  if (!G.afkAdventure.visible && screenBeforeEncounter !== 'combat') {
+    G.state = screenBeforeEncounter;
+    render();
+  }
 }
 
 function startAfkAdventure(zoneIndices, eliteMode, visible) {
@@ -11029,6 +15370,8 @@ function startAfkAdventure(zoneIndices, eliteMode, visible) {
   G.afkAdventure.active = true;
   G.afkAdventure.zoneIndices = zoneIndices;
   G.afkAdventure.startTime = Date.now();
+  G.afkAdventure.startLevel = G.p.lvl;
+  G.afkAdventure.legendaryItemsGained = [];
   G.afkAdventure.totalXp = 0;
   G.afkAdventure.totalGold = 0;
   G.afkAdventure.totalKills = 0;
@@ -11045,6 +15388,7 @@ function startAfkAdventure(zoneIndices, eliteMode, visible) {
 }
 
 function stopAfkAdventure() {
+  showSessionSummaryPopup(G.afkAdventure.startTime, G.afkAdventure.startLevel, G.afkAdventure.totalXp, G.afkAdventure.totalGold, G.afkAdventure.legendaryItemsGained, '\uD83D\uDDFA\uFE0F AFK Adventure Complete');
   G.afkAdventure.active = false;
   G.afkAdventure.backgroundedAt = null;
   G.afkAdventurePicker = [];
@@ -11186,6 +15530,13 @@ handleVictory = function() {
     }
     G.state = 'boss_rush_room';
     lvlup();
+
+    if (G.bossRush.batchRemaining > 0) {
+      G.bossRush.batchRemaining--;
+      continueBossRush();
+      return;
+    }
+
     render();
   } else {
     _originalHandleVictoryForBossRush();
@@ -11202,11 +15553,172 @@ handleDefeat = function() {
     G.cbt.autoCombat = isAutoCombatPreferred();
     G.cbt.on = false;
     G.bossRush.active = false;
+    G.bossRush.batchRemaining = 0;
     G.currentBoss = null;
     G.state = 'menu';
     render();
   } else {
     _originalHandleDefeatForBossRush();
+  }
+};
+
+const _originalHandleVictoryForKindlingCommission = handleVictory;
+handleVictory = function() {
+  if (G.cbt.en.length === 1 && G.cbt.en[0].isKindlingCommission) {
+    ensureKindlingCommissionsCurrent();
+    G.kindlingCommissions.linesToday++;
+    const enemy = G.cbt.en[0];
+    const xp = Math.floor(enemy.xp * getPrestigeXpMult() * getExpBoosterMult() * (1 + getAllyXpBonus()));
+    const g = Math.floor(enemy.g * getPrestigeGoldMult());
+    G.p.xp += xp;
+    G.p.gold += g;
+    lg('🕯️ Line held. +' + xp + ' XP, +' + g + 'G (' + G.kindlingCommissions.linesToday + '/3 today)');
+    G.cbt.on = false;
+    G.currentBoss = null;
+    G.cbt.autoCombat = isAutoCombatPreferred();
+    G.state = 'kindling_network';
+    lvlup();
+    saveGame();
+    render();
+  } else {
+    _originalHandleVictoryForKindlingCommission();
+  }
+};
+
+const _originalHandleVictoryForFrayingFrontier = handleVictory;
+handleVictory = function() {
+  if (G.frayingFrontier.active) {
+    const defeatedName = G.currentBoss ? G.currentBoss.n : 'It';
+    const txp = Math.floor(G.cbt.en.reduce((s, e) => s + e.xp, 0) * getPrestigeXpMult() * getExpBoosterMult() * (1 + getAllyXpBonus()));
+    const tg2 = Math.floor(G.cbt.en.reduce((s, e) => s + e.g, 0) * getPrestigeGoldMult());
+    G.p.xp += txp;
+    G.p.gold += tg2;
+    G.p.bossKills = (G.p.bossKills || 0) + 1;
+    checkBountyKill(defeatedName, true);
+    G.frayingFrontier.streak++;
+    if (G.frayingFrontier.streak > (G.frayingFrontier.bestStreak || 0)) G.frayingFrontier.bestStreak = G.frayingFrontier.streak;
+    checkAchievements();
+    lg('🎉 ' + defeatedName + ' falls! +' + txp + ' XP, +' + tg2 + 'G');
+
+    G.currentBoss = null;
+    G.cbt.autoCombat = isAutoCombatPreferred();
+    G.cbt.on = false;
+
+    // Partial recovery between encounters, same spirit as Boss Rush — enough to keep going
+    G.p.hp = Math.min(G.p.mhp, G.p.hp + Math.floor(G.p.mhp * BOSS_RUSH_RECOVERY_PCT));
+    G.p.mp = Math.min(G.p.mmp, G.p.mp + Math.floor(G.p.mmp * BOSS_RUSH_RECOVERY_PCT));
+    for (let p of G.party) {
+      if (p.on && p.hp > 0) p.hp = Math.min(p.mhp, p.hp + Math.floor(p.mhp * BOSS_RUSH_RECOVERY_PCT));
+    }
+    G.state = 'fraying_frontier_room';
+    lvlup();
+
+    if (G.frayingFrontier.batchRemaining > 0) {
+      G.frayingFrontier.batchRemaining--;
+      continueFrayingFrontier();
+      return;
+    }
+
+    render();
+  } else {
+    _originalHandleVictoryForFrayingFrontier();
+  }
+};
+
+const _originalHandleVictoryForGuildWar = handleVictory;
+handleVictory = function() {
+  if (G.guildWar.active) {
+    const defeatedName = G.currentBoss ? G.currentBoss.n : 'The rival guild';
+    const txp = Math.floor(G.cbt.en.reduce((s, e) => s + e.xp, 0) * getPrestigeXpMult() * getExpBoosterMult() * (1 + getAllyXpBonus()));
+    const tg2 = Math.floor(G.cbt.en.reduce((s, e) => s + e.g, 0) * getPrestigeGoldMult());
+    const rep = 50 + G.guildWar.streak * 10;
+    G.p.xp += txp;
+    G.p.gold += tg2;
+    if (G.guildJoined) { G.guildRep += rep; G.guildRepBalance += rep; }
+    G.p.bossKills = (G.p.bossKills || 0) + 1;
+    checkBountyKill(defeatedName, true);
+    G.guildWar.streak++;
+    if (G.guildWar.streak > (G.guildWar.bestStreak || 0)) G.guildWar.bestStreak = G.guildWar.streak;
+    checkAchievements();
+    lg('🎉 ' + defeatedName + ' stands down! +' + txp + ' XP, +' + tg2 + 'G' + (G.guildJoined ? ', +' + rep + ' Guild Rep' : ''));
+    guildWarBark();
+
+    G.currentBoss = null;
+    G.cbt.autoCombat = isAutoCombatPreferred();
+    G.cbt.on = false;
+
+    G.p.hp = Math.min(G.p.mhp, G.p.hp + Math.floor(G.p.mhp * BOSS_RUSH_RECOVERY_PCT));
+    G.p.mp = Math.min(G.p.mmp, G.p.mp + Math.floor(G.p.mmp * BOSS_RUSH_RECOVERY_PCT));
+    for (let p of G.party) {
+      if (p.on && p.hp > 0) p.hp = Math.min(p.mhp, p.hp + Math.floor(p.mhp * BOSS_RUSH_RECOVERY_PCT));
+    }
+    G.state = 'guild_war_room';
+    lvlup();
+
+    if (G.guildWar.batchRemaining > 0) {
+      G.guildWar.batchRemaining--;
+      continueGuildWar();
+      return;
+    }
+
+    render();
+  } else {
+    _originalHandleVictoryForGuildWar();
+  }
+};
+
+const _originalHandleDefeatForKindlingCommission = handleDefeat;
+handleDefeat = function() {
+  if (G.cbt.en.length === 1 && G.cbt.en[0].isKindlingCommission) {
+    if (checkSecondWind()) { render(); return; }
+    lg('🕯️ This one got away. No cost — the line is still there whenever you\'re ready to try again.');
+    G.p.hp = 1;
+    for (let p of G.party) { if (p.hp <= 0) { p.hp = 1; p.on = true; } }
+    G.cbt.on = false;
+    G.currentBoss = null;
+    G.cbt.autoCombat = isAutoCombatPreferred();
+    G.state = 'kindling_network';
+    render();
+  } else {
+    _originalHandleDefeatForKindlingCommission();
+  }
+};
+
+const _originalHandleDefeatForFrayingFrontier = handleDefeat;
+handleDefeat = function() {
+  if (G.frayingFrontier.active) {
+    if (checkSecondWind()) { render(); return; }
+    lg('💀 The frontier run ends here \u2014 final streak: ' + G.frayingFrontier.streak + '. Everything earned along the way is kept.');
+    G.p.hp = 1;
+    for (let p of G.party) { if (p.hp <= 0) { p.hp = 1; p.on = true; } }
+    G.cbt.autoCombat = isAutoCombatPreferred();
+    G.cbt.on = false;
+    G.frayingFrontier.active = false;
+    G.frayingFrontier.batchRemaining = 0;
+    G.currentBoss = null;
+    G.state = 'menu';
+    render();
+  } else {
+    _originalHandleDefeatForFrayingFrontier();
+  }
+};
+
+const _originalHandleDefeatForGuildWar = handleDefeat;
+handleDefeat = function() {
+  if (G.guildWar.active) {
+    if (checkSecondWind()) { render(); return; }
+    lg('💀 The muster ends here \u2014 final streak: ' + G.guildWar.streak + '. Everything earned along the way is kept.');
+    G.p.hp = 1;
+    for (let p of G.party) { if (p.hp <= 0) { p.hp = 1; p.on = true; } }
+    G.cbt.autoCombat = isAutoCombatPreferred();
+    G.cbt.on = false;
+    G.guildWar.active = false;
+    G.guildWar.batchRemaining = 0;
+    G.currentBoss = null;
+    G.state = 'menu';
+    render();
+  } else {
+    _originalHandleDefeatForGuildWar();
   }
 };
 
@@ -11274,7 +15786,7 @@ function sc(zi, skipEvents) {
       showToast('📖 New story chapter unlocked!', 'gold');
     }
   }
-  G.cbt.on=true; G.cbt.turn=0; G.cbt.en=[]; G.state='combat';
+  G.cbt.on=true; G.cbt.turn=0; G.cbt.en=[]; G.state='combat'; G.cbt.autoCombat=isAutoCombatPreferred();
     checkDimensionalInstability(); // Phase 2: Dimensional Instability
   
   // === WEATHER SYSTEM ===
@@ -11282,14 +15794,31 @@ function sc(zi, skipEvents) {
   
   applyZoneBuffs(z.n); // STAGE 3: Apply zone buffs
   
-  // Boss fight: only when player is 2+ levels above zone minimum
+  // Boss fight: available as soon as the player reaches the zone's own level —
+  // previously required being 2+ levels above zone minimum, which made sense against
+  // the old XP curve's much slower pacing but left bosses lagging behind actual
+  // progression now that leveling is rebalanced.
   const bossChance = Math.random();
   let isBoss = false;
-  if (bossChance < 0.08 && G.p.lvl >= z.lv + 2) {
+  if (bossChance < 0.08 && G.p.lvl >= z.lv) {
     const boss = G.bosses.find(b => b.zone === z.n);
     if (boss) {
       isBoss = true;
-      G.currentBoss = JSON.parse(JSON.stringify(boss));
+      if (boss.scaled) {
+        // No hp/atk/def/xp/g baked in — generated fresh every fight off the
+        // player's CURRENT level, via the same safe curve as the Fraying
+        // Frontier (and already anchored to match the other zone bosses at
+        // level 100), so this boss keeps pace no matter how far past 100
+        // leveling eventually goes.
+        const stats = getFrayingFrontierScaledStats(G.p.lvl);
+        G.currentBoss = Object.assign({}, boss, {
+          hp: stats.hp, mhp: stats.hp,
+          atk: stats.atk, def: stats.def,
+          xp: stats.xp, g: stats.g
+        });
+      } else {
+        G.currentBoss = JSON.parse(JSON.stringify(boss));
+      }
       G.currentBoss.id = 99;
       G.cbt.en.push(G.currentBoss);
       lg('⚠️ BOSS APPEARS: ' + boss.n + '!');
@@ -11302,8 +15831,17 @@ function sc(zi, skipEvents) {
     for(let i=0;i<ec;i++){
       const t=z.en[Math.floor(Math.random()*z.en.length)];
     let e={n:t,hp:0,mhp:0,atk:0,def:0,xp:0,g:0};
+    // The Endless Thinning reads the player's CURRENT level live, every single fight —
+    // unlike every other zone (including the 96-100 stretch right before it), which
+    // bakes a fixed zoneLv into the registry and simply stops getting harder once the
+    // player levels past it. This is the one zone built to never fall behind.
+    if (z.n === 'The Endless Thinning') {
+      const endlessTemplates = ['striker', 'balanced', 'tank'];
+      const tpl = endlessTemplates[z.en.indexOf(t) % endlessTemplates.length];
+      e = { ...e, ...generateEnemyStats(G.p.lvl, tpl, 'void') };
+    }
         // Check dynamic scaling first (Lv 21+ enemies)
-    const dynamicStats = getDynamicEnemyStats(t);
+    const dynamicStats = e.mhp > 0 ? null : getDynamicEnemyStats(t);
     if (dynamicStats) {
       e = { ...e, ...dynamicStats };
     }
@@ -11437,6 +15975,88 @@ function triggerLevelUpAnimation(newLevel) {
 
 // Per-level growth, tailored per companion instead of uniform — matches the same
 // individual-identity approach as their equipment roles and hidden growth abilities.
+// San, Joel, and Aisyah are the fixed trio — never appear in the swappable pool, can
+// never be benched. Soel is a familiar and doesn't take a slot at all. Everyone else
+// competes for ACTIVE_PARTY_SLOTS spots, unlocked either by level (the original four)
+// or by Guild recruitment (the six added later). Mimi and Brada are a linked pair —
+// selecting one selects both, together consuming 2 of the 4 slots, never split apart.
+const ACTIVE_PARTY_SLOTS = 4;
+const SWAPPABLE_PARTY_POOL = ['Mezstorm', 'Eliz', 'Senedra', 'Zaki', 'KW Liang', 'Mimi', 'Brada Shah', 'Dr. AA', 'Sister Wren', 'Ser Aldric', 'Iris'];
+const LINKED_PARTY_PAIRS = [['Mimi', 'Brada Shah'], ['Senedra', 'Zaki']];
+// Maps a swappable party member's name to the Guild Member id that gates their
+// availability, for the six who are recruit-gated rather than level-gated.
+const PARTY_MEMBER_GUILD_GATE = {
+  'KW Liang': 'kw_liang',
+  'Mimi': 'mimi',
+  'Brada Shah': 'brada',
+  'Dr. AA': 'dr_aa',
+  'Sister Wren': 'sister_wren',
+  'Ser Aldric': 'ser_aldric',
+  'Iris': 'iris'
+};
+// The reverse relationship for the original four — becoming available as a party
+// candidate (by level) is what recruits them to the Guild roster, not the other way
+// around, since they have no separate story-beat recruitment trigger of their own.
+const ORIGINAL_FOUR_GUILD_ID = {
+  'Mezstorm': 'mezstorm',
+  'Eliz': 'eliz',
+  'Senedra': 'senedra',
+  'Zaki': 'zaki'
+};
+
+// Marks a swappable-pool member as newly available for party selection, and — for the
+// original four specifically — folds them into the Guild roster at the same moment,
+// since level-unlock is their only path to either one. Called from every transition
+// point (loadGame's catch-up loop, live lvlup) so this can never drift out of sync.
+function unlockSwappablePartyMember(p) {
+  if (!p.unlocked) {
+    p.unlocked = true;
+    lg(p.n + ' ' + p.t + ' becomes available to bring into the active party.');
+  }
+  if (ORIGINAL_FOUR_GUILD_ID[p.n]) recruitGuildMember(ORIGINAL_FOUR_GUILD_ID[p.n]);
+}
+
+function getLinkedPartyPartner(name) {
+  for (const pair of LINKED_PARTY_PAIRS) {
+    if (pair[0] === name) return pair[1];
+    if (pair[1] === name) return pair[0];
+  }
+  return null;
+}
+
+// Whether a swappable-pool member has ever actually been met — level-gated ones check
+// their own p.ul against player level, recruit-gated ones check the Guild roster. This
+// is deliberately separate from p.on, which now means "currently selected as active."
+function isSwappablePartyMemberUnlocked(p) {
+  if (PARTY_MEMBER_GUILD_GATE[p.n]) {
+    return isGuildMemberRecruited(PARTY_MEMBER_GUILD_GATE[p.n]);
+  }
+  return p.unlocked || p.ul <= G.p.lvl;
+}
+
+// Recalculates p.on for every swappable-pool member based on activePartySelection —
+// call this after the selection changes, and on load/level-up so p.on always reflects
+// the current pick rather than drifting out of sync with it.
+function syncActivePartyFlags() {
+  for (const p of G.party) {
+    if (!SWAPPABLE_PARTY_POOL.includes(p.n)) continue; // fixed trio + Soel untouched
+    const wasOn = p.on;
+    p.on = G.activePartySelection.includes(p.n);
+    if (p.on && p.hp <= 0) p.hp = p.mhp; // freshly activated member shouldn't enter combat dead
+    if (!p.on && p.hp <= 0) p.hp = p.mhp; // defensive catch-all — a benched member sitting at 0 HP could otherwise be accidentally reactivated by one of combat's "second wind" checks, which set p.on=true for anyone at 0 HP unconditionally
+    if (p.on && !wasOn) lg(p.n + ' ' + p.t + ' joins the active party!');
+  }
+}
+
+// Unified "has this party member ever been unlocked" check, regardless of whether
+// they're currently active or benched — used anywhere the UI or growth logic needs
+// to know if someone exists at all (equipment screen, stat growth), as distinct from
+// whether they're in today's fighting four.
+function isPartyMemberUnlocked(p) {
+  if (SWAPPABLE_PARTY_POOL.includes(p.n)) return isSwappablePartyMemberUnlocked(p);
+  return p.on || p.ul <= G.p.lvl;
+}
+
 const COMPANION_LEVEL_GROWTH = {
   Joel:     { mhp: 12, atk: 1, def: 2, spd: 0 }, // The Steadfast — bulwark, more HP/DEF than offense
   Aisyah:   { mhp: 6,  atk: 2, def: 0, spd: 1 }, // Sisterblade — sharp and fast, fragile
@@ -11445,6 +16065,13 @@ const COMPANION_LEVEL_GROWTH = {
   Senedra:  { mhp: 7,  atk: 2, def: 0, spd: 1 }, // Swift Scout — precision and speed
   Zaki:     { mhp: 10, atk: 2, def: 1, spd: 0 }, // Young Blade — balanced frontliner
   Soel:     { mhp: 8,  atk: 1, def: 1, spd: 1 }, // The Familiar — matches his all-stats passive
+  'KW Liang':    { mhp: 7,  atk: 2, def: 0, spd: 1 }, // Quick Hands — fast, offense-leaning scout
+  Mimi:          { mhp: 6,  atk: 2, def: 1, spd: 0 }, // Dreamwalker — offense-focused caster like Mezstorm
+  'Brada Shah':  { mhp: 9,  atk: 2, def: 1, spd: 0 }, // Steady Hand — slow, heavy, durable artillery
+  'Dr. AA':      { mhp: 9,  atk: 1, def: 1, spd: 0 }, // Steady Hands — durable clinical healer
+  'Sister Wren': { mhp: 8,  atk: 1, def: 2, spd: 0 }, // True Devotion — protective, DEF-leaning healer
+  'Ser Aldric':  { mhp: 11, atk: 1, def: 2, spd: 0 }, // The Other Kind of Found — even tankier than Joel, slower
+  'Iris':        { mhp: 7,  atk: 2, def: 0, spd: 1 }, // Held Her Own — fast, offense-leaning scout, same shape as Senedra
 };
 
 // Original starting stats (before any growth) and unlock level per companion — used only
@@ -11527,28 +16154,40 @@ function playLevelUpSound() {
   playTone(1046.5, 0.36, 0.30, 'triangle', 0.26); // C6
 }
 
+function xpNeededForLevel(targetLvl) {
+  let xpN = 100, lvl = 1;
+  while (lvl < targetLvl && lvl < 500) {
+    lvl++;
+    if (lvl < 15) xpN = Math.floor(xpN * 1.5);
+    else if (lvl <= 50) xpN = Math.floor(xpN * 1.18);
+    else xpN = Math.floor(xpN * 1.025);
+  }
+  if (targetLvl <= 500) return xpN;
+  // Past level 500, switch from compounding (exponential) growth to a polynomial
+  // power-law formula. Exponential compounding, even at a tiny rate, always
+  // eventually overflows given enough levels — the original curve broke past
+  // safe-integer range by level 1000. Polynomial growth has no such runaway
+  // risk, stays safe through at least level 10,000, and still meaningfully
+  // increases the XP requirement each level rather than flattening out.
+  const baseAt500 = xpN;
+  return Math.floor(baseAt500 * Math.pow(targetLvl / 500, 3));
+}
+
 function lvlup(){
   const startLvl = G.p.lvl;
   while(G.p.xp>=G.p.xpN){
     G.p.xp-=G.p.xpN; G.p.lvl++;
-    // SOFTENED CURVE: 1.5x until Lv 15, then 1.35x through 49, matching 1-50 exactly
-    // as it already plays. From 50 onward, 1.35x compounding forever is what made
-    // level 100 require quadrillions of XP — switching to a much gentler 1.06x here
-    // keeps post-50 progression proportional instead of continuing to accelerate.
-    if(G.p.lvl < 15){
-      G.p.xpN=Math.floor(G.p.xpN*1.5);
-    } else if(G.p.lvl <= 50){
-      G.p.xpN=Math.floor(G.p.xpN*1.35);
-    } else {
-      G.p.xpN=Math.floor(G.p.xpN*1.06);
-    }
+    // XP curve lives in xpNeededForLevel() — routed through that single shared
+    // function rather than duplicating the formula here, after discovering this
+    // exact spot had drifted out of sync with a fix made to the shared version.
+    G.p.xpN = xpNeededForLevel(G.p.lvl);
     G.p.mhp+=10; G.p.mmp+=15; G.p.hp=G.p.mhp; G.p.mp=G.p.mmp;
     G.p.stats.int+=2; G.p.stats.con+=1;
     lg('LEVEL UP! Now Level '+G.p.lvl+'!');
 
     // === STAGE 2: PARTY AUTO STAT GROWTH (per-companion, tailored to their role) ===
     for(let p of G.party){
-      if(p.on || p.ul <= G.p.lvl){
+      if(isPartyMemberUnlocked(p)){
         if (!p.base) p.base = { mhp: p.mhp, atk: p.atk, def: p.def, spd: p.spd };
         const oldMhp = p.mhp, oldAtk = p.atk, oldDef = p.def, oldSpd = p.spd;
         const growth = COMPANION_LEVEL_GROWTH[p.n] || { mhp: 8, atk: 1, def: 1, spd: 0 };
@@ -11567,7 +16206,14 @@ function lvlup(){
     }
 
     for(let s of G.p.skills){if(!s.on&&s.ul<=G.p.lvl){s.on=true;lg('Learned: '+s.n+'!');}}
-    for(let p of G.party){if(!p.on&&p.ul<=G.p.lvl){p.on=true;p.hp=p.mhp;lg(p.n+' '+p.t+' joins!');}}
+    for(let p of G.party){
+      if (SWAPPABLE_PARTY_POOL.includes(p.n)) {
+        if (!p.unlocked && p.ul <= G.p.lvl) unlockSwappablePartyMember(p);
+      } else if (!p.on && p.ul <= G.p.lvl) {
+        p.on = true; p.hp = p.mhp; lg(p.n + ' ' + p.t + ' joins!');
+      }
+    }
+    syncActivePartyFlags();
     checkAchievements();
     checkTalentUnlocks();
     unlockRestSites();
@@ -11605,6 +16251,51 @@ function lvlup(){
     playLevelUpSound();
   }
 }
+
+// === RITE OF RETURN ===
+// A repeatable, deliberately non-level-gated catch-up mechanic for right after a
+// Prestige — otherwise re-reaching a level-gated zone (like The Unbroken Vale at 56)
+// can genuinely take a while, which reads fine as a mechanical grind but breaks the
+// roleplay logic: San hasn't actually forgotten how to get there or lost her standing
+// with Varel just because her level number reset. Framed narratively as the Guild
+// fast-tracking a veteran's reconditioning rather than treating her like a true
+// level-1 newcomer. Deliberately capped at the player's own previous peak — this is a
+// catch-up tool, not a way to skip past genuinely new progress.
+function isRiteOfReturnAvailable() {
+  return (G.prestige.count || 0) >= 1 && G.p.lvl < (G.prestige.highestLvlEver || 1);
+}
+
+function riteOfReturnLevelsPerUse() {
+  const base = 2;
+  const prestigeBonus = Math.floor((G.prestige.count || 0) / 2);
+  return Math.min(10, base + prestigeBonus);
+}
+
+function runRiteOfReturn(uses) {
+  if (!isRiteOfReturnAvailable()) { lg('The Rite of Return has nothing left to give you right now.'); return; }
+  uses = uses || 1;
+  const perUse = riteOfReturnLevelsPerUse();
+  let totalLevelsGranted = 0;
+  for (let u = 0; u < uses; u++) {
+    if (!isRiteOfReturnAvailable()) break; // stop the moment they hit their own previous peak
+    const targetLvl = Math.min(G.p.lvl + perUse, G.prestige.highestLvlEver);
+    let xpNeeded = 0;
+    for (let l = G.p.lvl; l < targetLvl; l++) xpNeeded += xpNeededForLevel(l);
+    G.p.xp += xpNeeded;
+    const before = G.p.lvl;
+    lvlup();
+    totalLevelsGranted += (G.p.lvl - before);
+  }
+  if (totalLevelsGranted > 0) {
+    lg('⚡ The Rite of Return carries you forward ' + totalLevelsGranted + ' level' + (totalLevelsGranted === 1 ? '' : 's') + ' \u2014 the Guild recognizing what you already proved once.');
+  }
+  if (!isRiteOfReturnAvailable()) {
+    lg('⚡ You have caught back up to where you were. The Rite of Return rests until your next Prestige.');
+  }
+  saveGame();
+  render();
+}
+
 function checkQ(){
   for(let q of G.quests){
     if(q.done)continue;
@@ -11615,7 +16306,7 @@ function checkQ(){
     if(q.t=='boss_specific'&&q.c>=q.need)q.c=q.need;
     if(q.t=='aisyah_battle'&&q.c>=q.need)q.c=q.need;
     if(q.t=='joel_battle'&&q.c>=q.need)q.c=q.need;
-    if(q.c>=q.need){q.done=true;G.p.xp+=q.rw.xp;G.p.gold+=q.rw.g;G.p.quests++;lg('Quest: '+q.n+'! +'+q.rw.xp+'XP +'+q.rw.g+'G');if(q.rw.templeRep){G.templeRep+=q.rw.templeRep;lg('🙏 Temple standing +'+q.rw.templeRep+' ('+G.templeRep+')');}if(q.stronghold)claimStronghold(q.stronghold);checkQuestChains();checkAchievements();lvlup();}
+    if(q.c>=q.need){q.done=true;G.p.xp+=q.rw.xp;G.p.gold+=q.rw.g;G.p.quests++;lg('Quest: '+q.n+'! +'+q.rw.xp+'XP +'+q.rw.g+'G');if(q.rw.templeRep){addTempleRep(q.rw.templeRep);}if(q.rw.item){addI(JSON.parse(JSON.stringify(q.rw.item)));lg('🎁 Received: '+q.rw.item.n+'!');showToast('🎁 '+q.rw.item.n+' received!','gold');}if(q.unlockRestSite){const site=G.rest.sites.find(s=>s.id===q.unlockRestSite);if(site){site.unlocked=true;lg('⛪ '+site.name+' is open to you now.');}}if(q.stronghold)claimStronghold(q.stronghold);checkQuestChains();checkAchievements();lvlup();}
   }
 }
 
@@ -11645,6 +16336,19 @@ function addI(it){
   else G.p.inv.push({...it,q:it.q||1});
 }
 
+// Tracks legendary drops during an active AFK Adventure or AFK Grind session so the
+// stop-and-exit summary can actually list what came in, not just totals. Wrapping addI()
+// rather than touching every loot call site — same pattern as the handleVictory/
+// handleDefeat wrappers elsewhere in this file.
+const _originalAddIForAfkTracking = addI;
+addI = function(it) {
+  _originalAddIForAfkTracking(it);
+  if (it.r === 'legendary') {
+    if (G.afkAdventure.active) G.afkAdventure.legendaryItemsGained.push(it.n);
+    if (G.endlessGrind.active) G.endlessGrind.legendaryItemsGained.push(it.n);
+  }
+};
+
 function useI(ix){
   const it=G.p.inv[ix];
   if(!it)return;
@@ -11665,7 +16369,28 @@ function useI(ix){
       G.expBooster={mult:it.boostPct||0.5,expiresAt:Date.now()+durationMs};
       lg('✨ Used '+it.n+'! +'+Math.floor((it.boostPct||0.5)*100)+'% XP for the next '+(it.v||30)+' minutes.');
     }
+    else if(it.eff=='stat_boost'){
+      if(G.statBooster && G.statBooster.expiresAt>Date.now()){lg('❌ A supplement is already active. Wait for it to run out first.');return;}
+      const durationMs=(it.mins||30)*60*1000;
+      G.statBooster={stat:it.stat||'atk',val:it.boostVal||5,expiresAt:Date.now()+durationMs};
+      lg('💊 Used '+it.n+'! +'+(it.boostVal||5)+' '+(it.stat||'atk').toUpperCase()+' for the next '+(it.mins||30)+' minutes.');
+    }
+    else if(it.eff=='perm_stat'){
+      G.p.permStatsUsed = G.p.permStatsUsed || {};
+      if(G.p.permStatsUsed[it.stat]){lg('❌ You have already taken this permanently — a second dose gives no further benefit.');return;}
+      G.p.stats[it.stat]=(G.p.stats[it.stat]||0)+(it.v||1);
+      G.p.permStatsUsed[it.stat]=true;
+      recalcMaxHpMp();
+      lg('⭐ Used '+it.n+'! Permanent +'+(it.v||1)+' '+it.stat.toUpperCase()+'.');
+    }
     else return; // unrecognized effect — don't consume the item for nothing
+    it.q--; if(it.q<=0)G.p.inv.splice(ix,1);
+    render();
+  } else if(it.t=='book' && it.eff=='learn_recipe'){
+    G.knownRecipes = G.knownRecipes || [];
+    if(G.knownRecipes.includes(it.recipe)){lg('❌ You already know this recipe \u2014 rereading it won\'t teach you anything new.');return;}
+    G.knownRecipes.push(it.recipe);
+    lg('📖 Read '+it.n+'! Learned recipe: '+it.recipe+'.');
     it.q--; if(it.q<=0)G.p.inv.splice(ix,1);
     render();
   } else if(it.t=='revive'){
@@ -11713,9 +16438,22 @@ function sf(minutes){
   lg('Focus started! ' + validMinutes + ' min...'); render();
   ft=setInterval(()=>{
     const el=Date.now()-G.fs, rm=G.fd-el;
-    if(G.state!='focus'){clearInterval(ft);return;}
+    // No longer cancels just because the player navigated away — that was the whole
+    // reason Focus Mode couldn't run alongside AFK Adventure or anything else. The
+    // timer now genuinely runs in the background regardless of G.state; only the
+    // explicit Cancel button (cf(), below) or actual completion ever stops it.
     if(rm<=0){
       clearInterval(ft);
+      // Captured immediately, before anything below (checkQ, checkAchievements, etc.)
+      // gets a chance to run — checkQ() specifically can trigger its own nested
+      // lvlup() call internally when the Focus quest itself completes, which can set
+      // G.state to 'story' on a fresh chapter unlock well before the code even
+      // reaches this function's own lvlup() call further down. Capturing late would
+      // just re-preserve that already-corrupted value instead of what the player was
+      // actually doing.
+      const wasActivelyElsewhere = G.state !== 'focus' && G.state !== 'menu';
+      const preservedState = G.state;
+
       const baseXp = G.focusDuration * 4;
       const baseGold = G.focusDuration * 2;
       G.p.fstreak++;  checkDailyQuests('focus', 1);
@@ -11752,15 +16490,25 @@ function sf(minutes){
       }
 
       checkAchievements();
-      lvlup(); G.state='menu'; render();
+      G.fs = null; G.fd = null; // clears the persistent indicator on other screens
+      lvlup();
+      // Restore whatever the player was actually doing before any of the above ran —
+      // otherwise a background Focus completion (or the nested lvlup() inside checkQ)
+      // could silently yank them out of combat or AFK Adventure into a story chapter
+      // or the menu. If they were genuinely on the Focus screen, let it settle there.
+      if (wasActivelyElsewhere) { G.state = preservedState; }
+      else if (G.state === 'focus') { G.state = 'menu'; }
+      render();
     }else{
       const el2=document.getElementById('ft');
       if(el2){const m=Math.floor(rm/60000),s=Math.floor((rm%60000)/1000);el2.textContent=m+':'+s.toString().padStart(2,'0');}
+      const el3=document.getElementById('ft-badge');
+      if(el3){const m=Math.floor(rm/60000),s=Math.floor((rm%60000)/1000);el3.textContent='🧘 '+m+':'+s.toString().padStart(2,'0');}
     }
   },1000);
 }
 
-function cf(){if(ft)clearInterval(ft);setS('menu');lg('Focus cancelled.');render();}
+function cf(){if(ft)clearInterval(ft);G.fs=null;G.fd=null;setS('menu');lg('Focus cancelled.');render();}
 
 // Small, auto-dismissing notification (top-right) — for quick status updates during a
 // grind (bounty progress, contract progress) and for events worth a brief heads-up
@@ -11769,7 +16517,6 @@ function cf(){if(ft)clearInterval(ft);setS('menu');lg('Focus cancelled.');render
 // Floating damage number over a specific DOM element (an enemy card, San's HP bar, etc.)
 // Purely cosmetic — never touches game state, safe to call from anywhere damage resolves.
 function showFloatingDamage(el, amount, opts = {}) {
-  if (!G.dragonHunt.active) return; // scoped to the Dragon Hunt only, per the original request
   if (!el) return;
   if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
   const span = document.createElement('div');
@@ -11777,6 +16524,14 @@ function showFloatingDamage(el, amount, opts = {}) {
   span.textContent = (opts.heal ? '+' : '-') + amount;
   el.appendChild(span);
   setTimeout(() => span.remove(), 900);
+
+  // Hit-flash on the card itself — was previously missing entirely, everywhere.
+  const card = el.closest('.ecard, .party-avatar-circle, .hdr-r');
+  if (card && !opts.heal) {
+    card.classList.remove('hit-flash', 'crit-flash');
+    void card.offsetWidth; // force reflow so the animation restarts on rapid consecutive hits
+    card.classList.add(opts.crit ? 'crit-flash' : 'hit-flash');
+  }
 }
 
 // Enemy took damage — finds that enemy's card by its position in G.cbt.en.
@@ -11841,16 +16596,79 @@ function sendLocalNotification(title, body) {
 // Battle reward popup — deliberately distinct from the toast system (which is tuned for
 // quick 3.3s confirmations). This lingers for 15s specifically so a glance is enough,
 // without needing to scroll the activity log to see what a fight actually paid out.
+// Positioned dynamically below the actual header (not a hardcoded pixel guess) since the
+// header's real height varies a lot — class/prestige badges, buffs row, XP booster badge,
+// AFK banner can all add height, and a fixed top was landing the popup on top of the XP
+// bar and gold line instead of below them.
 function showBattleRewardPopup(xp, gold, extra) {
   const existing = document.querySelector('.battle-reward-popup');
   if (existing) existing.remove(); // replace rather than stack — one summary at a time
   const el = document.createElement('div');
   el.className = 'battle-reward-popup';
-  el.innerHTML = '<span class="brp-xp">✨ +' + xp.toLocaleString() + ' XP</span><span class="brp-gold">💰 +' + gold.toLocaleString() + 'G</span>'
-    + (extra ? '<div class="brp-extra">' + extra + '</div>' : '');
+
+  const pct = Math.floor((G.p.xp / G.p.xpN) * 100);
+  const boosterActive = G.expBooster && G.expBooster.expiresAt > Date.now();
+
+  let html = '<div class="brp-row"><span class="brp-xp">\u2728 +' + xp.toLocaleString() + ' XP</span><span class="brp-gold">\uD83D\uDCB0 +' + gold.toLocaleString() + 'G</span></div>';
+  html += '<div class="brp-detail">Lv.' + G.p.lvl + ' \u2014 ' + G.p.xp.toLocaleString() + '/' + G.p.xpN.toLocaleString() + ' (' + pct + '%)' + (boosterActive ? ' <span class="brp-booster">\u26A1 XP boost active</span>' : '') + '</div>';
+  if (extra) html += '<div class="brp-extra">' + extra + '</div>';
+  el.innerHTML = html;
+
   document.body.appendChild(el);
+
+  // Position below the real header height, recalculated on every show since buffs/badges
+  // change how tall the header actually renders from one fight to the next.
+  const hdr = document.querySelector('.hdr');
+  const hdrBottom = hdr ? hdr.getBoundingClientRect().bottom : 90;
+  el.style.top = (hdrBottom + 10) + 'px';
+
   if (navigator.vibrate) navigator.vibrate(25); // a light single pulse, not the level-up pattern
   setTimeout(() => { el.classList.add('brp-fade'); setTimeout(() => el.remove(), 400); }, 15000);
+}
+
+// Session summary popup — shown on "Stop & Exit" from AFK Adventure or AFK Grind, using
+// the exact same white-card visual language as the battle reward popup, just with more
+// to say: how long the session actually ran (wall-clock, including backgrounded time),
+// XP earned (already includes any active booster, since totalXp is accumulated post-
+// multiplier by the existing victory handlers), levels gained, and any legendary drops.
+// Tap-to-dismiss since there's more here to actually read than a routine combat ping —
+// still auto-clears after 25s as a safety net if left alone.
+function showSessionSummaryPopup(startTime, startLevel, totalXp, totalGold, legendaryItems, label) {
+  const existing = document.querySelector('.battle-reward-popup');
+  if (existing) existing.remove();
+
+  const elapsedMs = Math.max(0, Date.now() - (startTime || Date.now()));
+  const hours = Math.floor(elapsedMs / 3600000);
+  const mins = Math.floor((elapsedMs % 3600000) / 60000);
+  const durationStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (mins + 'm');
+  const levelsGained = Math.max(0, G.p.lvl - (startLevel || G.p.lvl));
+
+  const el = document.createElement('div');
+  el.className = 'battle-reward-popup session-summary-popup';
+  el.style.pointerEvents = 'auto';
+
+  let html = '<div class="brp-session-title">' + (label || 'Session Summary') + '</div>';
+  html += '<div class="brp-detail">\u23F1\uFE0F ' + durationStr + ' away</div>';
+  html += '<div class="brp-row"><span class="brp-xp">\u2728 +' + totalXp.toLocaleString() + ' XP</span><span class="brp-gold">\uD83D\uDCB0 +' + totalGold.toLocaleString() + 'G</span></div>';
+  html += '<div class="brp-detail">' + (levelsGained > 0 ? '\uD83C\uDF1F +' + levelsGained + ' level' + (levelsGained > 1 ? 's' : '') + ' \u2014 now Lv.' + G.p.lvl : 'Lv.' + G.p.lvl + ' \u2014 no level gained this run') + '</div>';
+  if (legendaryItems && legendaryItems.length > 0) {
+    const counts = {};
+    for (let n of legendaryItems) counts[n] = (counts[n] || 0) + 1;
+    const legendaryLine = Object.entries(counts).map(([n, c]) => n + (c > 1 ? ' x' + c : '')).join(', ');
+    html += '<div class="brp-legendary">\uD83D\uDFE1 Legendary: ' + legendaryLine + '</div>';
+  }
+  html += '<div class="brp-dismiss-hint">Tap to dismiss</div>';
+  el.innerHTML = html;
+
+  el.addEventListener('click', () => { el.classList.add('brp-fade'); setTimeout(() => el.remove(), 400); });
+  document.body.appendChild(el);
+
+  const hdr = document.querySelector('.hdr');
+  const hdrBottom = hdr ? hdr.getBoundingClientRect().bottom : 90;
+  el.style.top = (hdrBottom + 10) + 'px';
+
+  if (navigator.vibrate) navigator.vibrate([25, 40, 25]);
+  setTimeout(() => { if (document.body.contains(el)) { el.classList.add('brp-fade'); setTimeout(() => el.remove(), 400); } }, 25000);
 }
 
 function showToast(text, type) {
@@ -11897,6 +16715,24 @@ function boldNumbers(msg) {
 // this whole project (🔥 fire, ❄️ ice, ⚡ lightning, ☠️ poison, 🌑 void, 🙏 holy) — a
 // pure display-layer heuristic, so it needed zero changes to any of the 500+ existing
 // lg() call sites.
+// Categorizes log entries for the dedicated Combat Log screen — same pure
+// display-layer pattern-matching approach as LOG_ELEMENT_PATTERNS above, so it needs
+// zero changes to any existing lg() call site. Combat patterns checked first since
+// they're the highest-volume and most specific (⚔️/❌/💥/💀 are essentially unique to
+// actual combat turns throughout this codebase); everything else that isn't
+// quest/guild-related falls through to "system" by default.
+const LOG_CATEGORY_PATTERNS = [
+  { rx: /🔧/, cat: 'system' }, // migration/recovery messages — checked first so incidental keyword matches (e.g. "quest") below don't miscategorize them
+  { rx: /⚔️|❌.*misses|💥 CRIT|💀|hits .+ for \d|is defeated|is destroyed|is consumed|falls!/, cat: 'combat' },
+  { rx: /📜|🛡️|📚|🎓|🏆|🔒|Guild Rep|quest|Quest|contract|Contract|disciple|Disciple/, cat: 'quests' }
+];
+function getLogCategory(msg) {
+  for (const p of LOG_CATEGORY_PATTERNS) {
+    if (p.rx.test(msg)) return p.cat;
+  }
+  return 'system';
+}
+
 const LOG_ELEMENT_PATTERNS = [
   { rx: /🔥/, cls: 'elem-fire' },
   { rx: /❄️/, cls: 'elem-ice' },
@@ -11913,21 +16749,200 @@ function getLogElementClass(msg) {
 function renderLogPanel() {
   const highlight = getLogHighlight();
   const tickerLines = G.log.slice(-12).reverse();
-  let h = '<div class="log-highlight ' + getLogElementClass(highlight) + '"><div class="lh-text">' + boldNumbers(highlight) + '</div></div>';
+  let h = '';
+  // Persistent Focus Mode indicator — visible on every screen now that a session
+  // keeps running in the background regardless of what the player is actually doing.
+  // Only shown when a session is genuinely active and not currently on the Focus
+  // screen itself (which already has its own full countdown display).
+  if (G.fs && G.fd && G.state !== 'focus') {
+    const rm = Math.max(0, G.fd - (Date.now() - G.fs));
+    const m = Math.floor(rm / 60000), s = Math.floor((rm % 60000) / 1000);
+    h += '<div onclick="setS(\'focus\')" style="display:flex;justify-content:space-between;align-items:center;background:rgba(124,58,237,0.15);border:1px solid var(--accent);border-radius:10px;padding:6px 10px;margin-bottom:6px;cursor:pointer;">';
+    h += '<span id="ft-badge" style="font-size:12px;font-weight:700;color:var(--accent-light);">🧘 ' + m + ':' + s.toString().padStart(2, '0') + '</span>';
+    h += '<span style="font-size:10px;color:var(--text-dim);">Focus running \u2014 tap to view</span>';
+    h += '</div>';
+  }
+  // Persistent AFK Adventure / AFK Grind indicators — same reasoning as Focus Mode's
+  // badge above. Both loops now leave G.state alone while running in the background
+  // (see afkAdventureNextEncounter() / startGrindWave()), so without a badge like this
+  // there would be no way to tell they're still ticking while browsing another screen.
+  if (G.afkAdventure.active && G.state !== 'combat') {
+    const elapsedMs = Date.now() - (G.afkAdventure.startTime || Date.now());
+    const em = Math.floor(elapsedMs / 60000);
+    h += '<div onclick="setS(\'combat\')" style="display:flex;justify-content:space-between;align-items:center;background:rgba(16,185,129,0.15);border:1px solid var(--success);border-radius:10px;padding:6px 10px;margin-bottom:6px;cursor:pointer;">';
+    h += '<span style="font-size:12px;font-weight:700;color:var(--success);">🗺️ AFK ' + em + 'm \u2014 ✨' + G.afkAdventure.totalXp.toLocaleString() + ' \uD83D\uDCB0' + G.afkAdventure.totalGold.toLocaleString() + '</span>';
+    h += '<span style="font-size:10px;color:var(--text-dim);">Running \u2014 tap to view</span>';
+    h += '</div>';
+  }
+  if (G.endlessGrind.active && G.grindAfkMode && G.state !== 'combat') {
+    h += '<div onclick="setS(\'combat\')" style="display:flex;justify-content:space-between;align-items:center;background:rgba(16,185,129,0.15);border:1px solid var(--success);border-radius:10px;padding:6px 10px;margin-bottom:6px;cursor:pointer;">';
+    h += '<span style="font-size:12px;font-weight:700;color:var(--success);">🌀 Grind Wave ' + G.endlessGrind.wave + ' \u2014 ✨' + G.endlessGrind.totalXp.toLocaleString() + ' \uD83D\uDCB0' + G.endlessGrind.totalGold.toLocaleString() + '</span>';
+    h += '<span style="font-size:10px;color:var(--text-dim);">Running \u2014 tap to view</span>';
+    h += '</div>';
+  }
+  h += '<div class="log-highlight ' + getLogElementClass(highlight) + '"><div class="lh-text">' + boldNumbers(highlight) + '</div></div>';
   h += '<div class="log-ticker" id="log">';
   h += tickerLines.map(m => '<div class="le ' + getLogElementClass(m) + '">' + boldNumbers(m) + '</div>').join('');
+  h += '</div>';
+  h += '<div style="text-align:right;padding:2px 6px;"><span onclick="setS(\'combat_log\')" style="font-size:11px;color:var(--accent);cursor:pointer;">📜 Full Log</span></div>';
+  return h;
+}
+
+// Dedicated, full-history view of the log — up to the full 200-entry buffer, filtered
+// by category (Combat / Quests & Guild / System). The always-visible ticker above only
+// ever shows the most recent 12 lines; this is where the rest of it actually lives.
+function rCombatLog() {
+  const filter = G.logScreenFilter || 'all';
+  const filtered = filter === 'all' ? G.log : G.log.filter(m => getLogCategory(m) === filter);
+  const entries = filtered.slice().reverse();
+
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">📜 Full Log</div>';
+
+  h += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+  const tabs = [
+    { key: 'all', label: 'All' },
+    { key: 'combat', label: '⚔️ Combat' },
+    { key: 'quests', label: '📜 Quests & Guild' },
+    { key: 'system', label: '⚙️ System' }
+  ];
+  for (const tab of tabs) {
+    const sel = filter === tab.key;
+    h += '<button onclick="setLogScreenFilter(\'' + tab.key + '\')" class="tier-btn' + (sel ? ' sel' : '') + '" style="flex:1;font-size:11px;padding:8px 4px;">' + tab.label + '</button>';
+  }
+  h += '</div>';
+
+  h += '<button onclick="exportLog()" class="btn-outline-ghost" style="width:100%;margin-bottom:12px;">📄 Export Log to .md</button>';
+
+  if (entries.length === 0) {
+    h += '<div class="panel" style="text-align:center;"><div class="btn-hint">Nothing here yet in this category.</div></div>';
+  } else {
+    h += '<div style="max-height:65vh;overflow-y:auto;">';
+    for (const m of entries) {
+      h += '<div class="le ' + getLogElementClass(m) + '" style="padding:8px 10px;border-bottom:1px solid var(--border);">' + boldNumbers(m) + '</div>';
+    }
+    h += '</div>';
+  }
+
   h += '</div>';
   return h;
 }
 
+function setLogScreenFilter(cat) {
+  G.logScreenFilter = cat;
+  render();
+}
+
+function renderSessionRecap() {
+  const a = document.getElementById('app'); if (!a) return;
+  const r = G.sessionRecap;
+  const levelsGained = G.p.lvl - (r.startLevel || G.p.lvl);
+
+  let h = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--bg);">';
+  h += '<div style="font-size:32px;margin-bottom:8px;">🌙</div>';
+  h += '<div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:4px;">Welcome back</div>';
+  h += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:20px;text-align:center;">Here\'s what happened while you were away</div>';
+
+  h += '<div style="width:100%;max-width:340px;">';
+
+  if (levelsGained > 0) {
+    h += '<div class="panel panel-gold" style="text-align:center;margin-bottom:10px;">';
+    h += '<div style="font-size:24px;font-weight:700;color:var(--gold);">Level ' + r.startLevel + ' \u2192 ' + G.p.lvl + '</div>';
+    h += '<div class="btn-hint">+' + levelsGained + ' level' + (levelsGained > 1 ? 's' : '') + ' gained</div>';
+    h += '</div>';
+  }
+
+  if (r.bosses.length > 0) {
+    const counts = {};
+    for (let b of r.bosses) counts[b] = (counts[b] || 0) + 1;
+    h += '<div class="panel" style="margin-bottom:10px;">';
+    h += '<div class="panel-title" style="margin-bottom:6px;">⚔️ Bosses Defeated (' + r.bosses.length + ')</div>';
+    for (let [name, count] of Object.entries(counts)) {
+      h += '<div class="btn-hint">' + name + (count > 1 ? ' \u00d7' + count : '') + '</div>';
+    }
+    h += '</div>';
+  }
+
+  if (r.legendaryDrops.length > 0) {
+    h += '<div class="panel" style="margin-bottom:10px;">';
+    h += '<div class="panel-title" style="margin-bottom:6px;">✨ Notable Drops (' + r.legendaryDrops.length + ')</div>';
+    for (let drop of r.legendaryDrops) {
+      h += '<div class="btn-hint" style="color:var(--gold);">' + drop + '</div>';
+    }
+    h += '</div>';
+  }
+
+  if (r.chapters.length > 0) {
+    h += '<div class="panel" style="margin-bottom:10px;">';
+    h += '<div class="panel-title" style="margin-bottom:6px;">📖 New Chapters</div>';
+    for (let ch of r.chapters) {
+      h += '<div class="btn-hint">' + ch + '</div>';
+    }
+    h += '</div>';
+  }
+
+  h += '<button onclick="dismissSessionRecap()" class="abtn" style="width:100%;margin-top:8px;">Continue</button>';
+  h += '</div></div>';
+
+  a.innerHTML = h;
+}
+
+function renderBossReveal() {
+  const a = document.getElementById('app'); if (!a) return;
+  const boss = G.currentBoss;
+  const fileName = bossArtFileName(boss.n);
+
+  let h = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#000;">';
+  h += '<div style="width:100%;max-width:320px;">';
+  h += '<div style="text-align:center;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--danger);margin-bottom:10px;">\u26A0\uFE0F Boss Encounter</div>';
+  h += '<div style="width:100%;aspect-ratio:3/4;border-radius:16px;overflow:hidden;border:3px solid var(--gold);box-shadow:0 8px 32px rgba(0,0,0,0.7),0 0 40px color-mix(in srgb, var(--gold) 30%, transparent);margin-bottom:16px;">';
+  h += '<img src="bosses/' + fileName + '.jpg" style="width:100%;height:100%;object-fit:cover;display:block;">';
+  h += '</div>';
+  h += '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px;">' + boss.n + '</div>';
+  h += '<div style="text-align:center;font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:20px;font-style:italic;">' + boss.desc + '</div>';
+  h += '<button onclick="engageBossReveal()" class="abtn" style="width:100%;background:var(--danger);">\u2694\uFE0F Engage</button>';
+  h += '</div></div>';
+
+  a.innerHTML = h;
+}
+
+function engageBossReveal() {
+  G.bossRevealShownFor = G.currentBoss;
+  render();
+}
+
+function showSessionRecap() {
+  const r = G.sessionRecap;
+  const levelsGained = G.p.lvl - (r.startLevel || G.p.lvl);
+  const hasContent = levelsGained > 0 || r.bosses.length > 0 || r.legendaryDrops.length > 0 || r.chapters.length > 0;
+  if (!hasContent) return; // nothing worth interrupting the player for
+  G.showingSessionRecap = true;
+  render();
+}
+
+function dismissSessionRecap() {
+  G.showingSessionRecap = false;
+  G.sessionRecap = { startLevel: G.p.lvl, bosses: [], legendaryDrops: [], chapters: [], hiddenAt: 0 };
+  render();
+}
+
 function lg(msg){
-  G.log.push(msg); if(G.log.length>50)G.log.shift();
+  G.log.push(msg); if(G.log.length>200)G.log.shift();
   const highlightEl = document.querySelector('.log-highlight .lh-text');
   const highlightWrap = document.querySelector('.log-highlight');
   const tickerEl = document.getElementById('log');
   if (highlightEl) highlightEl.innerHTML = boldNumbers(getLogHighlight());
   if (highlightWrap) highlightWrap.className = 'log-highlight ' + getLogElementClass(getLogHighlight());
-  if (tickerEl) tickerEl.innerHTML = G.log.slice(-12).reverse().map(m => '<div class="le ' + getLogElementClass(m) + '">' + boldNumbers(m) + '</div>').join('');
+  if (tickerEl) {
+    // Preserve scroll position across re-renders — innerHTML replacement resets
+    // scrollTop to 0 by default, which would yank the view back to the newest
+    // entry on every single combat tick if the user had scrolled down to read
+    // older lines, making it impossible to actually catch up mid-fight.
+    const wasAtTop = tickerEl.scrollTop <= 4;
+    const prevScrollTop = tickerEl.scrollTop;
+    tickerEl.innerHTML = G.log.slice(-40).reverse().map(m => '<div class="le ' + getLogElementClass(m) + '">' + boldNumbers(m) + '</div>').join('');
+    tickerEl.scrollTop = wasAtTop ? 0 : prevScrollTop;
+  }
 }
 
 function setS(s){
@@ -11971,11 +16986,17 @@ function getSpeakerColor(speaker) {
 // Mirrors getSpeakerColor()'s exact lookup — San, a party member, or nobody
 // recognizable (Narrator, one-off NPCs, bosses/echoes). Returns null in the last
 // two cases so scenes without a real portrait render exactly as they did before.
+// Multi-word names (Sister Wren, KW Liang, Dr. AA, Ser Aldric, Brada Shah) get their
+// spaces/periods stripped for the filename — 'sister wren.jpg' is fragile to host and
+// link to, 'sisterwren.jpg' isn't.
+function portraitFileNameFor(name) {
+  return name.toLowerCase().replace(/[\s.]/g, '');
+}
 function getSpeakerPortrait(speaker) {
   if (speaker === 'San') return portraitImg('san', '#7c3aed30', 'S');
   if (speaker === 'Narrator') return null;
   const member = G.party.find(p => p.n === speaker);
-  if (member) return portraitImg(speaker.toLowerCase(), member.col + '30', speaker[0]);
+  if (member) return portraitImg(portraitFileNameFor(speaker), member.col + '30', speaker[0]);
   return null;
 }
 
@@ -11999,16 +17020,32 @@ const ENEMY_ICON_SVGS = {
 
 function getEnemyArchetype(name) {
   const n = name.toLowerCase();
-  if (/wolf|hound|dog/.test(n)) return 'beast';
+  if (n === 'robin c.') return 'knight'; // a corrupted-authority reading — he sees himself as righteously defending the firm
+  // The old-world reckoning arc — Robin, Jeff, and all six wraiths — share one visual
+  // identity on purpose: they are all the same kind of thing, old-world authority and
+  // control figures being confronted, and the knight archetype (already used for
+  // Robin) reads as "corrupted authority" rather than heroism.
+  if (/jeff, the sk\* son-in-law|the ex-mother-in-law|the ex-husband|the village ex|the brunei ex|the stepfather/.test(n)) return 'knight';
+  if (n === 'sister wren, the last believer') return 'flying'; // a wren is a bird — a small, deliberate, personal distinction from the rest of the Closed Eye cult, fitting someone who was ultimately separate from them
+  // The portal world's automation-collapse enemies — checked before the generic
+  // keyword rules below, since several of these names would otherwise mismatch on
+  // unrelated substrings (e.g. "Ghost" reading as undead, "Walker" reading as eye,
+  // both wrong for what are meant to read as failed machines, not living things).
+  if (/idle sentry unit|looping announcement drone|unmanned response walker|runaway checkout construct|ghost inventory drone|collections enforcement unit|cascading failsafe|relay ghost|static-bound sentinel|perimeter drone|salvage construct|abandoned guard unit|warren sentinel|the last alarm|something still guarding this|emergency protocol drone|directive loop construct|the system, in pieces/.test(n)) return 'construct';
+  if (/brother vess, the first blind|the closed choir|brother iss, the unraveled/.test(n)) return 'eye'; // Cult of the Closed Eye
+  if (/the veilshaper|the unmade|what alone becomes|before it wears through|what was almost enough|the line neither could hold alone/.test(n)) return 'eye'; // the Fraying's own embodiments — reality unraveling, same family as void/rift/fracture
+  if (n === 'frost queen') return 'knight'; // royal authority
+  if (n === 'the last vigil') return 'construct'; // a guardian in every sense but name
+  if (/wolf|hound|dog|\brat\b/.test(n)) return 'beast';
   if (/dragon|drake|wyrm/.test(n)) return 'dragon';
-  if (/skeleton|zombie|bone|undead|lich|revenant|wraith|phantom|specter|ghost|echo|shade/.test(n)) return 'undead';
+  if (/skeleton|zombie|bone|undead|lich|revenant|wraith|phantom|specter|ghost|echo|shade|remnant|husk|ember|recruit|rustbound/.test(n)) return 'undead';
   if (/golem|construct|automaton|titan|guardian|sentinel/.test(n)) return 'construct';
   if (/spider|arachnid/.test(n)) return 'arachnid';
-  if (/serpent|snake/.test(n)) return 'serpent';
+  if (/serpent|snake|basilisk|undertow|riptide|tidereaver|drowned/.test(n)) return 'serpent';
   if (/bat\b|wisp|drifter|fairy|mote/.test(n)) return 'flying';
-  if (/goblin|knight|guard\b|warden|king|lord|tyrant|foreman|keeper|collector|enforcer|peddler|looter|scavenger|watcher|mourner|auditor|sailor|highwayman|thug|bandit|captain|scout/.test(n)) return 'knight';
-  if (/imp|slime|elemental|beast|horror|demon|hollow|stalker|weaver|leviathan|kraken|behemoth/.test(n)) return 'elemental';
-  if (/planarch|devourer|astral|nexus|void|reality|fragment|rift|dimensional|chronomancer|arbiter|architect|fracture/.test(n)) return 'eye';
+  if (/goblin|knight|guard\b|warden|king|lord|tyrant|foreman|keeper|collector|enforcer|peddler|looter|scavenger|watcher|mourner|auditor|sailor|highwayman|thug|bandit|captain|scout|wayfinder|ledgerbound|sovereign|archon|incarnate/.test(n)) return 'knight';
+  if (/imp|slime|elemental|beast|horror|demon|hollow|stalker|weaver|leviathan|kraken|behemoth|root|bramble|sprite|elder|heart|sunreach|verdant/.test(n)) return 'elemental';
+  if (/planarch|devourer|astral|nexus|void|reality|fragment|rift|dimensional|chronomancer|arbiter|architect|fracture|current|vessel|corrosion|deepfray|breaker|eater|acolyte|zealot|weight|habit|\bfear\b|last shadow|familiar|agitator|walker|unbound|tired|splinter|unmended|relapse|question|unity|vanished|first break/.test(n)) return 'eye';
   return 'default';
 }
 
@@ -12021,6 +17058,21 @@ const ARCHETYPE_COLOR = {
   arachnid: 'var(--arch-arachnid)', serpent: 'var(--arch-serpent)', flying: 'var(--arch-flying)', knight: 'var(--arch-knight)',
   elemental: 'var(--arch-elemental)', eye: 'var(--arch-eye)', default: 'var(--arch-default)'
 };
+// Inline line-art icons — one consistent stroke language (1.6 stroke, round joins, small filled
+// accent dots via class="fill") across all 11 archetypes, designed to sit inside .eicon-medallion.
+const ARCHETYPE_SVG = {
+  beast: '<path d="M4 18 L7 9 L10 12 L12 6 L14 12 L17 9 L20 18 L16 15 L12 18 L8 15 Z"/><circle class="fill" cx="9.5" cy="10.5" r="0.6"/><circle class="fill" cx="14.5" cy="10.5" r="0.6"/>',
+  dragon: '<path d="M4 14 L8 8 L11 11 L12 6 L14 10 L18 6 L16 13 C14.5 15.5 9.5 15.5 8 13 Z"/><path d="M8 13 L6 19 M16 13 L18 19 M10.5 14.5 L10 18 M13.5 14.5 L14 18"/><circle class="fill" cx="10.5" cy="9.5" r="0.6"/>',
+  undead: '<path d="M12 3 C7 3 4 6.5 4 11 C4 14 5.5 16 7 17 L7 20 L9.5 20 L9.5 18 L11 18 L11 20 L13 20 L13 18 L14.5 18 L14.5 20 L17 20 L17 17 C18.5 16 20 14 20 11 C20 6.5 17 3 12 3 Z"/><circle class="fill" cx="9" cy="11" r="1.4"/><circle class="fill" cx="15" cy="11" r="1.4"/><path class="fill" d="M11 14 L13 14 L12 15.5 Z"/>',
+  construct: '<rect x="6" y="7" width="12" height="10" rx="2"/><path d="M9 7 L9 4 M15 7 L15 4 M9 4 L15 4"/><circle class="fill" cx="9.5" cy="12" r="1.3"/><circle class="fill" cx="14.5" cy="12" r="1.3"/><path d="M9 15.5 L15 15.5"/><path d="M4 11 L6 11 M18 11 L20 11"/>',
+  arachnid: '<ellipse cx="12" cy="13" rx="3.2" ry="4"/><circle cx="12" cy="7.5" r="2"/><path d="M9.5 11 L4 8 M9.5 12.5 L3.5 12 M9.5 14 L4 16 M14.5 11 L20 8 M14.5 12.5 L20.5 12 M14.5 14 L20 16"/>',
+  serpent: '<path d="M4 18 Q5 12 9 13 Q13 14 12 9 Q11 5 15 5.5 Q18 6 17.5 9"/><circle cx="17.7" cy="8" r="1.6"/><path d="M18.8 7 L21 5.5 M19 8.5 L21.5 8"/><circle class="fill" cx="18.1" cy="7.6" r="0.4"/>',
+  flying: '<path d="M12 9 C9 5 4 5.5 3 10 C6.5 9 9.5 10.5 11 12 Z"/><path d="M12 9 C15 5 20 5.5 21 10 C17.5 9 14.5 10.5 13 12 Z"/><ellipse cx="12" cy="12.5" rx="1.6" ry="2.2"/><path d="M11 9.5 L10 7.5 M13 9.5 L14 7.5"/>',
+  knight: '<path d="M7 12 C7 6.5 9.5 4 12 4 C14.5 4 17 6.5 17 12 L17 15 C17 17 15 18 12 18 C9 18 7 17 7 15 Z"/><path d="M10.5 10 L10.5 15 M13.5 10 L13.5 15 M8 12.5 L16 12.5"/><path d="M12 4 L12 1.5"/><path class="fill" d="M12 1.5 L15 2.5 L12 3.5 Z"/>',
+  elemental: '<path d="M12 3 C9 7 6 10 6 14 C6 18 9 21 12 21 C15 21 18 18 18 14 C18 10 15 7 12 3 Z"/><path class="fill" d="M12 9 C10.5 11 10 13 10 15 C10 17 11 18.5 12 18.5 C13 18.5 14 17 14 15 C14 13 13.5 11 12 9 Z"/>',
+  eye: '<path d="M3 12 C6 7 18 7 21 12 C18 17 6 17 3 12 Z"/><circle class="fill" cx="12" cy="12" r="2.6"/><path d="M12 3.5 L12 6 M12 18 L12 20.5 M3.5 12 L6 12 M18 12 L20.5 12"/>',
+  default: '<path d="M6 9 C6 5 9 3 12 3 C15 3 18 5 18 9 L18 16 L16 13.5 L14 16 L12 13.5 L10 16 L8 13.5 L6 16 Z"/><circle class="fill" cx="9.5" cy="9.5" r="1"/><circle class="fill" cx="14.5" cy="9.5" r="1"/>'
+};
 function ee(n){
   const archetype = getEnemyArchetype(n);
   return ARCHETYPE_EMOJI[archetype] || ARCHETYPE_EMOJI.default;
@@ -12029,14 +17081,37 @@ function ac(n){
   const archetype = getEnemyArchetype(n);
   return ARCHETYPE_COLOR[archetype] || ARCHETYPE_COLOR.default;
 }
+function es(n){
+  const archetype = getEnemyArchetype(n);
+  const inner = ARCHETYPE_SVG[archetype] || ARCHETYPE_SVG.default;
+  return '<svg viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+}
+
+// Picks SVG line-art or plain emoji per the player's preference — both map to the
+// same archetype, so switching styles never changes which "kind" of icon an enemy
+// gets, just how it's drawn.
+function enemyIcon(n){
+  return G.enemyIconStyle === 'emoji' ? ee(n) : es(n);
+}
+
+function toggleEnemyIconStyle(){
+  G.enemyIconStyle = G.enemyIconStyle === 'emoji' ? 'svg' : 'emoji';
+  saveGame();
+  render();
+}
 
 function re(r){const m={'Tank':'🛡️','Rogue':'🗡️','Mage':'🔮','Healer':'💚','Ranger':'🏹','Warrior':'⚔️','Support':'🍀'};return m[r]||'👤';}
-function ie(i){if(i.t=='pot')return i.eff=='heal'?'🧪':'💧';if(i.t=='food')return'🍽️';if(i.t=='drink')return'🥤';if(i.t=='revive')return'🔥';if(i.t=='wep')return'⚔️';if(i.t=='arm')return'🛡️';if(i.t=='acc')return'💍';if(i.t=='mat')return'💎';return'📦';}
+function ie(i){if(i.t=='pot')return i.eff=='heal'?'🧪':'💧';if(i.t=='food')return'🍽️';if(i.t=='drink')return'🥤';if(i.t=='revive')return'🔥';if(i.t=='wep')return'⚔️';if(i.t=='arm')return'🛡️';if(i.t=='acc')return'💍';if(i.t=='book')return'📖';if(i.t=='mat')return'💎';return'📦';}
 
 const SAVE_KEY = 'ldb_save_v5';
 
 // === CONTENT MIGRATION ===
 const CONTENT_VERSION = 4;
+// Separate from CONTENT_VERSION above (which only tracks save-data structure changes).
+// This tracks the actual game.js build itself — updated every time a new file is
+// deployed, so it's possible to visually confirm which version is actually loaded,
+// rather than guessing from behavior alone.
+const BUILD_ID = '2026-08-08.64';
 // =========================
 
 
@@ -12071,13 +17146,16 @@ function saveGame() {
       ailments: G.p.ailments,
       kills: G.p.kills, quests: G.p.quests, fstreak: G.p.fstreak, focusMinutesToday: G.p.focusMinutesToday || 0, focusSessionsToday: G.p.focusSessionsToday || 0,
       storyJournal: { unlocked: G.storyJournal.unlocked, read: G.storyJournal.read },
+      knownRecipes: G.knownRecipes || [],
+      migrations: G.migrations || {},
+      enemyIconStyle: G.enemyIconStyle || 'svg',
 
       // Add these inside the saveData object, alongside other fields:
     
 
 
     },
-    party: G.party.map(p => ({ n: p.n, t: p.t, r: p.r, hp: p.hp, mhp: p.mhp, atk: p.atk, def: p.def, spd: p.spd, on: p.on, ul: p.ul, d: p.d, b: p.b, col: p.col, affinityBonuses: p.affinityBonuses, gear: p.gear, base: p.base, eq: p.eq })),
+    party: G.party.map(p => ({ n: p.n, t: p.t, r: p.r, hp: p.hp, mhp: p.mhp, atk: p.atk, def: p.def, spd: p.spd, on: p.on, ul: p.ul, unlocked: p.unlocked, d: p.d, b: p.b, col: p.col, affinityBonuses: p.affinityBonuses, gear: p.gear, base: p.base, eq: p.eq })),
     quests: G.quests.map(q => ({ id: q.id, n: q.n, d: q.d, t: q.t, c: q.c, need: q.need, rw: q.rw, done: q.done })),
         bounties: G.bounties.map(b => ({ id: b.id, c: b.c, done: b.done, refreshDay: b.refreshDay })),
     questCollapsed: G.questCollapsed || {},
@@ -12123,12 +17201,17 @@ function saveGame() {
     raidProgress: G.raidProgress,
     strongholdTasks: G.strongholdTasks,
     guildHallLevel: G.guildHallLevel,
+    guildBoss: G.guildBoss,
+    activePartySelection: G.activePartySelection,
+    disciples: G.disciples,
+    graduatedDisciples: G.graduatedDisciples || [],
     retroactiveGrowthApplied: G.retroactiveGrowthApplied,
     guildJoined: G.guildJoined,
     guildRep: G.guildRep,
     templeRep: G.templeRep,
     companionPrestige: G.companionPrestige,
     expBooster: G.expBooster || null,
+    statBooster: G.statBooster || null,
     guildRepBalance: G.guildRepBalance,
     guildContracts: G.guildContracts.map(c => ({ id: c.id, c: c.c, done: c.done, refreshWeek: c.refreshWeek })),
     strongholdSiege: G.strongholdSiege,
@@ -12137,7 +17220,12 @@ function saveGame() {
     prestigeCount: G.prestige.count || 0,
     prestigeXpBonusPct: G.prestige.xpBonusPct || 0,
     prestigeGoldBonusPct: G.prestige.goldBonusPct || 0,
+    prestigeHighestLvlEver: G.prestige.highestLvlEver || 0,
     bossRushBestStreak: G.bossRush.bestStreak || 0,
+    guildWarBestStreak: G.guildWar.bestStreak || 0,
+    guildRosterRecruited: G.guildRoster.recruited || [],
+    visionMachineLastUseDay: G.visionMachine.lastUseDay,
+    visionMachineJoelLetterCount: G.visionMachine.joelLetterCount || 0,
     chainQuests: G.chainQuests || {},
     strongholdCosmetics: G.strongholdCosmetics,
     bondingSeenScenes: G.bonding.seenScenes,
@@ -12240,6 +17328,25 @@ function migrateContent(data) {
 // =========================
 
 
+// Debug/testing helper — resets a specific boss's journal chapter, quest, and bounty
+// back to their pre-defeat state, so the full reward flow can be re-tested from
+// scratch. Not exposed in any UI; call directly from the browser console, e.g.
+// resetBossContent('Robin C.') or resetBossContent('Jeff, the SK* Son-in-Law').
+function resetBossContent(bossName) {
+  const entry = G.storyJournal.entries.find(e => e.unlockType === 'boss' && e.unlockAt === bossName);
+  if (entry) {
+    G.storyJournal.unlocked = G.storyJournal.unlocked.filter(id => id !== entry.id);
+    G.storyJournal.read = G.storyJournal.read.filter(id => id !== entry.id);
+  }
+  const quest = G.quests.find(q => q.t === 'boss_specific' && q.target === bossName);
+  if (quest) { quest.done = false; quest.c = 0; }
+  const bounty = G.bounties.find(b => b.t === 'kill_specific' && b.target === bossName);
+  if (bounty) { bounty.done = false; bounty.c = 0; }
+  saveGame();
+  console.log('Reset complete for:', bossName, '— journal:', !!entry, '| quest:', !!quest, '| bounty:', !!bounty);
+  render();
+}
+
 function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -12260,6 +17367,14 @@ function loadGame() {
 
     // Phase 2: Initialize missing fields
     if (!data.player) return false;
+    // Recompute xpN to match the current level-up formula. xpN is a stored absolute
+    // value, not derived from a formula at read time, so a rebalanced curve (see
+    // lvlup()) would otherwise only take effect on the player's *next* level-up —
+    // leaving them stuck against whatever the old formula demanded until then. This
+    // keeps it self-correcting on every load instead.
+    if (data.player.lvl && data.player.xpN) {
+      data.player.xpN = xpNeededForLevel(data.player.lvl);
+    }
     if (!data.player.talents) data.player.talents = [];
     if (!data.player.runes) data.player.runes = [];
     if (data.player.riftCounter === undefined) data.player.riftCounter = 0;
@@ -12328,7 +17443,12 @@ function loadGame() {
     G.riftFightsRemaining = data.riftFightsRemaining || 0;
     G.riftTriggerAt = data.riftTriggerAt || (3 + Math.floor(Math.random() * 3));
     G.runeSocketModal = { open: false, source: 'inv', itemIndex: null, slot: null, memberName: null, slotIndex: null };
-    G.runeCombineModal = data.runeCombineModal || { open: false, selected: [], batchSize: 3 };
+    // Only batchSize is a genuine saved preference — open/selected are transient UI
+    // state that should never survive a reload. Restoring them as-is (the previous
+    // behavior) meant leaving the manual combine modal open with runes selected could
+    // silently persist across sessions, dropping the player straight back into a
+    // stale, possibly mixed-type selection instead of the normal auto-combine screen.
+    G.runeCombineModal = { open: false, selected: [], batchSize: (data.runeCombineModal && data.runeCombineModal.batchSize) || 3, typeFilter: (data.runeCombineModal && data.runeCombineModal.typeFilter) || null };
     G.grindChampionship = data.grindChampionship || { bestWave: 0, claimedTiers: [] };
     if (data.story) {
       G.story = data.story;
@@ -12348,11 +17468,27 @@ function loadGame() {
     G.strongholds = data.strongholds || {};
     G.strongholdTasks = data.strongholdTasks || [];
     G.guildHallLevel = data.guildHallLevel || {};
+    G.guildBoss = data.guildBoss || { tierIndex: 0, currentHp: 0, lastAttemptDay: 0 };
+    G.disciples = data.disciples || [];
+    G.graduatedDisciples = data.graduatedDisciples || [];
+    // GUILD_MEMBERS is a code-level constant, reinitialized fresh from source on every
+    // page load — any graduate pushed into it during a previous session is gone unless
+    // re-added here from the persisted copy. Guard against duplicates in case this
+    // ever runs more than once in the same session.
+    for (const grad of G.graduatedDisciples) {
+      if (!GUILD_MEMBERS.find(m => m.id === grad.id)) {
+        GUILD_MEMBERS.push(grad);
+      }
+    }
     G.guildJoined = data.guildJoined || false;
     G.guildRep = data.guildRep || 0;
     G.templeRep = data.templeRep || 0;
     G.companionPrestige = data.companionPrestige || {};
     G.expBooster = data.expBooster || null;
+    G.statBooster = data.statBooster || null;
+    G.knownRecipes = data.knownRecipes || [];
+    G.migrations = (data.player && data.player.migrations) || {};
+    G.enemyIconStyle = (data.player && data.player.enemyIconStyle) || 'svg';
     G.guildRepBalance = data.guildRepBalance !== undefined ? data.guildRepBalance : 0;
     if (data.guildContracts) {
       for (let c of G.guildContracts) {
@@ -12373,7 +17509,26 @@ function loadGame() {
     G.prestige.count = data.prestigeCount || 0;
     G.prestige.xpBonusPct = data.prestigeXpBonusPct || 0;
     G.prestige.goldBonusPct = data.prestigeGoldBonusPct || 0;
+    if (data.prestigeHighestLvlEver) {
+      G.prestige.highestLvlEver = data.prestigeHighestLvlEver;
+    } else if (G.prestige.count >= 1) {
+      // Migration: this save Prestiged before highestLvlEver existed as a tracked field
+      // at all (or briefly existed but was never actually being saved — an earlier bug).
+      // Can't know the real number retroactively, so estimate a safe floor: whatever
+      // level was required to reach the tier they're already on, using the same
+      // formula the Prestige screen itself uses for the next tier.
+      let lvl = PRESTIGE_MIN_LEVEL + 2 * PRESTIGE_TIER_STEP; // tier 3 baseline
+      let increment = PRESTIGE_TIER_STEP;
+      for (let t = 4; t <= G.prestige.count; t++) { increment += 10; lvl += increment; }
+      const estimatedFloor = G.prestige.count <= 3 ? (PRESTIGE_MIN_LEVEL + (G.prestige.count - 1) * PRESTIGE_TIER_STEP) : lvl;
+      G.prestige.highestLvlEver = Math.max(estimatedFloor, G.p.lvl);
+      lg('\u26a1 The Rite of Return has been restored for you \u2014 your prior Prestige history predates it, so this is an estimate rather than your exact old peak.');
+    }
     G.bossRush.bestStreak = data.bossRushBestStreak || 0;
+    G.guildWar.bestStreak = data.guildWarBestStreak || 0;
+    G.guildRoster.recruited = data.guildRosterRecruited || [];
+    G.visionMachine.lastUseDay = data.visionMachineLastUseDay !== undefined ? data.visionMachineLastUseDay : -1;
+    G.visionMachine.joelLetterCount = data.visionMachineJoelLetterCount || 0;
     G.chainQuests = data.chainQuests || {};
     // Any chain that was mid-fight when the save happened resumes from its saved floor,
     // not stuck mid-combat — active gets cleared, stageIndex (the real progress) doesn't.
@@ -12420,7 +17575,7 @@ function loadGame() {
     }
 
     // Migrate old equipment format to new
-    const oldEq = data.player.equipment;
+    const oldEq = data.player.equipment || {};
     if (oldEq.w || oldEq.a || oldEq.acc) {
       // Old format detected - migrate
       G.p.eq = {
@@ -12436,12 +17591,28 @@ function loadGame() {
       const saved = data.party.find(sp => sp.n === p.n);
       if (saved) {
         p.on = saved.on;
+        p.unlocked = saved.unlocked || false;
         p.affinityBonuses = saved.affinityBonuses || [];
 
         if (saved.base && saved.eq) {
           // Modern save format: restore directly
           p.base = saved.base;
+          const defaultEq = p.eq; // fresh default gear (from this file's current party
+                                   // definitions) before it gets overwritten by the save
           p.eq = saved.eq;
+          // Migration: characters whose starting gear was added after some existing
+          // saves were already written would have null stored in these slots from
+          // back when they had no gear at all — restoring that null verbatim would
+          // silently erase gear that only exists in the game's current code, not in
+          // the old save. Only backfills a slot that is genuinely empty in the save
+          // AND has real default gear to offer; never touches a slot the player
+          // actually equipped something into themselves.
+          for (const slot of ['weapon', 'armor']) {
+            if (!p.eq[slot] && defaultEq[slot]) {
+              p.eq[slot] = defaultEq[slot];
+              lg('🧝 ' + p.n + "'s " + defaultEq[slot].n + ' has been fitted for them.');
+            }
+          }
         } else {
           // Legacy save from before the 8-slot system: reconstruct base stats by
           // removing whatever the old single-trinket gear had added, then migrate
@@ -12459,12 +17630,14 @@ function loadGame() {
             lg('🧝 ' + p.n + '\'s ' + oldGear.n + ' has been moved into their amulet slot.');
           }
         }
-        // Sanitize equipped gear: anything sitting in a slot that isn't actually restricted
-        // to this companion (e.g. San's own weapon equipped on Soel, from before this fix)
-        // gets returned to inventory rather than silently kept.
+        // Sanitize equipped gear: anything sitting in a slot that is EXPLICITLY
+        // restricted to a different companion (e.g. San's own weapon equipped on Soel,
+        // from before this fix) gets returned to inventory rather than silently kept.
+        // Items with no forCompanion set at all are universal — safe for any swappable
+        // party member — and are deliberately left alone here.
         for (let slot in p.eq) {
           const eq = p.eq[slot];
-          if (eq && eq.forCompanion !== p.n) {
+          if (eq && eq.forCompanion !== p.n && eq.forCompanion !== 'any') {
             addI({ ...eq });
             lg('🧝 ' + eq.n + " wasn't actually fitted for " + p.n + ' — returned to your bag.');
             p.eq[slot] = null;
@@ -12487,17 +17660,21 @@ function loadGame() {
     retroactivelyFixCompanionGrowth();
 
     // Catch up any companion whose unlock level has already been reached but who never
-    // got flagged as joined — mirrors unlockRestSites() below. Without this, a companion
-    // stays permanently un-joined if their unlock level was passed before this check
-    // existed, or before they existed in an older save, since p.on is otherwise only
-    // ever set inside lvlup()'s level-up loop and never re-checked on load.
+    // got flagged as available. Swappable-pool members become newly SELECTABLE
+    // (p.unlocked) rather than automatically active — p.on for them is governed by
+    // activePartySelection instead, synced right after this loop. Soel (not in the
+    // pool) keeps the original direct-join behavior since he isn't swappable at all.
     for (let p of G.party) {
-      if (!p.on && p.ul <= G.p.lvl) {
+      if (SWAPPABLE_PARTY_POOL.includes(p.n)) {
+        if (!p.unlocked && p.ul <= G.p.lvl) unlockSwappablePartyMember(p);
+      } else if (!p.on && p.ul <= G.p.lvl) {
         p.on = true;
         p.hp = p.mhp;
         lg(p.n + ' ' + p.t + ' joins!');
       }
     }
+    G.activePartySelection = data.activePartySelection || ['Mezstorm', 'Eliz', 'Senedra', 'Zaki'];
+    syncActivePartyFlags();
 
         for (let q of G.quests) {
       const saved = data.quests.find(sq => sq.id === q.id);
@@ -12566,6 +17743,84 @@ function loadGame() {
     if (data.bestiary) {
       G.bestiary = data.bestiary;
     }
+    // One-time fix: journal_084 and journal_085 had their content swapped (Robin C.'s
+    // and Jeff's chapters traded places) after some players had already unlocked
+    // whichever one was Robin's at the time. Because unlock state is stored by ID, not
+    // content, the "unlocked" flag stayed on the ID rather than following the story —
+    // so after the swap, Jeff's chapter could show unlocked even if Jeff was never
+    // actually fought. Runs exactly once (guarded by the migration flag below) so it
+    // never wipes a legitimately-earned unlock after this.
+    if (!G.migrations) G.migrations = {};
+    if (!G.migrations.robinJeffSwapFix) {
+      G.storyJournal.unlocked = G.storyJournal.unlocked.filter(id => id !== 'journal_084' && id !== 'journal_085');
+      G.storyJournal.read = G.storyJournal.read.filter(id => id !== 'journal_084' && id !== 'journal_085');
+      if (G.bestiary['Robin C.']) G.bestiary['Robin C.'].kills = 0;
+      if (G.bestiary['Jeff, the SK* Son-in-Law']) G.bestiary['Jeff, the SK* Son-in-Law'].kills = 0;
+      for (const qid of [70, 71, 'b44', 'b45']) {
+        const q = G.quests.find(x => x.id === qid);
+        if (q) { q.done = false; q.c = 0; if ('revealed' in q) q.revealed = false; }
+      }
+      for (const qid of ['gc18', 'gc21']) {
+        const q = G.guildContracts.find(x => x.id === qid);
+        if (q) { q.done = false; q.c = 0; }
+      }
+      G.migrations.robinJeffSwapFix = true;
+      lg('🔧 Fixed a leftover journal unlock flag from the Robin/Jeff chapter swap \u2014 both will now unlock fresh, honestly, off whichever you actually defeat.');
+      saveGame(); // persist the flag immediately — this must not depend on the 30s autosave timer,
+                  // or a reload before that timer fires would wipe the flag and re-run this "one-time" fix
+    }
+
+    // The Farseer quests (id 80/81) used to live in the bounties array by mistake —
+    // fixed to live in quests, where boss_specific completion is actually checked. But
+    // anyone who had already completed them before that fix has their done:true status
+    // saved under the old bounties key, which the quests merge never looks at. This
+    // recovers that status once, from the raw saved bounties data, before it gets
+    // discarded. Runs exactly once, same guard pattern as above.
+    if (!G.migrations.farseerQuestRecovery) {
+      const oldSavedBounty80 = (data.bounties || []).find(b => b.id === 80);
+      const oldSavedBounty81 = (data.bounties || []).find(b => b.id === 81);
+      const quest80 = G.quests.find(q => q.id === 80);
+      const quest81 = G.quests.find(q => q.id === 81);
+      let recovered = false;
+      if (oldSavedBounty80 && oldSavedBounty80.done && quest80 && !quest80.done) {
+        quest80.done = true; quest80.c = quest80.need;
+        recovered = true;
+      }
+      if (oldSavedBounty81 && oldSavedBounty81.done && quest81 && !quest81.done) {
+        quest81.done = true; quest81.c = quest81.need;
+        recovered = true;
+      }
+      G.migrations.farseerQuestRecovery = true;
+      if (recovered) {
+        lg('🔧 Recovered Farseer quest progress that was lost when those quests moved to their correct location \u2014 your original completion is restored.');
+      }
+      saveGame();
+    }
+
+    // Second, more reliable recovery pass — the above depends on old bounty save data
+    // that may have already been overwritten by a normal save cycle on an intermediate
+    // version, before this recovery code even existed, leaving nothing left to find.
+    // This uses journal_094 ("What It Takes to Build a Window") instead — its own
+    // unlock condition IS defeating Skarrowyn, and its summary explicitly states both
+    // dragons fell, so if it's unlocked, both quests are definitively already earned,
+    // independent of whatever the old bounty data does or doesn't still contain.
+    // Separate migration flag since farseerQuestRecovery above may already be marked
+    // done from a prior run that had nothing to recover.
+    if (!G.migrations.farseerQuestRecoveryV2) {
+      const ch101Unlocked = G.storyJournal.unlocked.includes('journal_094');
+      const quest80b = G.quests.find(q => q.id === 80);
+      const quest81b = G.quests.find(q => q.id === 81);
+      let recoveredV2 = false;
+      if (ch101Unlocked) {
+        if (quest80b && !quest80b.done) { quest80b.done = true; quest80b.c = quest80b.need; recoveredV2 = true; }
+        if (quest81b && !quest81b.done) { quest81b.done = true; quest81b.c = quest81b.need; recoveredV2 = true; }
+      }
+      G.migrations.farseerQuestRecoveryV2 = true;
+      if (recoveredV2) {
+        lg('🔧 Recovered Farseer quest progress, confirmed by the chapter you already unlocked \u2014 both dragons were already defeated, both quests are now correctly marked complete.');
+      }
+      saveGame();
+    }
     // Catch up any level/boss/zone-gated journal entries that should already be
     // unlocked but were missed — e.g. a boss defeated through a path that didn't
     // trigger the live in-combat check (Raid Mode, or before this system existed).
@@ -12591,11 +17846,28 @@ function loadGame() {
       }
     }
     // Direct catch-up independent of quest state entirely: if the bestiary shows you've
-    // actually defeated The Planarch before, grant the stronghold regardless of whether
-    // the quest chain ever tracked it correctly.
-    if (G.bestiary && G.bestiary['The Planarch'] && G.bestiary['The Planarch'].kills > 0) {
-      claimStronghold('arcaneTower');
-    }
+    // actually defeated a stronghold's unlock boss before, grant the stronghold
+    // regardless of whether the quest chain ever tracked it correctly — covers anyone
+    // who defeated the boss before the live claim hook existed at all.
+    //
+    // Also checks raid-clear progress alongside the bestiary — raid victories never
+    // call trackBestiary() at all (confirmed directly in handleRaidVictory), so a
+    // player who only ever defeated one of these bosses through a raid, never via
+    // direct exploration, would have no bestiary record and this catch-up would
+    // silently never fire for them. Clearing a raid requires defeating every one of
+    // its stages in sequence, so raidProgress.cleared is an equally reliable signal.
+    const defeatedPlanarch = (G.bestiary && G.bestiary['The Planarch'] && G.bestiary['The Planarch'].kills > 0)
+      || (G.raidProgress && G.raidProgress.cleared && G.raidProgress.cleared.includes('dragons_reckoning'));
+    if (defeatedPlanarch) claimStronghold('arcaneTower');
+
+    const defeatedValeWarden = (G.bestiary && G.bestiary['The Vale Warden'] && G.bestiary['The Vale Warden'].kills > 0)
+      || (G.raidProgress && G.raidProgress.cleared && G.raidProgress.cleared.includes('into_the_verdant_reach'));
+    if (defeatedValeWarden) claimStronghold('mendedGrove');
+
+    const defeatedVerdantHeart = (G.bestiary && G.bestiary['The Verdant Heart'] && G.bestiary['The Verdant Heart'].kills > 0)
+      || (G.raidProgress && G.raidProgress.cleared && G.raidProgress.cleared.includes('the_verdant_heart_raid'));
+    if (defeatedVerdantHeart) claimStronghold('wakingEdge');
+
     if (data.soelCommentCooldown !== undefined) {
       G.soelCommentCooldown = data.soelCommentCooldown;
     }
@@ -12788,6 +18060,40 @@ function pasteGistId() {
   }
 }
 
+// Wraps fetch with a timeout and automatic retries — built specifically for flaky
+// connections (Bluetooth tethering especially), where a request can hang indefinitely
+// or drop mid-flight without ever surfacing a clear error. A raw fetch() has neither
+// problem covered on its own.
+//
+// Only retries genuine network-level failures (timeout, dropped connection, DNS
+// hiccup) — an HTTP response that came back but reports an error (401 bad token, 404
+// bad gist ID) is definitive, not transient, and retrying it would just waste time
+// without ever succeeding. Those are returned immediately instead.
+async function fetchWithRetry(url, options, maxRetries, timeoutMs, onRetry) {
+  maxRetries = maxRetries || 2;
+  timeoutMs = timeoutMs || 15000;
+  let lastError = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0 && onRetry) onRetry(attempt, maxRetries);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      return resp; // got a real HTTP response, even if it's an error status — caller decides what to do with it
+    } catch (e) {
+      clearTimeout(timer);
+      lastError = e.name === 'AbortError'
+        ? new Error('Request timed out \u2014 connection may be too unstable right now.')
+        : e;
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // brief backoff before retrying
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function pushToCloud() {
   const token = getSyncToken();
   if (!token) { lg('❌ Paste your GitHub token first.'); return; }
@@ -12804,11 +18110,16 @@ async function pushToCloud() {
 
   G.syncBusy = 'Pushing to cloud\u2026'; render();
   try {
-    const resp = await fetch('https://api.github.com/gists' + (gistId ? '/' + gistId : ''), {
-      method: gistId ? 'PATCH' : 'POST',
-      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' },
-      body
-    });
+    const resp = await fetchWithRetry(
+      'https://api.github.com/gists' + (gistId ? '/' + gistId : ''),
+      {
+        method: gistId ? 'PATCH' : 'POST',
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' },
+        body
+      },
+      2, 15000,
+      (attempt, max) => { G.syncBusy = 'Connection unstable \u2014 retrying (' + attempt + '/' + max + ')\u2026'; render(); }
+    );
     if (!resp.ok) throw new Error('GitHub responded ' + resp.status + ' \u2014 check your token has Gist access.');
     const data = await resp.json();
     if (!gistId) localStorage.setItem(SYNC_GIST_ID_KEY, data.id);
@@ -12832,9 +18143,12 @@ async function pullFromCloud() {
 
   G.syncBusy = 'Pulling from cloud\u2026'; render();
   try {
-    const resp = await fetch('https://api.github.com/gists/' + gistId, {
-      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
-    });
+    const resp = await fetchWithRetry(
+      'https://api.github.com/gists/' + gistId,
+      { headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' } },
+      2, 15000,
+      (attempt, max) => { G.syncBusy = 'Connection unstable \u2014 retrying (' + attempt + '/' + max + ')\u2026'; render(); }
+    );
     if (!resp.ok) throw new Error('GitHub responded ' + resp.status + ' \u2014 check your token and gist ID.');
     const data = await resp.json();
     const file = data.files && data.files[SYNC_GIST_FILENAME];
@@ -12859,6 +18173,25 @@ function resetGame() {
     localStorage.removeItem('ldb_save_v4'); // legacy key — must clear too, or loadGame() silently resurrects it
     location.reload();
   }
+}
+
+function exportLog() {
+  if (!G.log || G.log.length === 0) { lg('No log entries to export.'); return; }
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  let md = '# Legends of Daybreak \u2014 Log Export\n\n';
+  md += '*Exported ' + new Date().toLocaleString() + ' \u2014 Level ' + G.p.lvl + ', Build ' + BUILD_ID + '*\n\n';
+  md += '_Note: the in-game log only keeps the most recent 200 entries \u2014 this export reflects only what was still visible at export time, not the full session history._\n\n---\n\n';
+  for (const entry of G.log) {
+    md += '- ' + entry + '\n';
+  }
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'legends-daybreak-log-' + ts + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  lg('📜 Log exported!');
 }
 
 function exportSave() {
@@ -12976,6 +18309,9 @@ function rNPC() {
         h += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">🔒 Unlocked at ' + npc.zone + ' (Lv.' + npc.zoneLv + ')</div>';
       } else {
         h += '<div class="npc-desc">' + npc.d + '</div>';
+        if (npc.greeting) {
+          h += '<div style="font-size:12px;font-style:italic;color:var(--text-dim);margin:6px 0;">"' + npc.greeting + '"</div>';
+        }
         h += '<div class="npc-stock">';
         for (let j = 0; j < npc.stock.length; j++) {
           const item = npc.stock[j];
@@ -12997,9 +18333,19 @@ function rNPC() {
             h += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">';
             h += '<div style="font-size:12px;font-weight:600;color:#fbbf24;margin-bottom:8px;">💰 Sell to Amad (50% value)</div>';
             const junk = getJunkStashItems();
+            const companionJunk = getJunkCompanionGearItems();
+            const mats = getMatStashItems();
             if (junk.length > 0) {
               const junkTotal = junk.reduce((s, j) => s + j.price, 0);
-              h += '<button id="btn-sell-stash" class="abtn" style="width:100%;margin-bottom:10px;background:var(--danger);">🗑️ Sell Stash — ' + junk.length + ' junk item' + (junk.length > 1 ? 's' : '') + ' (' + junkTotal + 'G)</button>';
+              h += '<button id="btn-sell-stash" class="abtn" style="width:100%;margin-bottom:8px;background:var(--danger);">🗑️ Sell Stash — ' + junk.length + ' junk item' + (junk.length > 1 ? 's' : '') + ' (' + junkTotal + 'G)</button>';
+            }
+            if (companionJunk.length > 0) {
+              const companionJunkTotal = companionJunk.reduce((s, j) => s + j.price, 0);
+              h += '<button id="btn-sell-companion-stash" class="abtn" style="width:100%;margin-bottom:8px;background:var(--danger);">🧝 Sell Companion Gear Stash — ' + companionJunk.length + ' outgrown item' + (companionJunk.length > 1 ? 's' : '') + ' (' + companionJunkTotal + 'G)</button>';
+            }
+            if (mats.length > 0) {
+              const matsTotal = mats.reduce((s, j) => s + j.price, 0);
+              h += '<button id="btn-sell-mats" class="abtn" style="width:100%;margin-bottom:10px;background:var(--danger);">💎 Sell All Materials — ' + mats.length + ' stack' + (mats.length > 1 ? 's' : '') + ' (' + matsTotal + 'G)</button>';
             }
             h += '<div style="display:flex;flex-direction:column;gap:6px;">';
             for (let j = 0; j < G.p.inv.length; j++) {
@@ -13069,7 +18415,11 @@ function rNPC() {
       h += '<div class="npc-info">';
       h += '<div class="npc-name">' + npc.n + ' <span class="npc-type npc-type-ally">' + npc.title + '</span></div>';
       if (!npc.unlocked) {
-        h += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">🔒 Requires ' + npc.reqMember + ' affinity ' + npc.affinityReq + '+ (currently ' + (aff ? aff.val : 0) + ')</div>';
+        if (npc.reqMember) {
+          h += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">🔒 Requires ' + npc.reqMember + ' affinity ' + npc.affinityReq + '+ (currently ' + (aff ? aff.val : 0) + ')</div>';
+        } else if (npc.ul) {
+          h += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">🔒 Arrives around Level ' + npc.ul + '</div>';
+        }
         if (aff) {
           h += '<div class="affinity-bar"><div class="affinity-fill ' + getAffinityColor(aff.val) + '" style="width:' + Math.min(100, (aff.val / npc.affinityReq * 100)) + '%"></div></div>';
           h += '<div class="affinity-label">' + (aff.val >= 70 ? '💕 Close' : aff.val >= 40 ? '💛 Friendly' : aff.val >= 20 ? '💔 Distant' : '💀 Strained') + ' (' + aff.val + '/' + npc.affinityReq + ')</div>';
@@ -13198,14 +18548,51 @@ function rAchievements() {
 }
 
 function render(){
+  // Session Recap takes priority over everything else, including the lightweight
+  // AFK bypass paths below — the whole point is surfacing this the moment the user
+  // actually returns, which is exactly when AFK mode is most likely to be active.
+  if (G.showingSessionRecap) {
+    renderSessionRecap();
+    return;
+  }
+
+  // Boss reveal — a one-time, full-screen "boss appears" moment shown before the
+  // fight actually starts, but only for bosses with real custom art. Uses object
+  // identity rather than a plain boolean: every combat-start function across every
+  // mode (exploration, raid, chain quest, boss rush, dragon hunt, etc.) already
+  // creates a fresh G.currentBoss object, so comparing it against the last-revealed
+  // reference naturally detects a new fight without touching any of those 8+
+  // separate combat-start locations.
+  //
+  // Skipped entirely during an active batch (Boss Rush / Fraying Frontier / Guild
+  // War / Mercenary) — the whole point of "Push/Take 5/10/25" is staying hands-off
+  // while it runs, and a manual "Engage" tap required before every single one of up
+  // to 25 chained fights would defeat that completely.
+  const inActiveBatch = (G.bossRush && G.bossRush.batchRemaining > 0) ||
+                         (G.frayingFrontier && G.frayingFrontier.batchRemaining > 0) ||
+                         (G.guildWar && G.guildWar.batchRemaining > 0) ||
+                         (G.mercenary && G.mercenary.batchRemaining > 0);
+  if (G.state === 'combat' && G.currentBoss && bossArtFileName(G.currentBoss.n) && G.currentBoss !== G.bossRevealShownFor) {
+    if (inActiveBatch) {
+      G.bossRevealShownFor = G.currentBoss; // silently mark as shown, same as engageBossReveal(), just without the screen
+    } else {
+      renderBossReveal();
+      return;
+    }
+  }
+
   // Auto-combat kick-start safety net. toggleAutoCombat() has always explicitly
   // called doAutoCombatTick() the moment it turns auto-combat on — but since
   // auto-combat can now start already-true by default (rather than only being
   // turned on manually), nothing was kicking off the actual tick loop for that
   // case: the flag said "on" but the setTimeout chain never got its first push.
-  // Heartbeat is 0 only when the loop isn't currently running, so this is safe to
-  // check on every render without risk of double-starting an already-running loop.
-  if (G.cbt.on && G.cbt.autoCombat && G.autoCombatHeartbeat === 0) {
+  // Also catches a second, related gap: handleVictory() never resets the heartbeat
+  // when a fight cleanly ends, so a brand new fight can inherit a STALE (non-zero
+  // but no longer ticking) heartbeat from the previous fight — which fooled this
+  // check into thinking the loop was already running, leaving the new fight stuck
+  // until the separate watchdog (up to ~6s later) eventually caught it. Checking
+  // staleness here too means it self-corrects on the very next render instead.
+  if (G.cbt.on && G.cbt.autoCombat && (G.autoCombatHeartbeat === 0 || (Date.now() - G.autoCombatHeartbeat > 4000))) {
     doAutoCombatTick();
   }
 
@@ -13246,6 +18633,10 @@ function render(){
   h+='<div class="sb"><div class="sb-row"><span class="si">XP</span><div class="bar"><div class="bf bf-xp" style="width:'+((G.p.xp/G.p.xpN)*100)+'%"></div></div></div><span class="bt">'+G.p.xp.toLocaleString()+'/'+G.p.xpN.toLocaleString()+' ('+Math.floor((G.p.xp/G.p.xpN)*100)+'%)'+(boosterActive ? ' <span style="color:var(--gold);">\u26A1+'+Math.floor(G.expBooster.mult*100)+'% '+boosterMinsLeft+'m</span>' : '')+'</span></div>';
   h+='<div class="gold">GOLD: '+G.p.gold+'</div></div></div>';
   if(G.p.buffs.length>0)h+='<div class="buffs">'+G.p.buffs.map(b=>'<span class="bp">'+b.n+' ('+b.t+')</span>').join('')+'</div>';
+  if(G.statBooster && G.statBooster.expiresAt>Date.now()){
+    const sbMins=Math.ceil((G.statBooster.expiresAt-Date.now())/60000);
+    h+='<div class="buffs"><span class="bp" style="background:var(--gold);color:#1a1200;">💊 +'+G.statBooster.val+' '+G.statBooster.stat.toUpperCase()+' ('+sbMins+'m)</span></div>';
+  }
   if(G.p.ailments.length>0)h+='<div class="buffs">'+G.p.ailments.map(a=>'<span class="bp" style="background:var(--danger);">'+AILMENT_TYPES[a.type].icon+' '+a.n+'</span>').join('')+'</div>';
   if(G.afkAdventure.active && G.afkAdventure.visible){
     h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:rgba(124,58,237,0.15);border-bottom:1px solid var(--accent);font-size:11px;">';
@@ -13280,10 +18671,24 @@ function render(){
   else if(G.state=='raid_room')h+=rRaidRoom();
   else if(G.state=='guild')h+=rGuild();
   else if(G.state=='stronghold')h+=rStrongholds();
+  else if(G.state=='guild_boss')h+=rGuildBoss();
+  else if(G.state=='disciples')h+=rDisciples();
+  else if(G.state=='party_selection')h+=rPartySelection();
+  else if(G.state=='combat_log')h+=rCombatLog();
   else if(G.state=='dragon_hunt')h+=rDragonHunt();
   else if(G.state=='prestige')h+=rPrestige();
   else if(G.state=='boss_rush')h+=rBossRush();
+  else if(G.state=='fraying_frontier')h+=rFrayingFrontier();
+  else if(G.state=='zone_map_starting_lands')h+=rZoneMapStartingLands();
+  else if(G.state=='zone_map_arcane_ascent')h+=rZoneMapArcaneAscent();
+  else if(G.state=='zone_map_elemental_wars')h+=rZoneMapElementalWars();
+  else if(G.state=='zone_map_aftermath_roads')h+=rZoneMapAftermathRoads();
+  else if(G.state=='zone_map_verdant_reach')h+=rZoneMapVerdantReach();
+  else if(G.state=='kindling_network')h+=rKindlingNetwork();
   else if(G.state=='boss_rush_room')h+=rBossRushRoom();
+  else if(G.state=='fraying_frontier_room')h+=rFrayingFrontierRoom();
+  else if(G.state=='guild_war')h+=rGuildWar();
+  else if(G.state=='guild_war_room')h+=rGuildWarRoom();
   else if(G.state=='chain_quest')h+=rChainQuest();
   else if(G.state=='event_deck')h+=rEventDeck();
   else if(G.state=='sync')h+=rSyncScreen();
@@ -13321,9 +18726,15 @@ function attachEvents() {
     else if(a=='journal')setS('journal');
     else if(a=='guild')setS('guild');
     else if(a=='stronghold')setS('stronghold');
+    else if(a=='guild_boss')setS('guild_boss');
+    else if(a=='disciples')setS('disciples');
+    else if(a=='party_selection')setS('party_selection');
     else if(a=='dragon_hunt')setS('dragon_hunt');
     else if(a=='prestige')setS('prestige');
     else if(a=='boss_rush')setS('boss_rush');
+    else if(a=='fraying_frontier')setS('fraying_frontier');
+    else if(a=='kindling_network')setS('kindling_network');
+    else if(a=='guild_war')setS('guild_war');
     else if(a=='chain_quest')setS('chain_quest');
     else if(a=='event_deck')setS('event_deck');
     else if(a=='sync')setS('sync');
@@ -13332,7 +18743,8 @@ function attachEvents() {
     else if(a=='bonding')setS('bonding');
     else if(a=='mercenary')setS('mercenary');
     else if(a=='today')setS('today');
-    else if(a=='afk_adventure')setS('afk_adventure');});
+    else if(a=='afk_adventure')setS('afk_adventure');
+    else if(a=='temple'){G.viewingTemple=true;setS('rest');}});
   });
  const btnClaimLogin = document.getElementById('btn-claim-login');
 if (btnClaimLogin) {
@@ -13413,6 +18825,14 @@ if (btnClaimLogin) {
   const btnCombine=document.getElementById('btn-combine');
   if(btnCombine)btnCombine.addEventListener('click',()=>{
     openCombineModal();
+  });
+  // Bestiary glossary — tap an entry to expand/collapse its full record
+  document.querySelectorAll('.bestiary-entry').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const name = el.getAttribute('data-bname');
+      G.bestiaryExpanded = (G.bestiaryExpanded === name) ? null : name;
+      render();
+    });
   });
   // Rune socket modal events
   document.querySelectorAll('.rune-select-btn').forEach(el=>{
@@ -13509,6 +18929,10 @@ if(btnVnAdvance)btnVnAdvance.addEventListener('click',()=>{ advanceJournalVn(); 
   });
   const btnSellStash=document.getElementById('btn-sell-stash');
   if(btnSellStash)btnSellStash.addEventListener('click',sellStashToAmad);
+  const btnSellCompanionStash=document.getElementById('btn-sell-companion-stash');
+  if(btnSellCompanionStash)btnSellCompanionStash.addEventListener('click',sellCompanionGearStashToAmad);
+  const btnSellMats=document.getElementById('btn-sell-mats');
+  if(btnSellMats)btnSellMats.addEventListener('click',sellMatsToAmad);
   document.querySelectorAll('.tr-btn:not(.dis)').forEach(el=>{
     el.addEventListener('click',(e)=>{
       e.stopPropagation();
@@ -13666,7 +19090,7 @@ function rJournal(){
   let h='<div style="padding:16px;">';
   h+='<div class="st">📖 Journal</div>';
   
-  const entries=G.storyJournal.entries;
+  const entries=[...G.storyJournal.entries].sort((a,b)=>(a.chapter||0)-(b.chapter||0));
   const unlocked=G.storyJournal.unlocked;
   const read=G.storyJournal.read;
   
@@ -13909,20 +19333,56 @@ function rStory(){
 
 function rBestiary(){
   let h='<div class="bestiary-view"><h2 class="st">📖 Bestiary</h2>';
-  const entries = Object.entries(G.bestiary).sort((a,b)=>b[1].kills-a[1].kills);
-  if(entries.length===0){
+  const allEntries = Object.entries(G.bestiary).sort((a,b)=>b[1].kills-a[1].kills);
+  const searchQuery = (G.bestiarySearch || '').toLowerCase().trim();
+  const entries = searchQuery ? allEntries.filter(([name]) => name.toLowerCase().includes(searchQuery)) : allEntries;
+
+  h += '<input type="text" id="bestiary-search-input" placeholder="🔍 Search by name..." value="' + (G.bestiarySearch || '').replace(/"/g,'&quot;') + '" oninput="G.bestiarySearch=this.value;render();var el=document.getElementById(\'bestiary-search-input\');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}" class="bestiary-search-box" style="width:100%;padding:10px 12px;margin-bottom:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:14px;">';
+
+  if(allEntries.length===0){
     h+='<div style="text-align:center;padding:40px;color:var(--text-dim);">No creatures catalogued yet.<br>Defeat enemies to fill the bestiary.</div>';
-  }else{
-    h+='<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">'+entries.length+' species discovered</div>';
+  } else if (entries.length === 0) {
+    h+='<div style="text-align:center;padding:40px;color:var(--text-dim);">No creatures match "' + (G.bestiarySearch || '') + '".</div>';
+  } else {
+    h+='<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">'+entries.length+(entries.length !== allEntries.length ? ' of ' + allEntries.length : '')+' species'+(entries.length !== allEntries.length ? ' matched' : ' discovered')+' \u2014 tap any entry for its full record</div>';
     h+='<div class="zlist">';
     for(let [name,data] of entries){
-      const elemIcon = data.elem==='fire'?'🔥':data.elem==='ice'?'❄️':data.elem==='lightning'?'⚡':data.elem==='void'?'🌑':'✦';
-      h+='<div class="zcard" style="cursor:default;">';
-      h+='<div class="zh"><span class="zn">'+ee(name)+' '+name+'</span><span class="zl">'+data.kills+' kills</span></div>';
+      const elemIcon = data.elem==='fire'?'🔥':data.elem==='ice'?'❄️':data.elem==='lightning'?'⚡':data.elem==='void'?'🌑':data.elem==='poison'?'☠️':'✦';
+      const bossEntry = G.bosses.find(b => b.n === name);
+      const isExpanded = G.bestiaryExpanded === name;
+      const locZone = findMonsterZone(name);
+      const locText = locZone ? (locZone.n + (locZone.lv ? ' (Lv.' + locZone.lv + ')' : '')) : 'Location unknown';
+      h+='<div class="zcard bestiary-entry" data-bname="'+name.replace(/"/g,'&quot;')+'" style="cursor:pointer;'+(bossEntry?'border-color:var(--gold);':'')+'">';
+      h+='<div class="zh"><span class="zn">'+ee(name)+' '+name+(bossEntry?' <span style="color:var(--gold);font-size:10px;">★ BOSS</span>':'')+'</span><span class="zl">'+data.kills+' kills</span></div>';
       h+='<div style="display:flex;gap:12px;font-size:12px;color:var(--text-dim);margin-top:6px;">';
       h+='<span>HP: '+data.mhp+'</span><span>ATK: '+data.atk+'</span><span>DEF: '+data.def+'</span><span>'+elemIcon+' '+data.elem+'</span>';
       h+='</div>';
+      h+='<div style="font-size:11px;color:var(--accent);margin-top:4px;">📍 '+locText+'</div>';
       h+='<div style="font-size:10px;color:var(--disabled);margin-top:4px;">First seen: '+new Date(data.firstSeen).toLocaleDateString()+'</div>';
+      if(isExpanded){
+        h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;line-height:1.6;color:var(--text);">';
+        if(bossEntry){
+          const artFallback = '<div class="boss-art-icon-fallback" style="--arch-color:'+ac(name)+';">'+es(name)+'</div>';
+          const artHtml = bossArtImg(name, artFallback);
+          if (bossArtFileName(name)) {
+            h+='<div class="boss-art-frame">'+artHtml+'</div>';
+          }
+          h+='<div style="font-style:italic;margin-bottom:8px;">'+bossEntry.desc+'</div>';
+          if(bossEntry.mechanic){
+            const mechList = Array.isArray(bossEntry.mechanic) ? bossEntry.mechanic.join(', ') : bossEntry.mechanic;
+            h+='<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Combat pattern: '+mechList+'</div>';
+          }
+          if(data.kills > 0 && bossEntry.defeatLine){
+            h+='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);color:var(--gold);font-size:11px;"><b>On defeat:</b> '+bossEntry.defeatLine+'</div>';
+          }
+        } else {
+          const archetype = typeof getEnemyArchetype === 'function' ? getEnemyArchetype(name) : null;
+          const archFlavor = archetype ? ('A creature of the ' + archetype + ' archetype') : 'A creature';
+          const elemFlavor = data.elem && data.elem !== 'none' ? (', aligned with ' + data.elem) : '';
+          h+='<div style="color:var(--text-dim);">'+archFlavor+elemFlavor+'. No individual record exists for this one \u2014 not every name that appears in the Vale gets its story told, but every one of them is real.</div>';
+        }
+        h+='</div>';
+      }
       h+='</div>';
     }
     h+='</div>';
@@ -13945,6 +19405,38 @@ function rRunes(){
 
   let h='<div style="padding:16px;"><h2 class="st">💎 Rune Socketing</h2>';
 
+  // Redesigned combine section — big header, pick a type (or all types), then combine
+  // at a specific batch size. Manual select still exists as a de-emphasized fallback
+  // link below, but this is now the primary, one-screen workflow — no scrolling past
+  // the whole inventory, no separate modal, which is what was causing the reported lag.
+  if (G.runes.length > 0) {
+    const activeFilter = G.runeCombineModal.typeFilter;
+    const filterLabel = activeFilter ? (RUNE_TYPES[activeFilter] ? RUNE_TYPES[activeFilter].name : activeFilter) : 'All Types';
+
+    h += '<div style="text-align:center;font-size:20px;font-weight:800;color:var(--gold);margin:4px 0 12px;">⚡ Combine Runes</div>';
+
+    h += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Type:</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">';
+    h += '<button onclick="setCombineTypeFilter(null)" class="tier-btn' + (!activeFilter ? ' sel' : '') + '" style="flex:1 1 auto;min-width:70px;">All Types</button>';
+    for (const key in RUNE_TYPES) {
+      const t = RUNE_TYPES[key];
+      const isSel = activeFilter === key;
+      h += '<button onclick="setCombineTypeFilter(\'' + key + '\')" class="tier-btn' + (isSel ? ' sel' : '') + '" style="flex:1 1 auto;min-width:70px;">' + t.icon + ' ' + t.name.replace('Rune of ', '') + '</button>';
+    }
+    h += '</div>';
+
+    h += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Combine (' + filterLabel + '):</div>';
+    h += '<div style="display:flex;gap:8px;margin-bottom:16px;">';
+    for (const size of RUNE_COMBINE_BATCH_SIZES) {
+      h += '<button onclick="combineRunesAtSize(' + size + ')" class="abtn" style="flex:1;padding:12px 4px;font-size:13px;">Combine ' + size + '</button>';
+    }
+    h += '</div>';
+
+    h += '<button id="btn-combine" style="width:100%;padding:8px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;margin-bottom:16px;">';
+    h+='🔮 Manual Select Instead';
+    h+='</button>';
+  }
+
   // Rune inventory with better visual cards
   h+='<div style="font-size:12px;font-weight:600;color:var(--accent-light);margin-bottom:10px;">Rune Inventory ('+G.runes.length+')</div>';
   if(G.runes.length===0){
@@ -13966,11 +19458,6 @@ function rRunes(){
       h+='</div>';
     }
     h+='</div>';
-
-    // Combine button — now opens modal
-    h+='<button id="btn-combine" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--accent);background:linear-gradient(135deg,var(--accent),#6d28d9);color:white;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;box-shadow:0 2px 8px var(--shadow-accent);transition:transform 0.2s;" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">';
-    h+='🔮 Combine Runes';
-    h+='</button>';
   }
 
   // Socketable gear with stat preview — covers inventory AND equipped gear (San's own
@@ -14486,7 +19973,9 @@ function rForgeItemRow(ownerName, slot, item) {
   const level = item.upgradeLevel || 0;
   const maxed = level >= FORGE_MAX_LEVEL;
   const cost = maxed ? 0 : FORGE_COSTS[level];
-  const affordable = G.p.gold >= cost;
+  const needsMendstone = !maxed && (level + 1) === FORGE_MENDSTONE_TIER;
+  const hasMendstone = needsMendstone && G.p.inv.some(it => it.n === 'Mendstone');
+  const affordable = G.p.gold >= cost && (!needsMendstone || hasMendstone);
   const rarityColor = item.r ? (item.r==='epic'||item.r==='legendary'?'#a855f7':item.r==='rare'?'#3b82f6':item.r==='uncommon'?'#22c55e':'#9ca3af') : '#9ca3af';
   let h = '<div style="background:var(--bg-card);border:1px solid ' + (level > 0 ? 'var(--gold)' : 'var(--border)') + ';border-radius:10px;padding:10px 12px;margin-bottom:6px;">';
   h += '<div style="display:flex;justify-content:space-between;align-items:center;">';
@@ -14494,9 +19983,12 @@ function rForgeItemRow(ownerName, slot, item) {
   if (maxed) {
     h += '<span class="btn-hint" style="color:var(--gold);">MAX</span>';
   } else {
-    h += '<button onclick="forgeUpgradeItem(\'' + ownerName + '\',\'' + slot + '\')" class="abtn' + (affordable ? '' : ' dis') + '" style="margin:0;padding:4px 10px;font-size:11px;">+1 for ' + cost + 'G</button>';
+    h += '<button onclick="forgeUpgradeItem(\'' + ownerName + '\',\'' + slot + '\')" class="abtn' + (affordable ? '' : ' dis') + '" style="margin:0;padding:4px 10px;font-size:11px;">+1 for ' + cost + 'G' + (needsMendstone ? ' + \uD83D\uDC8E' : '') + '</button>';
   }
   h += '</div>';
+  if (needsMendstone && !hasMendstone) {
+    h += '<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">Requires a Mendstone \u2014 from the Mended Sanctum</div>';
+  }
   h += '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + EQUIPMENT_SLOTS[slot]?.name || slot;
   h += '</div></div>';
   return h;
@@ -14509,7 +20001,7 @@ function rForge() {
   const unlocked = isForgeUnlocked();
   h += '<div class="panel' + (unlocked ? ' panel-gold' : '') + '" style="text-align:center;">';
   h += '<div class="panel-title" style="' + (unlocked ? 'color:var(--gold);' : '') + '">Master Kessler, the Forgemaster</div>';
-  h += '<div class="btn-hint" style="margin-top:6px;line-height:1.5;">"Bring me what you already carry. I don\'t sell anything \u2014 I just make what\'s yours better." Upgrades any equipped item up to +' + FORGE_MAX_LEVEL + ', each level a straight stat boost. Gold only, no materials needed.</div>';
+  h += '<div class="btn-hint" style="margin-top:6px;line-height:1.5;">"Bring me what you already carry. I don\'t sell anything \u2014 I just make what\'s yours better." Upgrades any equipped item up to +' + FORGE_MAX_LEVEL + ', each level a straight stat boost. Gold only, except the final tier \u2014 that one also asks for a Mendstone.</div>';
   h += '</div>';
 
   if (!unlocked) {
@@ -14765,6 +20257,12 @@ function rMercenary() {
   h += '<div class="btn-hint" style="margin:10px 0;line-height:1.6;">' + contract.flavor + '</div>';
   h += '<div class="btn-hint" style="margin-bottom:10px;">' + tierOpponents + ' opponents, mage + cleric backed \u2014 a short, sharp fight.</div>';
   h += '<button onclick="startMercenaryContract()" class="abtn" style="width:100%;">Take the Job</button>';
+  h += '<div class="btn-hint" style="text-align:center;margin:10px 0 6px;">Or line up several at once \u2014 auto-combat carries each fight, and the next contract starts on its own when one ends.</div>';
+  h += '<div style="display:flex;gap:6px;">';
+  for (const n of [5, 10, 25]) {
+    h += '<button onclick="startMercenaryBatch(' + n + ')" class="tier-btn" style="flex:1;">Take ' + n + '</button>';
+  }
+  h += '</div>';
   h += '</div>';
 
   h += '</div>';
@@ -14774,13 +20272,16 @@ function rMercenary() {
 function rChainQuest() {
   let h = '<div class="content">';
   h += '<div class="st" style="text-align:center;">📜 Chain Quests</div>';
-  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">Deliberate descents, not repeatable grinds \u2014 floor by floor, full recovery between each, ending in a payout bigger than anything else in the game. Leave and come back anytime; your floor is saved. Repeatable once cleared.</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">Deliberate descents, not repeatable grinds \u2014 floor by floor, full recovery between each, ending in a payout bigger than anything else in the game. Leave and come back anytime; your floor is saved. Most can be run again once cleared; some are meant to close for good.</div>';
 
   for (let chain of CHAIN_QUESTS) {
     const unlocked = isChainQuestUnlocked(chain);
     const prog = getChainProgress(chain.id);
-    const totalXp = chain.stages.reduce((s, st) => s + st.rw.xp, 0);
-    const totalGold = chain.stages.reduce((s, st) => s + st.rw.g, 0);
+    // Scaled floors (rw is null — payout is generated fresh off player level each
+    // time) are excluded from this static total rather than crashing the reduce.
+    const totalXp = chain.stages.reduce((s, st) => s + (st.rw ? st.rw.xp : 0), 0);
+    const totalGold = chain.stages.reduce((s, st) => s + (st.rw ? st.rw.g : 0), 0);
+    const hasScaledFloor = chain.stages.some(st => st.type === 'boss_scaled');
 
     h += '<div class="panel' + (unlocked ? ' panel-gold' : '') + '">';
     h += '<div class="panel-title" style="' + (unlocked ? 'color:var(--gold);' : '') + '">' + chain.icon + ' ' + chain.name + '</div>';
@@ -14791,10 +20292,18 @@ function rChainQuest() {
       continue;
     }
 
+    if (prog.cleared && chain.repeatable === false) {
+      h += '<div style="font-size:12px;color:var(--gold);font-weight:600;margin:8px 0;">🕯️ Finished</div>';
+      h += '<div class="btn-hint" style="margin-bottom:10px;">' + chain.intro + '</div>';
+      h += '<div class="btn-hint" style="margin-bottom:10px;">Five names, set down for good. There is nothing left here to come back for \u2014 and that is the point.</div>';
+      h += '</div>';
+      continue;
+    }
+
     if (prog.cleared) {
       h += '<div style="font-size:12px;color:var(--gold);font-weight:600;margin:8px 0;">🏆 Complete \u2014 ' + (prog.clearCount || 1) + ' time' + ((prog.clearCount || 1) > 1 ? 's' : '') + '</div>';
       h += '<div class="btn-hint" style="margin-bottom:10px;">' + chain.intro + '</div>';
-      h += '<div class="btn-hint" style="margin-bottom:10px;">Total chain payout: ' + totalXp.toLocaleString() + ' XP, ' + totalGold.toLocaleString() + 'G across ' + chain.stages.length + ' floors, every time.</div>';
+      h += '<div class="btn-hint" style="margin-bottom:10px;">Total chain payout: ' + totalXp.toLocaleString() + ' XP, ' + totalGold.toLocaleString() + 'G across ' + chain.stages.length + ' floors, every time.' + (hasScaledFloor ? ' The last floor scales with your level \u2014 always a real fight, no matter how far you\'ve climbed.' : '') + '</div>';
       h += '<button onclick="startChainQuest(\'' + chain.id + '\')" class="abtn" style="width:100%;">📜 Descend Again</button>';
       h += '</div>';
       continue;
@@ -14804,9 +20313,11 @@ function rChainQuest() {
     h += '<div class="qp" style="margin:10px 0;"><div class="pbar"><div class="pfill" style="width:' + Math.floor((prog.stageIndex / chain.stages.length) * 100) + '%"></div></div><span class="ptxt">Floor ' + prog.stageIndex + '/' + chain.stages.length + '</span></div>';
 
     if (prog.stageIndex > 0) {
-      h += '<div class="btn-hint" style="margin-bottom:6px;">Next: ' + chain.stages[prog.stageIndex].title + '</div>';
+      const nextStage = chain.stages[prog.stageIndex];
+      const nextLocked = nextStage.minLevel && G.p.lvl < nextStage.minLevel;
+      h += '<div class="btn-hint" style="margin-bottom:6px;">Next: ' + nextStage.title + (nextLocked ? ' (requires Level ' + nextStage.minLevel + ')' : '') + '</div>';
     }
-    h += '<div class="btn-hint" style="margin-bottom:10px;">Total chain payout: ' + totalXp.toLocaleString() + ' XP, ' + totalGold.toLocaleString() + 'G across ' + chain.stages.length + ' floors.</div>';
+    h += '<div class="btn-hint" style="margin-bottom:10px;">Total chain payout: ' + totalXp.toLocaleString() + ' XP, ' + totalGold.toLocaleString() + 'G across ' + chain.stages.length + ' floors.' + (hasScaledFloor ? ' The last floor scales with your level.' : '') + '</div>';
 
     h += '<button onclick="startChainQuest(\'' + chain.id + '\')" class="abtn" style="width:100%;">' + (prog.stageIndex > 0 ? '📜 Continue the Descent' : '📜 Begin the Descent') + '</button>';
     h += '</div>';
@@ -14925,8 +20436,18 @@ function rDragonHunt() {
   for (let dragon of DRAGONS) {
     const unlocked = isDragonUnlocked(dragon);
     const clearedCount = (G.dragonHunt.cleared && G.dragonHunt.cleared[dragon.id]) || 0;
+    // Scaled dragons have no fixed hoard numbers — preview them live off the
+    // player's current level so the card isn't just showing "undefined".
+    const hoardMin = dragon.scaled ? getElderDragonStats(G.p.lvl).hoardGoldMin : dragon.hoardGoldMin;
+    const hoardMax = dragon.scaled ? getElderDragonStats(G.p.lvl).hoardGoldMax : dragon.hoardGoldMax;
 
     h += '<div class="panel' + (unlocked ? ' panel-gold' : '') + '" style="text-align:center;">';
+    const dragonArtFile = bossArtFileName(dragon.n);
+    if (dragonArtFile) {
+      h += '<div style="width:100%;max-width:220px;aspect-ratio:3/4;margin:0 auto 10px;border-radius:12px;overflow:hidden;border:2px solid ' + (unlocked ? 'var(--gold)' : 'var(--border)') + ';' + (unlocked ? '' : 'filter:grayscale(0.6) brightness(0.5);') + '">';
+      h += '<img src="bosses/' + dragonArtFile + '.jpg" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.style.display=\'none\';">';
+      h += '</div>';
+    }
     h += '<div class="panel-title" style="' + (unlocked ? 'color:var(--gold);' : '') + '">' + dragon.n + '</div>';
     h += '<div class="btn-hint" style="margin:10px 0;line-height:1.5;">' + dragon.desc + '</div>';
     if (clearedCount > 0) {
@@ -14934,8 +20455,12 @@ function rDragonHunt() {
     }
     const mechanicDesc = dragon.mechanic === 'phase'
       ? 'Grows more dangerous through ' + dragon.phases + ' escalating phases as its HP drops \u2014 the fight gets harder, not easier, the longer it goes.'
+      : dragon.mechanic === 'devour'
+      ? 'Attempts to devour one random party member outright starting turn ' + dragon.devourTurn + ' \u2014 a failed save can remove them from the fight entirely.'
+      : dragon.mechanic === 'apocalypse'
+      ? 'Everyone survives to turn ' + dragon.apocalypseTurn + ', or almost no one does \u2014 a single attack that drops the whole party to the edge of death at once.'
       : 'Breathes elemental devastation across the whole party every ' + dragon.rampageTurn + ' turns.';
-    h += '<div class="btn-hint" style="margin-bottom:10px;">' + mechanicDesc + ' Hoard on victory: ' + dragon.hoardGoldMin.toLocaleString() + '\u2013' + dragon.hoardGoldMax.toLocaleString() + 'G, 3 guaranteed Legendaries, 1 guaranteed Epic \u2014 on top of normal XP/gold.</div>';
+    h += '<div class="btn-hint" style="margin-bottom:10px;">' + mechanicDesc + ' Hoard on victory: ' + hoardMin.toLocaleString() + '\u2013' + hoardMax.toLocaleString() + 'G, 3 guaranteed Legendaries, 1 guaranteed Epic \u2014 on top of normal XP/gold.' + (dragon.scaled ? ' Scales with your level every fight \u2014 always a real fight, no matter how far you\'ve climbed.' : '') + '</div>';
 
     if (unlocked) {
       h += '<button onclick="startDragonHunt(\'' + dragon.id + '\')" class="abtn" style="width:100%;">🐉 Wake the Wyrm</button>';
@@ -14962,6 +20487,7 @@ function rPrestige() {
   h += '<div class="panel-title" style="color:var(--gold);">Current Permanent Bonus</div>';
   h += '<div style="font-size:24px;font-weight:700;margin:8px 0;color:var(--gold);">+' + (G.prestige.xpBonusPct || 0).toFixed(1) + '% XP &nbsp;\u00b7&nbsp; +' + (G.prestige.goldBonusPct || 0).toFixed(1) + '% Gold</div>';
   h += '<div class="btn-hint">' + (G.prestige.count || 0) + ' prestige' + ((G.prestige.count || 0) === 1 ? '' : 's') + ' so far</div>';
+  h += '<div class="btn-hint">Next prestige unlocks at Level ' + getPrestigeRequiredLevel() + '</div>';
   h += '</div>';
 
   h += '<div class="panel">';
@@ -14977,6 +20503,22 @@ function rPrestige() {
   }
   h += '</div>';
 
+  if (isRiteOfReturnAvailable()) {
+    const perUse = riteOfReturnLevelsPerUse();
+    const levelsRemaining = (G.prestige.highestLvlEver || 1) - G.p.lvl;
+    h += '<div class="panel panel-gold">';
+    h += '<div class="panel-title" style="color:var(--gold);">\u26a1 Rite of Return</div>';
+    h += '<div class="btn-hint" style="margin-bottom:8px;">The Guild remembers what you already proved once \u2014 this isn\'t a level-1 climb from nothing, it\'s a fast-tracked reconditioning back to where you actually stood. Caps out the moment you reach your own previous peak (Level ' + G.prestige.highestLvlEver + ').</div>';
+    h += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">+' + perUse + ' levels per use \u00b7 ' + levelsRemaining + ' level' + (levelsRemaining === 1 ? '' : 's') + ' left to reach your peak</div>';
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+    h += '<button onclick="runRiteOfReturn(1)" class="tier-btn" style="flex:1;">Once</button>';
+    h += '<button onclick="runRiteOfReturn(5)" class="tier-btn" style="flex:1;">Push 5</button>';
+    h += '<button onclick="runRiteOfReturn(10)" class="tier-btn" style="flex:1;">Push 10</button>';
+    h += '<button onclick="runRiteOfReturn(25)" class="tier-btn" style="flex:1;">Push 25</button>';
+    h += '</div>';
+    h += '</div>';
+  }
+
   h += '<div class="panel">';
   h += '<div class="panel-title" style="margin-bottom:8px;">What Happens</div>';
   h += '<div class="btn-hint" style="line-height:1.6;">Resets to Level 1: character level, XP, HP/MP pools, base stats, and mercenary tier.<br><br>Untouched: gold, gear, inventory, companions, story progress, quests, achievements, guild reputation, temple reputation, and Dragon Hunt clears.<br><br>Zones re-lock naturally since access is just your current level \u2014 you\'ll climb back through them, but every fight now pays out the bonus above, permanently, on top of whatever you bank today.</div>';
@@ -14990,7 +20532,7 @@ function rPrestige() {
     h += '<button onclick="confirmPrestige()" class="abtn" style="width:100%;background:var(--danger);">🌟 Prestige Now (Level Resets to 1)</button>';
   } else {
     h += '<div class="panel" style="text-align:center;">';
-    h += '<div class="btn-hint">🔒 Unlocks at Level ' + PRESTIGE_MIN_LEVEL + ' (currently Level ' + G.p.lvl + ')</div>';
+    h += '<div class="btn-hint">🔒 Unlocks at Level ' + getPrestigeRequiredLevel() + ' (currently Level ' + G.p.lvl + ')</div>';
     h += '</div>';
   }
 
@@ -15031,6 +20573,246 @@ function rBossRush() {
   return h;
 }
 
+function rKindlingNetwork() {
+  ensureKindlingCommissionsCurrent();
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">🦊 The Kindling Network</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">Other Kindled pairs, met along the way. Not a system to grind \u2014 just a record of who you have actually found out there.</div>';
+
+  const linesLeft = 3 - G.kindlingCommissions.linesToday;
+  const checksLeft = 2 - G.kindlingCommissions.checksToday;
+  h += '<div class="panel" style="margin-bottom:16px;">';
+  h += '<div class="panel-title" style="margin-bottom:8px;">Today\'s Small Practice</div>';
+  h += '<button onclick="tendAKindlingLine()" ' + (linesLeft <= 0 ? 'disabled' : '') + ' class="btn-outline-ghost" style="width:100%;margin-bottom:8px;' + (linesLeft <= 0 ? 'opacity:0.5;' : '') + '">🕯️ Tend a Line (' + Math.max(0,linesLeft) + '/3 left today)</button>';
+  h += '<button onclick="checkOnAKindlingPair()" ' + (checksLeft <= 0 ? 'disabled' : '') + ' class="btn-outline-ghost" style="width:100%;' + (checksLeft <= 0 ? 'opacity:0.5;' : '') + '">🦊 Check on a Pair (' + Math.max(0,checksLeft) + '/2 left today)</button>';
+  h += '</div>';
+
+  const knownEntries = KINDLING_NETWORK.filter(k => {
+    const chEntry = G.storyJournal.entries.find(e => e.chapter === k.metChapter);
+    return chEntry && G.storyJournal.unlocked.includes(chEntry.id);
+  });
+
+  if (knownEntries.length === 0) {
+    h += '<div style="text-align:center;padding:40px;color:var(--text-dim);">No other Kindled pairs met yet.<br>The practice is bigger than you know. You just have not found the rest of it.</div>';
+  } else {
+    for (let k of knownEntries) {
+      h += '<div class="zcard" style="border-color:var(--gold);">';
+      h += '<div class="zh"><span class="zn">🦊 ' + k.name + '</span><span class="zl" style="color:var(--gold);">' + k.status + '</span></div>';
+      h += '<div style="font-size:11px;color:var(--text-dim);margin:4px 0;">Bonded to ' + k.familiarType + ' \u00b7 Met in Chapter ' + k.metChapter + '</div>';
+      h += '<div style="font-size:12px;line-height:1.6;color:var(--text);margin-top:6px;">' + k.desc + '</div>';
+      h += '</div>';
+    }
+    h += '<div class="btn-hint" style="text-align:center;margin-top:12px;">' + knownEntries.length + ' of ' + KINDLING_NETWORK.length + ' known pairs found so far.</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+// Interactive zone maps — illustrated background image with clickable hotspots
+// positioned over each zone marker. Coordinates are visual estimates (percent-based,
+// so they scale with the image regardless of screen size), not pixel-exact. Labels
+// are real HTML text overlaid on tap, not relying on the generated image's own
+// baked-in text, since AI-generated map labels are sometimes garbled.
+const ELEMENTAL_WARS_HOTSPOTS = [
+  { name: 'Infernal Crucible', zi: 22, x: 50, y: 12 },
+  { name: 'The Scorched Vein', zi: 25, x: 28, y: 27 },
+  { name: 'Tidal Abyss', zi: 26, x: 76, y: 27 },
+  { name: 'The Shattered Crown', zi: 27, x: 50, y: 42 },
+  { name: 'The Hollow Throne', zi: 28, x: 28, y: 55 },
+  { name: 'The Final Spire', zi: 29, x: 76, y: 55 },
+  { name: 'The Apex', zi: 30, x: 32, y: 78 },
+  { name: 'The Breaking', zi: 31, x: 73, y: 78 }
+];
+
+function rZoneMapElementalWars() {
+  let h = '<div class="content">';
+  h += '<button onclick="setS(\'explore\')" class="btn-outline-ghost" style="margin-bottom:10px;">\u2190 Back to Zone List</button>';
+  h += '<div class="st" style="text-align:center;">The Elemental Wars</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:12px;">Levels 23\u201330 \u2014 tap a marker to head there directly.</div>';
+  h += '<div style="position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--border);">';
+  h += '<img src="maps/elemental-wars.jpg" style="width:100%;display:block;">';
+  for (const spot of ELEMENTAL_WARS_HOTSPOTS) {
+    h += '<div class="map-hotspot" onclick="sc(' + spot.zi + ')" style="left:' + spot.x + '%;top:' + spot.y + '%;" title="' + spot.name + '">';
+    h += '<div class="map-hotspot-dot"></div>';
+    h += '<div class="map-hotspot-label">' + spot.name + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+const ARCANE_ASCENT_HOTSPOTS = [
+  { name: 'Starlight Spire', zi: 9, x: 32, y: 18 },
+  { name: 'Arcane Planar Tower', zi: 10, x: 32, y: 27 },
+  { name: 'The Shattered Veil', zi: 11, x: 32, y: 38 },
+  { name: 'Emberfall Dimension', zi: 12, x: 32, y: 48 },
+  { name: 'Frostbound Eternity', zi: 13, x: 32, y: 58 },
+  { name: "Stormcaller's Cradle", zi: 14, x: 32, y: 70 },
+  { name: 'The Void Between', zi: 15, x: 82, y: 15 },
+  { name: 'Chronos Spire', zi: 16, x: 82, y: 25 },
+  { name: 'Aetherium Gardens', zi: 17, x: 82, y: 35 },
+  { name: 'The Convergence', zi: 18, x: 82, y: 45 },
+  { name: 'The Nexus', zi: 19, x: 76, y: 56 },
+  { name: 'The Fractured Veil', zi: 20, x: 82, y: 66 },
+  { name: 'The Astral Maelstrom', zi: 21, x: 82, y: 77 }
+];
+
+function rZoneMapArcaneAscent() {
+  let h = '<div class="content">';
+  h += '<button onclick="setS(\'explore\')" class="btn-outline-ghost" style="margin-bottom:10px;">\u2190 Back to Zone List</button>';
+  h += '<div class="st" style="text-align:center;">The Arcane Ascent</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:12px;">Levels 10\u201322 \u2014 tap a marker to head there directly.</div>';
+  h += '<div style="position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--border);">';
+  h += '<img src="maps/arcane-ascent.jpg" style="width:100%;display:block;">';
+  for (const spot of ARCANE_ASCENT_HOTSPOTS) {
+    h += '<div class="map-hotspot" onclick="sc(' + spot.zi + ')" style="left:' + spot.x + '%;top:' + spot.y + '%;" title="' + spot.name + '">';
+    h += '<div class="map-hotspot-dot"></div>';
+    h += '<div class="map-hotspot-label">' + spot.name + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+const STARTING_LANDS_HOTSPOTS = [
+  { name: 'Whispering Woods', zi: 0, x: 18, y: 34 },
+  { name: 'Cursed Catacombs', zi: 1, x: 38, y: 44 },
+  { name: 'Crystal Caverns', zi: 2, x: 44, y: 27 },
+  { name: 'Ember Peak', zi: 3, x: 53, y: 14 },
+  { name: 'Stormhold', zi: 4, x: 79, y: 17 },
+  { name: 'Frostspire Ruins', zi: 5, x: 79, y: 41 },
+  { name: 'Sunken Temple', zi: 6, x: 52, y: 51 },
+  { name: 'Abyssal Depths', zi: 7, x: 27, y: 71 },
+  { name: "Dragon's Maw", zi: 8, x: 52, y: 77 },
+  { name: "Serpent's Coil", zi: 23, x: 78, y: 79 }
+];
+
+function rZoneMapStartingLands() {
+  let h = '<div class="content">';
+  h += '<button onclick="setS(\'explore\')" class="btn-outline-ghost" style="margin-bottom:10px;">\u2190 Back to Zone List</button>';
+  h += '<div class="st" style="text-align:center;">The Starting Lands</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:12px;">Levels 1\u20139 \u2014 tap a marker to head there directly.</div>';
+  h += '<div style="position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--border);">';
+  h += '<img src="maps/starting-lands.jpg" style="width:100%;display:block;">';
+  for (const spot of STARTING_LANDS_HOTSPOTS) {
+    h += '<div class="map-hotspot" onclick="sc(' + spot.zi + ')" style="left:' + spot.x + '%;top:' + spot.y + '%;" title="' + spot.name + '">';
+    h += '<div class="map-hotspot-dot"></div>';
+    h += '<div class="map-hotspot-label">' + spot.name + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+const AFTERMATH_ROADS_HOTSPOTS = [
+  { name: 'The Breaking', zi: 31, x: 7, y: 37 },
+  { name: 'The Silent Ruin', zi: 32, x: 35, y: 12 },
+  { name: 'Ashfall Market', zi: 33, x: 48, y: 8 },
+  { name: 'The Drowned Ledger', zi: 34, x: 67, y: 8 },
+  { name: 'Rustbound Docks', zi: 35, x: 85, y: 8 },
+  { name: "The Widow's Watch", zi: 36, x: 30, y: 23 },
+  { name: 'Forgotten Pemmican Roads', zi: 37, x: 48, y: 22 },
+  { name: 'The Quiet Nursery', zi: 38, x: 67, y: 24 },
+  { name: 'Bladeless Barracks', zi: 39, x: 88, y: 24 },
+  { name: 'The Storm That Stayed', zi: 40, x: 33, y: 35 },
+  { name: "Embercat's Grave", zi: 41, x: 51, y: 35 },
+  { name: 'The Empty Ledger', zi: 42, x: 68, y: 34 },
+  { name: 'The Static Fields', zi: 44, x: 71, y: 38 },
+  { name: 'The Weight You Carry', zi: 43, x: 92, y: 38 },
+  { name: "The Architect's Chamber", zi: 45, x: 25, y: 46 },
+  { name: 'What Remains United', zi: 46, x: 43, y: 46 },
+  { name: 'Where the Break Began', zi: 47, x: 63, y: 48 },
+  { name: 'The First Repair', zi: 48, x: 21, y: 58 },
+  { name: 'What Almost Broke Again', zi: 49, x: 37, y: 58 },
+  { name: 'The Fear After the Storm', zi: 50, x: 56, y: 58 },
+  { name: 'Everyone, Together', zi: 51, x: 72, y: 58 },
+  { name: 'Daybreak', zi: 52, x: 48, y: 77 },
+  { name: 'The Unmapped Road', zi: 53, x: 22, y: 82 },
+  { name: 'The Borrowed Coast', zi: 54, x: 38, y: 86 },
+  { name: 'The Salt Debt', zi: 55, x: 56, y: 86 },
+  { name: 'The Quiet Uprising', zi: 56, x: 72, y: 82 },
+  { name: 'Where the Walk Leads', zi: 57, x: 88, y: 74 }
+];
+
+function rZoneMapAftermathRoads() {
+  let h = '<div class="content">';
+  h += '<button onclick="setS(\'explore\')" class="btn-outline-ghost" style="margin-bottom:10px;">\u2190 Back to Zone List</button>';
+  h += '<div class="st" style="text-align:center;">The Aftermath Roads</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:12px;">Levels 30\u201355 \u2014 tap a marker to head there directly.</div>';
+  h += '<div style="position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--border);">';
+  h += '<img src="maps/aftermath-roads.jpg" style="width:100%;display:block;">';
+  for (const spot of AFTERMATH_ROADS_HOTSPOTS) {
+    h += '<div class="map-hotspot" onclick="sc(' + spot.zi + ')" style="left:' + spot.x + '%;top:' + spot.y + '%;" title="' + spot.name + '">';
+    h += '<div class="map-hotspot-dot"></div>';
+    h += '<div class="map-hotspot-label">' + spot.name + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+// Verdant Reach illustrated map only carries the six hand-placed settlements shown on
+// the commissioned art (56, 60, 65, 75, 82, 95) — the Lv 96-100 Thinning-arc zones sit
+// past the mapped edge of the Reach entirely and stay reachable only through the
+// regular zone list / winding-path view, same as the frontier always has been.
+const VERDANT_REACH_HOTSPOTS = [
+  { name: 'The Unbroken Vale', zi: 58, x: 48, y: 12 },
+  { name: "The Retainer's Hollow", zi: 59, x: 27, y: 25 },
+  { name: 'The Verdant Choir', zi: 60, x: 69, y: 29 },
+  { name: 'Sunreach Fields', zi: 61, x: 46, y: 45 },
+  { name: 'The Treeline Detail', zi: 62, x: 78, y: 52 },
+  { name: 'The Rootbound Sanctuary', zi: 63, x: 38, y: 71 }
+];
+
+function rZoneMapVerdantReach() {
+  let h = '<div class="content">';
+  h += '<button onclick="setS(\'explore\')" class="btn-outline-ghost" style="margin-bottom:10px;">\u2190 Back to Zone List</button>';
+  h += '<div class="st" style="text-align:center;">The Verdant Reach</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:12px;">Levels 56\u201395 \u2014 tap a marker to head there directly. Lv 96+ lies past the mapped edge.</div>';
+  h += '<div style="position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--border);">';
+  h += '<img src="maps/verdant-reach.jpg" style="width:100%;display:block;">';
+  for (const spot of VERDANT_REACH_HOTSPOTS) {
+    h += '<div class="map-hotspot" onclick="sc(' + spot.zi + ')" style="left:' + spot.x + '%;top:' + spot.y + '%;" title="' + spot.name + '">';
+    h += '<div class="map-hotspot-dot"></div>';
+    h += '<div class="map-hotspot-label">' + spot.name + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+function rFrayingFrontier() {
+  const unlocked = G.p.lvl >= 100;
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">🌫️ The Fraying Frontier</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">The hand-mapped ground runs out somewhere. This does not. Bosses out here scale to whatever level you actually are, forever \u2014 there is no ceiling to eventually run past. Push until you fall, or walk away with what you\'ve banked.</div>';
+
+  h += '<div class="panel panel-gold" style="text-align:center;">';
+  h += '<div class="panel-title" style="color:var(--gold);">Best Streak</div>';
+  h += '<div style="font-size:24px;font-weight:700;margin:8px 0;color:var(--gold);">' + (G.frayingFrontier.bestStreak || 0) + '</div>';
+  h += '</div>';
+
+  h += '<div class="panel">';
+  h += '<div class="panel-title" style="margin-bottom:8px;">How It Scales</div>';
+  h += '<div class="btn-hint" style="line-height:1.6;">Base boss strength always matches your current level, not a fixed zone \u2014 so this stays a real fight at level 150 or level 1500. Each streak win adds roughly +6% further on top.<br>' + Math.floor(BOSS_RUSH_RECOVERY_PCT * 100) + '% HP/MP recovery between fights \u2014 no full heals.</div>';
+  h += '</div>';
+
+  if (unlocked) {
+    h += '<button onclick="startFrayingFrontier()" class="abtn" style="width:100%;background:var(--el-void);">🌫️ Enter the Frontier</button>';
+  } else {
+    h += '<div class="panel" style="text-align:center;"><div class="btn-hint">🔒 Unlocks at Level 100 (currently Level ' + G.p.lvl + ')</div></div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
 function rBossRushRoom() {
   const streak = G.bossRush.streak;
   const nextRewardMult = Math.min(BOSS_RUSH_REWARD_MULT_CAP, 1 + streak * BOSS_RUSH_REWARD_MULT_PER_KILL);
@@ -15045,8 +20827,117 @@ function rBossRushRoom() {
 
   h += '<div class="btn-hint" style="text-align:center;margin:10px 0 16px;">The party got a brief recovery, not a full rest. Keep pushing, or bank what you\'ve got.</div>';
 
-  h += '<button onclick="continueBossRush()" class="abtn" style="width:100%;margin-bottom:10px;">⚔️ Continue the Rush</button>';
+  h += '<button onclick="continueBossRush()" class="abtn" style="width:100%;margin-bottom:8px;">⚔️ Continue the Rush</button>';
+  h += '<div class="btn-hint" style="text-align:center;margin:8px 0 6px;">Or push through several at once \u2014 auto-combat carries each fight, and it stops on its own the moment a fight is lost, keeping everything earned up to that point.</div>';
+  h += '<div style="display:flex;gap:6px;margin-bottom:10px;">';
+  for (const n of [5, 10, 25]) {
+    h += '<button onclick="continueBossRushBatch(' + n + ')" class="tier-btn" style="flex:1;">Push ' + n + '</button>';
+  }
+  h += '</div>';
   h += '<button onclick="retreatBossRush()" class="btn-outline-ghost" style="width:100%;">🏳️ Retreat (keep everything earned)</button>';
+
+  h += '</div>';
+  return h;
+}
+
+function rFrayingFrontierRoom() {
+  const streak = G.frayingFrontier.streak;
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">🌫️ The Fraying Frontier</div>';
+
+  h += '<div class="panel panel-gold" style="text-align:center;">';
+  h += '<div class="panel-title" style="color:var(--gold);">Streak: ' + streak + '</div>';
+  h += '<div class="btn-hint">Bosses here scale off your current level, indefinitely \u2014 the frontier does not run out. Each win in this streak makes the next one \u2248' + Math.floor((streak + 1) * 6) + '% tougher.</div>';
+  h += '</div>';
+
+  h += '<div class="btn-hint" style="text-align:center;margin:10px 0 16px;">The party got a brief recovery, not a full rest. Keep pushing, or bank what you\'ve got.</div>';
+
+  h += '<button onclick="continueFrayingFrontier()" class="abtn" style="width:100%;margin-bottom:8px;">🌫️ Push the Frontier Further</button>';
+  h += '<div class="btn-hint" style="text-align:center;margin:8px 0 6px;">Or push through several at once \u2014 stops on its own the moment a fight is lost, keeping everything earned up to that point.</div>';
+  h += '<div style="display:flex;gap:6px;margin-bottom:10px;">';
+  for (const n of [5, 10, 25]) {
+    h += '<button onclick="continueFrayingFrontierBatch(' + n + ')" class="tier-btn" style="flex:1;">Push ' + n + '</button>';
+  }
+  h += '</div>';
+  h += '<button onclick="retreatFrayingFrontier()" class="btn-outline-ghost" style="width:100%;">🏳️ Retreat (keep everything earned)</button>';
+
+  h += '</div>';
+  return h;
+}
+
+function rGuildWar() {
+  const unlocked = isGuildWarUnlocked();
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">⚔️ Guild War</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">Structured musters against other survivor guilds \u2014 competitive, not hostile. Field up to ' + getGuildWarMaxFielded() + ' recruited Guild members before you start; each one adds a small, permanent-for-the-run bonus, fights alongside you each turn, and a line or two along the way. Fielding capacity grows with Guild Rank.</div>';
+
+  if (!unlocked) {
+    h += '<div class="panel" style="text-align:center;"><div class="btn-hint">🔒 Unlocks at Level ' + GUILD_WAR_MIN_LEVEL + ', after meeting Iris & Ash out past the Frontier.</div></div>';
+    h += '</div>';
+    return h;
+  }
+
+  h += '<div class="panel panel-gold" style="text-align:center;">';
+  h += '<div class="panel-title" style="color:var(--gold);">Best Streak</div>';
+  h += '<div style="font-size:24px;font-weight:700;margin:8px 0;color:var(--gold);">' + (G.guildWar.bestStreak || 0) + '</div>';
+  h += '</div>';
+
+  h += '<div class="panel-title" style="margin:14px 0 8px;">Guild Roster (' + G.guildWar.fielded.length + '/' + getGuildWarMaxFielded() + ' fielded)</div>';
+  for (let def of GUILD_MEMBERS) {
+    const recruited = isGuildMemberRecruited(def.id);
+    const fielded = G.guildWar.fielded.includes(def.id);
+    h += '<div class="panel' + (fielded ? ' panel-gold' : '') + '" style="text-align:left;' + (recruited ? '' : 'opacity:0.5;') + '">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+    h += '<div><span style="font-size:16px;">' + def.icon + '</span> <span style="font-weight:700;' + (fielded ? 'color:var(--gold);' : '') + '">' + def.npcName + '</span> <span style="font-size:11px;color:var(--text-dim);">' + def.role + '</span></div>';
+    if (recruited) {
+      h += '<button onclick="toggleGuildWarField(\'' + def.id + '\')" class="' + (fielded ? 'abtn' : 'btn-outline-ghost') + '" style="margin:0;padding:4px 10px;font-size:11px;">' + (fielded ? 'Fielded' : 'Field') + '</button>';
+    } else {
+      h += '<span style="font-size:11px;color:var(--text-dim);">🔒 Not yet recruited</span>';
+    }
+    h += '</div>';
+    const buffKey = Object.keys(def.fieldBuff)[0];
+    const buffLabel = buffKey === 'atkPct' ? '+' + Math.floor(def.fieldBuff[buffKey]*100) + '% ATK when fielded'
+      : buffKey === 'critPct' ? '+' + Math.floor(def.fieldBuff[buffKey]*100) + '% Crit when fielded'
+      : buffKey === 'xpPct' ? '+' + Math.floor(def.fieldBuff[buffKey]*100) + '% XP when fielded'
+      : '+' + Math.floor(def.fieldBuff[buffKey]*100) + '% Gold when fielded';
+    h += '<div style="font-size:10.5px;color:var(--text-dim);margin-top:4px;">' + buffLabel + '</div>';
+    h += '</div>';
+  }
+
+  if (G.guildWar.fielded.length > 0) {
+    h += '<button onclick="startGuildWar()" class="abtn" style="width:100%;margin-top:12px;">⚔️ Muster the Guild</button>';
+  } else {
+    h += '<div class="btn-hint" style="text-align:center;margin-top:12px;">Field at least one Guild member to start a muster.</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function rGuildWarRoom() {
+  const streak = G.guildWar.streak;
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">⚔️ Guild War</div>';
+
+  h += '<div class="panel panel-gold" style="text-align:center;">';
+  h += '<div class="panel-title" style="color:var(--gold);">Streak: ' + streak + '</div>';
+  h += '<div class="btn-hint">Rival guild strength scales with your level, same as the Frontier. Each win in this streak makes the next one \u2248' + Math.floor((streak + 1) * 6) + '% tougher.</div>';
+  h += '</div>';
+
+  if (G.guildWar.fielded.length > 0) {
+    h += '<div class="btn-hint" style="text-align:center;margin:8px 0;">Fielded: ' + G.guildWar.fielded.map(id => getGuildMemberDef(id).icon + ' ' + getGuildMemberDef(id).npcName).join(', ') + '</div>';
+  }
+
+  h += '<div class="btn-hint" style="text-align:center;margin:10px 0 16px;">The party got a brief recovery, not a full rest. Keep pushing, or bank what you\'ve got.</div>';
+
+  h += '<button onclick="continueGuildWar()" class="abtn" style="width:100%;margin-bottom:8px;">⚔️ Muster Again</button>';
+  h += '<div class="btn-hint" style="text-align:center;margin:8px 0 6px;">Or muster through several at once \u2014 stops on its own the moment a fight is lost, keeping everything earned up to that point.</div>';
+  h += '<div style="display:flex;gap:6px;margin-bottom:10px;">';
+  for (const n of [5, 10, 25]) {
+    h += '<button onclick="continueGuildWarBatch(' + n + ')" class="tier-btn" style="flex:1;">Muster ' + n + '</button>';
+  }
+  h += '</div>';
+  h += '<button onclick="retreatGuildWar()" class="btn-outline-ghost" style="width:100%;">🏳️ Retreat (keep everything earned)</button>';
 
   h += '</div>';
   return h;
@@ -15362,6 +21253,7 @@ function startRoadAmbush(zone) {
   G.cbt.en = [];
   G.state = 'combat';
   G.currentBoss = null;
+  G.cbt.autoCombat = isAutoCombatPreferred();
 
   rollWeather();
   applyZoneBuffs(zone.n);
@@ -15376,11 +21268,67 @@ function startRoadAmbush(zone) {
   render();
 }
 
+function rGuildBoss() {
+  ensureGuildBossHp();
+  const tier = getGuildBossTier();
+  const canAttempt = canAttemptGuildBossToday();
+  const hpPct = Math.max(0, Math.min(100, (G.guildBoss.currentHp / tier.hp) * 100));
+  const rosterSize = (G.guildRoster && G.guildRoster.recruited) ? G.guildRoster.recruited.length : 0;
+  const sessionActive = G.guildBossSession && G.guildBossSession.active;
+
+  let h = '<div class="content">';
+  h += '<div class="st" style="text-align:center;">⚔️ Guild Boss</div>';
+  h += '<div class="btn-hint" style="text-align:center;margin-bottom:16px;">A true whole-guild siege \u2014 every recruited member attacks each day, not just whoever\'s fielded. Millions of HP, persistent across days, until the whole guild brings it down together.</div>';
+
+  h += '<div class="panel" style="text-align:center;">';
+  h += '<div class="panel-title" style="font-size:16px;">' + tier.n + '</div>';
+  h += '<div class="btn-hint" style="margin:8px 0;font-style:italic;">' + tier.desc + '</div>';
+  h += '<div style="background:var(--bg-hover);border-radius:10px;height:20px;overflow:hidden;margin:10px 0;border:1px solid var(--border);">';
+  h += '<div style="background:linear-gradient(90deg,var(--danger),var(--gold));height:100%;width:' + hpPct + '%;transition:width 0.3s;"></div>';
+  h += '</div>';
+  h += '<div style="font-weight:700;">' + G.guildBoss.currentHp.toLocaleString() + ' / ' + tier.hp.toLocaleString() + ' HP</div>';
+  h += '<div class="btn-hint" style="margin-top:8px;">Rank ' + tier.rank + ' of 10 \u2014 ' + rosterSize + ' guild member' + (rosterSize === 1 ? '' : 's') + ' fighting alongside you</div>';
+  h += '</div>';
+
+  if (sessionActive) {
+    const secondsLeft = Math.max(0, Math.ceil((G.guildBossSession.endTime - Date.now()) / 1000));
+    h += '<div class="panel panel-gold" style="text-align:center;">';
+    h += '<div style="font-size:28px;font-weight:800;color:var(--gold);">' + secondsLeft + 's</div>';
+    h += '<div class="btn-hint" style="margin-bottom:10px;">Attack as many times as you can before the guild has to fall back!</div>';
+    h += '<button onclick="tapGuildBossAttack()" class="abtn" style="width:100%;font-size:18px;padding:16px;background:var(--danger);">⚔️ ATTACK</button>';
+    h += '<div class="btn-hint" style="margin-top:10px;">' + G.guildBossSession.tapCount + ' attacks \u00b7 ' + G.guildBossSession.sessionDamage.toLocaleString() + ' damage so far this session</div>';
+    h += '</div>';
+  } else if (canAttempt) {
+    h += '<button onclick="startGuildBossSession()" class="abtn" style="width:100%;background:var(--danger);">⚔️ Rally the Guild (90-Second Battle)</button>';
+  } else {
+    h += '<div class="panel" style="text-align:center;"><div class="btn-hint">🕯️ The guild already rallied against this today. Come back tomorrow.</div></div>';
+  }
+
+  h += '<div class="panel" style="margin-top:12px;">';
+  h += '<div class="panel-title" style="margin-bottom:8px;">Reward on Defeat</div>';
+  h += '<div class="btn-hint">+' + tier.xp.toLocaleString() + ' XP &nbsp;\u00b7&nbsp; +' + tier.g.toLocaleString() + 'G' + (G.guildJoined ? ' &nbsp;\u00b7&nbsp; +150 Guild Rep' : '') + '</div>';
+  h += '</div>';
+
+  h += '</div>';
+  return h;
+}
+
+
 function rStrongholds() {
   let h = '<div class="content">';
   h += '<div class="st" style="text-align:center;">🗼 Strongholds</div>';
 
+  // Maps each stronghold to the boss that unlocks it — used only for the locked-state
+  // message below, since this isn't stored on the STRONGHOLDS definitions themselves.
+  const STRONGHOLD_UNLOCK_BOSS = {
+    arcaneTower: 'The Planarch, atop the Arcane Planar Tower',
+    mendedGrove: 'The Vale Warden, in The Unbroken Vale',
+    wakingEdge: 'The Verdant Heart'
+  };
+
   const claimedIds = Object.keys(G.strongholds).filter(id => G.strongholds[id]);
+  const allIds = Object.keys(STRONGHOLDS);
+
   if (claimedIds.length === 0) {
     h += '<div class="panel" style="text-align:center;">';
     h += '<div class="panel-title">🔒 No Stronghold Claimed Yet</div>';
@@ -15389,13 +21337,52 @@ function rStrongholds() {
     return h;
   }
 
-  for (let id of claimedIds) {
+  for (let id of allIds) {
     const def = STRONGHOLDS[id];
     if (!def) continue;
+
+    if (!G.strongholds[id]) {
+      // Previously, an unclaimed stronghold simply never appeared here at all — no
+      // indication it existed or what was needed, which read as a bug rather than
+      // a locked door. Now it shows plainly, same as any other locked content.
+      h += '<div class="panel" style="opacity:0.6;">';
+      h += '<div class="panel-title">🔒 ' + def.icon + ' ' + def.name + '</div>';
+      h += '<div class="btn-hint" style="margin-top:6px;">Defeat ' + (STRONGHOLD_UNLOCK_BOSS[id] || 'the appropriate boss') + ' to unlock.</div>';
+      h += '</div>';
+      continue;
+    }
+
+    const retired = def.era === 'oldWorld' && hasEnteredVerdantReach();
+    if (retired) {
+      const level = getGuildHallLevel(id);
+      h += '<div class="panel" style="opacity:0.7;">';
+      h += '<div class="panel-title">' + def.icon + ' ' + def.name + ' <span style="font-size:11px;color:var(--text-dim);font-weight:400;">(left behind)</span></div>';
+      h += '<div class="btn-hint" style="margin:6px 0;">The road back to it runs through a world that no longer answers when you call. What you built here stays built — every bonus already earned keeps counting — but the tower itself, the rest, the siege calls: all of that is on the other side of the bridge now.</div>';
+      h += '<div class="btn-hint" style="color:var(--gold);">Guild Hall Lv.' + level + ' — bonuses still active</div>';
+      h += '</div>';
+      continue;
+    }
     h += '<div class="panel">';
     h += '<div class="panel-title">' + def.icon + ' ' + def.name + '</div>';
     h += '<div class="btn-hint" style="margin:6px 0;">' + def.desc + '</div>';
     h += '</div>';
+    if (id === 'mendedGrove' && isAllyUnlocked('Varel Farseer')) {
+      h += '<div class="panel panel-gold">';
+      h += '<div class="panel-title" style="color:var(--gold);">🔮 Varel Farseer</div>';
+      const banter = VAREL_BANTER[Math.floor(Math.random() * VAREL_BANTER.length)];
+      h += '<div class="btn-hint" style="margin:6px 0;font-style:italic;">' + banter + '</div>';
+      h += '<div style="border-top:1px solid var(--border);margin:10px 0;padding-top:10px;">';
+      h += '<div style="font-size:12px;font-weight:600;margin-bottom:6px;">The Vision Machine</div>';
+      if (G.visionMachine.lastUseDay === G.gameDay) {
+        h += '<div class="btn-hint">🔮 The window opened once today. Come back tomorrow.</div>';
+      } else if (G.p.gold < VISION_MACHINE_COST) {
+        h += '<div class="btn-hint">🔮 Costs ' + VISION_MACHINE_COST.toLocaleString() + 'G to open. You have ' + Math.floor(G.p.gold).toLocaleString() + 'G.</div>';
+      } else {
+        h += '<button onclick="useVisionMachine()" class="abtn" style="width:100%;">🔮 Open the Window (' + VISION_MACHINE_COST.toLocaleString() + 'G)</button>';
+      }
+      h += '</div>';
+      h += '</div>';
+    }
     h += rSiegeBanner(id);
     h += rGuildHallPanel(id);
     h += '<button onclick="setS(\'rest\')" class="btn-outline-ghost" style="width:100%;margin-bottom:16px;">💤 Visit Rest Sites</button>';
@@ -15501,22 +21488,29 @@ function rMenu(){
     {i:'⚔️',l:'Adventure',d:'Explore zones and fight',a:'explore'},
     {i:'👥',l:'Party',d:'Manage companions',a:'party'},
     {i:'🌀',l:'Grind Room',d:'Endless wave battles',a:'grind_room'},
+    {i:'🎯',l:'Adventure Farming',d:'Set the party loose, keep grinding while you\'re away',a:'afk_adventure'},
     {i:'⚔️',l:'Raid Mode',d:'Boss gauntlets + elites',a:'raid_select'},
+    {i:'⛪',l:'Temple',d:'Blessings, cures, and revival',a:'temple'},
   ];
   const sections=[
     { title: '🐉 Legendary Hunts', items: [
       {i:'🐉',l:'Dragon Hunt',a:'dragon_hunt'},
       {i:'💀',l:'Boss Rush',a:'boss_rush'},
+      {i:'🌫️',l:'The Fraying Frontier',a:'fraying_frontier'},
+      {i:'🦊',l:'The Kindling Network',a:'kindling_network'},
+      {i:'⚔️',l:'Guild War',a:'guild_war'},
       {i:'📜',l:'The Sunken Archive',a:'chain_quest'},
       {i:'🌟',l:'Prestige',a:'prestige'},
     ]},
     { title: '📋 Quick Work', items: [
       {i:'📅',l:'Today',a:'today'},
       {i:'📋',l:'Mercenary',a:'mercenary'},
-      {i:'🎯',l:'Adventure Farming',a:'afk_adventure'},
     ]},
     { title: '🏰 Guild & Stronghold', items: [
       {i:'🛡️',l:'Guild',a:'guild'},
+      {i:'⚔️',l:'Guild Boss',a:'guild_boss'},
+      {i:'📚',l:'Teach a Disciple',a:'disciples'},
+      {i:'👥',l:'Active Party',a:'party_selection'},
       {i:'🗼',l:'Stronghold',a:'stronghold'},
     ]},
     { title: '🧙 Character', items: [
@@ -15544,6 +21538,7 @@ function rMenu(){
     ]},
     { title: '⚙️ Settings', items: [
       {i:'💾',l:'Save & Sync',a:'sync'},
+      {i:'🔖',l:'Build ' + BUILD_ID,a:''},
     ]},
   ];
 
@@ -15699,8 +21694,19 @@ function hasEnteredVerdantReach() {
   return G.storyJournal.read.includes(VERDANT_REACH_BRIDGE_CHAPTER);
 }
 
+// Explore-tab-specific gate: the Verdant Reach tab should only REPLACE the low-level
+// tabs while your current level actually justifies it. hasEnteredVerdantReach() alone
+// is a permanent, one-way story flag — correct for retiring old-world strongholds
+// forever, but wrong here, since Prestige resets G.p.lvl back to 1 without un-reading
+// the bridge chapter. Without this extra level check, a post-prestige player at Lv 1
+// would only ever see the Verdant Reach tab (56-200) with every single zone locked,
+// and no tab left that shows anything they can actually reach.
+function isInVerdantReachTabMode() {
+  return hasEnteredVerdantReach() && G.p.lvl >= 56;
+}
+
 function getActiveZoneMapTabs() {
-  return hasEnteredVerdantReach() ? [VERDANT_REACH_TAB] : ZONE_MAP_TABS;
+  return isInVerdantReachTabMode() ? [VERDANT_REACH_TAB] : ZONE_MAP_TABS;
 }
 
 function setExploreMapTab(idx) {
@@ -15726,8 +21732,17 @@ function rZoneMapTabs() {
     h += '<button onclick="setExploreMapTab(' + i + ')" class="tier-btn' + (sel ? ' sel' : '') + '" style="flex-shrink:0;">' + tab.label + '</button>';
   }
   h += '</div>';
-  if (hasEnteredVerdantReach()) {
+  if (G.exploreMapTab === 0 && !isInVerdantReachTabMode()) {
+    h += '<button onclick="setS(\'zone_map_starting_lands\')" class="btn-outline-ghost" style="width:100%;margin-bottom:8px;">\uD83D\uDDFA\uFE0F Starting Lands Map (1\u20139)</button>';
+    h += '<button onclick="setS(\'zone_map_arcane_ascent\')" class="btn-outline-ghost" style="width:100%;margin-bottom:8px;">\uD83D\uDDFA\uFE0F Arcane Ascent Map (10\u201322)</button>';
+    h += '<button onclick="setS(\'zone_map_elemental_wars\')" class="btn-outline-ghost" style="width:100%;margin-bottom:8px;">\uD83D\uDDFA\uFE0F Elemental Wars Map (23\u201330)</button>';
+  }
+  if (!isInVerdantReachTabMode() && G.exploreMapTab >= 1 && G.exploreMapTab <= 5) {
+    h += '<button onclick="setS(\'zone_map_aftermath_roads\')" class="btn-outline-ghost" style="width:100%;margin-bottom:8px;">\uD83D\uDDFA\uFE0F The Aftermath Roads Map (30\u201355)</button>';
+  }
+  if (isInVerdantReachTabMode()) {
     h += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Everywhere before this is still there \u2014 Zul just drives now.</div>';
+    h += '<button onclick="setS(\'zone_map_verdant_reach\')" class="btn-outline-ghost" style="width:100%;margin-bottom:8px;">\uD83D\uDDFA\uFE0F The Verdant Reach Map (56\u201395)</button>';
   }
   return h;
 }
@@ -15778,6 +21793,13 @@ function rZoneMapView() {
 
 
 
+function getStrongholdIdForRestSite(siteId) {
+  for (let id in STRONGHOLDS) {
+    if (STRONGHOLDS[id].restSiteIds && STRONGHOLDS[id].restSiteIds.includes(siteId)) return id;
+  }
+  return null;
+}
+
 // Rest site map — same winding-path visual language as the zone map, for consistency.
 // Camps/taverns show their parent zone's own icon; temples and mana springs keep their
 // distinct icons (⛪ / 💧) since those are meaningfully different kinds of stops, not just
@@ -15806,16 +21828,19 @@ function rRestSitesMap(healerOk) {
     let manaSpringRemaining = 8;
     if (G.manaSpringUses.day === G.gameDay) manaSpringRemaining = 8 - G.manaSpringUses.count;
     const isDepletedManaSpring = s.type === 'mana_spring' && manaSpringRemaining <= 0;
-    const locked = !s.unlocked || isDepletedManaSpring;
+    const ownerStrongholdId = s.stronghold ? getStrongholdIdForRestSite(s.id) : null;
+    const isRetiredStronghold = ownerStrongholdId && STRONGHOLDS[ownerStrongholdId].era === 'oldWorld' && hasEnteredVerdantReach();
+    const locked = !s.unlocked || isDepletedManaSpring || isRetiredStronghold;
     const canAfford = !s.cost || G.p.gold >= s.cost;
 
     const icon = (s.type === 'camp' || s.type === 'tavern') ? getZoneIcon(s.zone) : s.icon;
     const nodeColor = s.stronghold ? 'var(--gold)' : s.type === 'temple' ? 'var(--danger)' : s.type === 'mana_spring' ? 'var(--mp)' : 'var(--accent)';
-    const subLabel = locked
+    const subLabel = isRetiredStronghold ? 'Left behind'
+      : locked
       ? (isDepletedManaSpring ? manaSpringRemaining + '/8 today' : 'Lv.' + s.zoneLv)
       : (s.cost ? s.cost + 'G' : 'Free');
 
-    h += '<div class="rs-card map-node' + (locked ? ' locked' : '') + '" data-id="' + s.id + '" style="border-color:' + nodeColor + ';background:radial-gradient(circle at 35% 30%, color-mix(in srgb, ' + nodeColor + ' 20%, var(--bg-card)), var(--bg-card));left:' + p.x + 'px;top:' + p.y + 'px;' + (!canAfford && !locked ? 'opacity:0.6;' : '') + '" title="' + s.name + ' — ' + s.desc.replace(/"/g, '&quot;') + '">';
+    h += '<div class="rs-card map-node' + (locked ? ' locked' : '') + '" data-id="' + s.id + '" style="border-color:' + nodeColor + ';background:radial-gradient(circle at 35% 30%, color-mix(in srgb, ' + nodeColor + ' 20%, var(--bg-card)), var(--bg-card));left:' + p.x + 'px;top:' + p.y + 'px;' + (!canAfford && !locked ? 'opacity:0.6;' : '') + (isRetiredStronghold ? 'opacity:0.45;' : '') + '" title="' + s.name + (isRetiredStronghold ? ' \u2014 on the other side of the bridge now' : ' — ' + s.desc.replace(/"/g, '&quot;')) + '">';
     h += '<span class="map-node-icon">' + icon + '</span>';
     if (s.stronghold) h += '<div class="map-node-boss">🏰</div>';
     if (locked) h += '<div class="map-node-lock">🔒</div>';
@@ -15952,7 +21977,7 @@ function rCbt() {
   const riftStatus = getRiftStatus();
   if (riftStatus) badges.push({ icon: riftStatus.icon, text: riftStatus.name, full: riftStatus.desc + ' (' + riftStatus.fightsLeft + ' left)', color: riftStatus.color });
   if (zone && G.zoneHazards[zone.n]) badges.push({ icon: '⚠️', text: G.zoneHazards[zone.n].name, full: G.zoneHazards[zone.n].desc, color: '#f59e0b' });
-  if (G.currentBoss) badges.push({ icon: '🔥', text: 'Boss Ability', full: G.currentBoss.desc, color: 'var(--danger)' });
+  if (G.currentBoss) badges.push({ icon: '🔥', text: 'Boss Ability', full: G.currentBoss.desc || G.currentBoss.flavor || 'A dangerous foe.', color: 'var(--danger)' });
   for (let a of G.p.ailments) {
     const def = AILMENT_TYPES[a.type];
     badges.push({ icon: def.icon, text: a.n, full: a.n + ' \u2014 ATK/DEF weakened' + (def.dmgPerTurn ? ', ' + def.dmgPerTurn + ' HP/turn' : '') + '. Rest will not cure this \u2014 needs the Temple or a high-level Eliz.', color: 'var(--danger)' });
@@ -15961,13 +21986,18 @@ function rCbt() {
     const minsLeft = Math.ceil((G.expBooster.expiresAt - Date.now()) / 60000);
     badges.push({ icon: '⚡', text: '+' + Math.floor(G.expBooster.mult * 100) + '% XP \u00b7 ' + minsLeft + 'm', full: 'Elixir of Swift Growth is active \u2014 +' + Math.floor(G.expBooster.mult * 100) + '% XP for the next ' + minsLeft + ' minute' + (minsLeft === 1 ? '' : 's') + '.', color: 'var(--gold)' });
   }
+  if (G.statBooster && G.statBooster.expiresAt > Date.now()) {
+    const sbMinsLeft = Math.ceil((G.statBooster.expiresAt - Date.now()) / 60000);
+    badges.push({ icon: '💊', text: '+' + G.statBooster.val + ' ' + G.statBooster.stat.toUpperCase() + ' \u00b7 ' + sbMinsLeft + 'm', full: 'A supplement is active \u2014 +' + G.statBooster.val + ' ' + G.statBooster.stat.toUpperCase() + ' for the next ' + sbMinsLeft + ' minute' + (sbMinsLeft === 1 ? '' : 's') + '.', color: 'var(--gold)' });
+  }
 
   // === TOP STRIP: auto-combat + potion buttons and status badges share one row ===
   h += '<div class="combat-top-strip">';
   h += '<button id="btn-auto" class="icon-btn" style="flex:0 0 auto;border-color:' + (G.cbt.autoCombat ? 'var(--success)' : 'var(--border)') + ';background:' + (G.cbt.autoCombat ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'var(--bg-card)') + ';color:' + (G.cbt.autoCombat ? 'var(--success)' : 'var(--text-dim)') + ';font-size:12px;padding:6px 10px;gap:6px;" title="' + (G.cbt.autoCombat ? 'Auto-Combat ON — tap to take control' : 'Let the AI fight for you') + '">🤖 ' + (G.cbt.autoCombat ? 'AUTO ON' : 'Auto') + '</button>';
   h += '<button onclick="togglePotionMenu()" class="icon-btn" style="flex:0 0 auto;border-color:' + (usablePotions.length > 0 ? 'var(--success)' : 'var(--border)') + ';background:var(--bg-card);color:' + (usablePotions.length > 0 ? 'var(--success)' : 'var(--disabled)') + ';font-size:12px;padding:6px 10px;gap:6px;cursor:' + (usablePotions.length > 0 ? 'pointer' : 'not-allowed') + ';" title="Potions">🧪 ' + usablePotions.length + '</button>';
+  h += '<button onclick="toggleEnemyIconStyle()" class="icon-btn" style="flex:0 0 auto;border-color:var(--border);background:var(--bg-card);color:var(--text-dim);font-size:12px;padding:6px 10px;gap:6px;" title="Switch between line-art and emoji enemy icons">' + (G.enemyIconStyle === 'emoji' ? '🎨 Art' : '😀 Emoji') + '</button>';
   for (let b of badges) {
-    h += '<span class="combat-badge" style="border-color:' + b.color + ';color:' + b.color + ';margin:0;" title="' + b.full.replace(/"/g, '&quot;') + '">' + b.icon + (b.text ? ' ' + b.text : '') + '</span>';
+    h += '<span class="combat-badge" style="border-color:' + b.color + ';color:' + b.color + ';margin:0;" title="' + (b.full || '').replace(/"/g, '&quot;') + '">' + b.icon + (b.text ? ' ' + b.text : '') + '</span>';
   }
   h += '</div>';
 
@@ -16002,18 +22032,23 @@ function rCbt() {
     h += '</div></div>';
   }
 
-  // === PARTY STRIP: portraits + thin HP bars, no name text ===
+  // === PARTY STRIP: portraits + visible HP bars + actual numeric HP text ===
+  // MP intentionally removed from display — San was the only one who ever had it shown
+  // (party members don't use MP in this system), which made her column visibly taller
+  // than everyone else's and threw off row-wrapping once portraits got bigger. Still
+  // available in the hover tooltip for anyone on a device where that works.
   h += '<div class="party-strip">';
   h += '<div class="party-avatar" title="San ' + G.p.hp + '/' + G.p.mhp + ' HP · ' + G.p.mp + '/' + G.p.mmp + ' MP · AC ' + playerAC + '">';
   h += '<div class="party-avatar-circle" style="border-color:#7c3aed;">' + portraitImg('san', '#7c3aed30', 'S') + '</div>';
   h += '<div class="party-avatar-hp"><div class="party-avatar-hp-fill" style="width:' + Math.max(0, (G.p.hp/G.p.mhp)*100) + '%;background:var(--hp);"></div></div>';
-  h += '<div class="party-avatar-hp"><div class="party-avatar-hp-fill" style="width:' + Math.max(0, (G.p.mp/G.p.mmp)*100) + '%;background:var(--mp);"></div></div>';
+  h += '<div class="party-avatar-stat-text" style="color:var(--hp);">' + G.p.hp + '/' + G.p.mhp + '</div>';
   h += '</div>';
   for (let p of G.party) {
     if (p.on) {
       h += '<div class="party-avatar" title="' + p.n + ' ' + p.hp + '/' + p.mhp + ' HP">';
-      h += '<div class="party-avatar-circle" style="border-color:' + p.col + ';">' + portraitImg(p.n.toLowerCase(), p.col + '30', p.n[0]) + '</div>';
+      h += '<div class="party-avatar-circle" style="border-color:' + p.col + ';">' + portraitImg(portraitFileNameFor(p.n), p.col + '30', p.n[0]) + '</div>';
       h += '<div class="party-avatar-hp"><div class="party-avatar-hp-fill" style="width:' + Math.max(0, (p.hp/p.mhp)*100) + '%;background:' + (p.hp <= 0 ? 'var(--disabled)' : 'var(--hp)') + ';"></div></div>';
+      h += '<div class="party-avatar-stat-text" style="color:' + (p.hp <= 0 ? 'var(--disabled)' : 'var(--hp)') + ';">' + p.hp + '/' + p.mhp + '</div>';
       h += '</div>';
     }
   }
@@ -16029,7 +22064,7 @@ function rCbt() {
     const lowHp = !d && hpPct <= 0.3;
 
     h += '<div class="ecard ecard-compact ' + (d ? 'dead' : '') + ' ' + s + (isBoss ? ' boss' : '') + '" data-i="' + i + '" style="--e-elem:' + elemVar + ';" title="' + e.n + (isBoss ? ' (Boss)' : '') + '">';
-    h += '<div class="eicon eicon-compact"><span class="eicon-medallion compact" style="--arch-color:' + (d ? 'var(--arch-undead)' : ac(e.n)) + ';">' + (d ? '💀' : ee(e.n)) + (isBoss && !d ? '<span class="boss-crown">👑</span>' : '') + '</span></div>';
+    h += '<div class="eicon eicon-compact"><span class="eicon-medallion compact" style="--arch-color:' + (d ? 'var(--arch-undead)' : ac(e.n)) + ';">' + (d ? enemyIcon('skeleton') : enemyIcon(e.n)) + (isBoss && !d ? '<span class="boss-crown">👑</span>' : '') + '</span></div>';
     h += '<div class="ename ename-compact">' + e.n + '</div>';
     h += (d ? '<div class="dt">DEAD</div>' : '<div class="hps' + (lowHp ? ' low' : '') + '"><div class="bf bf-hp" style="width:' + (hpPct * 100) + '%"></div></div><div class="hpt">' + e.hp + '/' + e.mhp + '</div>');
     h += '</div>';
@@ -16112,6 +22147,46 @@ function portraitImg(fileName, fallbackBg, letter) {
     '<span class="party-avatar-fallback" style="display:none;background:' + fallbackBg + ';">' + letter + '</span>';
 }
 
+// Custom boss art — falls back gracefully to the existing SVG archetype icon if no
+// art file exists yet for that boss, so this works incrementally: only Robin and Jeff
+// have art right now, and every other boss just keeps using its icon until more art
+// gets added, with zero code changes needed as that happens.
+function bossArtFileName(bossName) {
+  const n = bossName.toLowerCase();
+  if (n === 'robin c.') return 'robin';
+  if (n === "jeff, the sk* son-in-law") return 'jeff';
+  if (n === 'frost queen') return 'frostqueen';
+  if (n === 'sister wren, the last believer') return 'sisterwren';
+  if (n === 'the foreman') return 'theforeman';
+  if (n === 'the nexus planarch') return 'thenexusplanarch';
+  if (n === 'the veilshaper') return 'theveilshaper';
+  if (n === 'abyssal leviathan') return 'abyssalleviathan';
+  if (n === 'the hollow prophet') return 'thehollowprophet';
+  if (n === 'the infernal tyrant') return 'theinfernaltyrant';
+  if (n === 'elder dragon') return 'elderdragon';
+  if (n === 'vaelithorn, the ancient wyrm') return 'vaelithorn';
+  if (n === 'thessarune, the endless maw') return 'thessarune';
+  if (n === 'nyxathorne, the unmended wound') return 'nyxathorne';
+  if (n === 'corvenna, the root that waited') return 'corvenna';
+  if (n === 'skarrowyn, the split horizon') return 'skarrowyn';
+  if (n === 'aetherum, the last question') return 'aetherum';
+  if (n === 'echo of joel') return 'echoofjoel';
+  if (n === 'the vanished guide') return 'thevanishedguide';
+  if (n === 'hollow eliz') return 'holloweliz';
+  if (n === 'rustbound zaki') return 'rustboundzaki';
+  if (n === 'mezstorm unbound') return 'mezstormunbound';
+  if (n === 'the fading familiar') return 'thefadingfamiliar';
+  if (n === 'echo of aisyah') return 'echoofaisyah';
+  if (n === 'the tired version') return 'thetiredversion';
+  return null;
+}
+function bossArtImg(bossName, fallbackHtml) {
+  const fileName = bossArtFileName(bossName);
+  if (!fileName) return fallbackHtml;
+  return '<img src="bosses/' + fileName + '.jpg" class="boss-art-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+    '<span class="boss-art-fallback">' + fallbackHtml + '</span>';
+}
+
 
 function rGrowthAbilityBadge(memberName) {
   const def = G.growthAbilities[memberName];
@@ -16175,10 +22250,12 @@ function rParty(){
   }
   h += '<div class="plist">';
   for(let p of G.party){
-    h+='<div class="pcard '+(p.on?'':'locked')+'"><div class="pava" style="background:'+p.col+'20;border-color:'+p.col+'">'+(p.on?portraitImg(p.n.toLowerCase(), p.col+'30', p.n[0]):'<span style="font-size:20px">🔒</span>')+(p.on?'<span class="pava-role-badge" title="'+p.r+'">'+re(p.r)+'</span>':'')+'</div><div class="pinfo"><div class="pn">'+p.n+' <span class="pt">'+p.t+'</span></div><div class="pr" style="color:'+p.col+'">'+p.r+'</div><div class="pd">'+p.d+'</div><div class="pb">'+p.b+'</div>'+(p.on?'<div class="ps">HP:'+p.hp+'/'+p.mhp+' ATK:'+p.atk+(p.gear&&p.gear.atk?'(+'+p.gear.atk+')':'')+' DEF:'+p.def+(p.gear&&p.gear.def?'(+'+p.gear.def+')':'')+' SPD:'+p.spd+(p.gear&&p.gear.spd?'(+'+p.gear.spd+')':'')+(getBlessDef(p)?' <span style="color:var(--rest);font-weight:700;">🐱+10 DEF</span>':'')+'</div>':'')+(G.affinity[p.n]?'<div class="affinity-bar"><div class="affinity-fill '+getAffinityColor(G.affinity[p.n].val)+'" style="width:'+getAffinityBarPct(p.n)+'%"></div></div><div class="affinity-label">'+(G.affinity[p.n].val>=70?'💕 Close':G.affinity[p.n].val>=40?'💛 Friendly':G.affinity[p.n].val>=20?'💔 Distant':'💀 Strained')+' ('+G.affinity[p.n].val+')</div>':'')
+    const memberUnlocked = isPartyMemberUnlocked(p);
+    const isBenched = memberUnlocked && SWAPPABLE_PARTY_POOL.includes(p.n) && !p.on;
+    h+='<div class="pcard '+(memberUnlocked?'':'locked')+'"><div class="pava" style="background:'+p.col+'20;border-color:'+p.col+'">'+(memberUnlocked?portraitImg(portraitFileNameFor(p.n), p.col+'30', p.n[0]):'<span style="font-size:20px">🔒</span>')+(memberUnlocked?'<span class="pava-role-badge" title="'+p.r+'">'+re(p.r)+'</span>':'')+'</div><div class="pinfo"><div class="pn">'+p.n+' <span class="pt">'+p.t+'</span></div><div class="pr" style="color:'+p.col+'">'+p.r+'</div><div class="pd">'+p.d+'</div><div class="pb">'+p.b+'</div>'+(isBenched?'<div class="btn-hint" style="color:var(--gold);margin:4px 0;">\ud83e\ude91 Benched \u2014 helping at the Guild right now</div>':'')+(memberUnlocked?'<div class="ps">HP:'+p.hp+'/'+p.mhp+' ATK:'+p.atk+(p.gear&&p.gear.atk?'(+'+p.gear.atk+')':'')+' DEF:'+p.def+(p.gear&&p.gear.def?'(+'+p.gear.def+')':'')+' SPD:'+p.spd+(p.gear&&p.gear.spd?'(+'+p.gear.spd+')':'')+(getBlessDef(p)?' <span style="color:var(--rest);font-weight:700;">🐱+10 DEF</span>':'')+'</div>':'')+(G.affinity[p.n]?'<div class="affinity-bar"><div class="affinity-fill '+getAffinityColor(G.affinity[p.n].val)+'" style="width:'+getAffinityBarPct(p.n)+'%"></div></div><div class="affinity-label">'+(G.affinity[p.n].val>=70?'💕 Close':G.affinity[p.n].val>=40?'💛 Friendly':G.affinity[p.n].val>=20?'💔 Distant':'💀 Strained')+' ('+G.affinity[p.n].val+')</div>':'')
 +(G.affinityUnlocks[p.n]?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">'+G.affinityUnlocks[p.n].map(function(u){var un=p.affinityBonuses&&p.affinityBonuses.includes(u.id);return '<span title="'+u.d+'" style="font-size:9px;padding:2px 6px;border-radius:8px;border:1px solid '+(un?'var(--xp);color:var(--xp);':'var(--border);color:var(--text-dim);opacity:0.6;')+'">'+(un?'🌟 ':'🔒 ')+u.n+' ('+u.th+')</span>';}).join('')+'</div>':'')+rGrowthAbilityBadge(p.n)+rCompanionPrestigeBadge(p.n)+'</div></div>';
     // === COMPANION EQUIPMENT (8 slots for most, reduced for Soel — see hiddenSlots) ===
-    if(p.on || p.ul <= G.p.lvl){
+    if(memberUnlocked){
       const role = getCompanionRole(p.n);
       const hiddenSlots = (role && role.hiddenSlots) || [];
       const slotOrder = ['weapon','armor','head','hands','feet','ring1','ring2','amulet'].filter(s => !hiddenSlots.includes(s));
@@ -16204,7 +22281,7 @@ function rParty(){
           h += '<div style="font-size:9px;color:var(--text-dim);margin-bottom:4px;">' + statBits.join(' ') + '</div>';
           h += '<button class="unequip-pgear" data-member="' + p.n + '" data-slot="' + slot + '" style="width:100%;padding:3px;border-radius:6px;border:1px solid var(--danger);background:transparent;color:var(--danger);font-size:9px;font-weight:600;cursor:pointer;">Unequip</button>';
         } else {
-          const candidates = G.p.inv.map((it, idx) => ({it, idx})).filter(x => x.it.slot === invSlotKey && x.it.forCompanion === p.n);
+          const candidates = G.p.inv.map((it, idx) => ({it, idx})).filter(x => x.it.slot === invSlotKey && (x.it.forCompanion === p.n || x.it.forCompanion === 'any'));
           if (candidates.length > 0) {
             h += '<div style="display:flex;flex-direction:column;gap:2px;margin-top:2px;">';
             for (let c of candidates.slice(0, 3)) {
@@ -16283,10 +22360,52 @@ function getEquipComparison(item) {
   return { better: false, arrow: '●', color: '#9ca3af', text: 'Sidegrade' };
 }
 
+// Same comparison logic, but checks the correct owner's equipped gear — San's for
+// regular items, or the specific companion's for anything tagged forCompanion.
+// getEquipComparison() alone can't evaluate companion gear meaningfully since it
+// always compares against San's own equipment regardless of who an item is for.
+function getEquipComparisonForOwner(item) {
+  if (!item || !item.slot) return null;
+  if (!item.forCompanion || item.forCompanion === 'any') return getEquipComparison(item);
+  const owner = G.party.find(p => p.n === item.forCompanion);
+  if (!owner || !owner.eq) return null; // unknown owner — treat as unsellable, not junk
+  const slot = item.slot === 'ring' ? (owner.eq.ring1 ? 'ring2' : 'ring1') : item.slot;
+  const equipped = owner.eq[slot];
+  if (!equipped) return { better: true, arrow: '▲', color: '#22c55e', text: 'New slot' };
+  const itemScore = getEquipScore(item);
+  const eqScore = getEquipScore(equipped);
+  if (itemScore > eqScore) return { better: true, arrow: '▲', color: '#22c55e', text: 'Upgrade' };
+  if (itemScore < eqScore) return { better: false, arrow: '▼', color: '#ef4444', text: 'Downgrade' };
+  return { better: false, arrow: '●', color: '#9ca3af', text: 'Sidegrade' };
+}
+
+function setInvTab(tab) {
+  G.invTab = tab;
+  render();
+}
+
 function rInv(){
+  const invTab = G.invTab || 'all';
   let h='<div class="inventory-view"><h2 class="st">Inventory</h2>';
 
+  // Tab bar — lets the player jump straight to potions/gear/etc instead of
+  // scrolling past everything to get there.
+  const invTabs = [
+    { id: 'all', label: 'All' },
+    { id: 'gear', label: '⚔️ Gear' },
+    { id: 'potions', label: '🧪 Potions' },
+    { id: 'party', label: '🧝 Party Gear' },
+    { id: 'materials', label: '💎 Materials' }
+  ];
+  h += '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">';
+  for (let t of invTabs) {
+    const sel = invTab === t.id;
+    h += '<button onclick="setInvTab(\'' + t.id + '\')" class="tier-btn' + (sel ? ' sel' : '') + '" style="flex-shrink:0;">' + t.label + '</button>';
+  }
+  h += '</div>';
+
   // Equipment Stats Summary
+  if (invTab === 'all' || invTab === 'gear') {
   const eqStats = getEquippedStats();
   h += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:16px;">';
   h += '<div style="font-size:12px;font-weight:600;color:var(--accent-light);margin-bottom:8px;">⚔️ Equipment Bonuses</div>';
@@ -16332,12 +22451,14 @@ function rInv(){
     h+='</div>';
   }
   h+='</div></div>';
+  }
 
   // Categorize inventory items
   const equipItems = [];
   const companionGearItems = [];
   const consumableItems = [];
   const matItems = [];
+  const bookItems = [];
   const otherItems = [];
   
   for(let i=0; i<G.p.inv.length; i++){
@@ -16346,6 +22467,7 @@ function rInv(){
     if(isEquip && it.forCompanion) companionGearItems.push({item: it, index: i});
     else if(isEquip) equipItems.push({item: it, index: i});
     else if(it.t==='pot' || it.t==='food' || it.t==='drink' || it.t==='revive') consumableItems.push({item: it, index: i});
+    else if(it.t==='book') bookItems.push({item: it, index: i});
     else if(it.t==='mat') matItems.push({item: it, index: i});
     else otherItems.push({item: it, index: i});
   }
@@ -16362,7 +22484,7 @@ function rInv(){
   });
 
   // Companion gear section — informational only; equip/unequip happens on the Party screen
-  if(companionGearItems.length > 0){
+  if(companionGearItems.length > 0 && (invTab === 'all' || invTab === 'party')){
     h+='<div class="its"><h3>🧝 Companion Gear ('+companionGearItems.length+')</h3><div class="ig">';
     for(let ci of companionGearItems){
       const it = ci.item;
@@ -16384,7 +22506,7 @@ function rInv(){
   }
 
   // Equipment section
-  if(equipItems.length > 0){
+  if(equipItems.length > 0 && (invTab === 'all' || invTab === 'gear')){
     h+='<div class="its"><h3>🎒 Equipment ('+equipItems.length+')</h3><div class="ig">';
     for(let ei of equipItems){
       const it = ei.item;
@@ -16419,7 +22541,7 @@ function rInv(){
   }
 
   // Consumables section
-  if(consumableItems.length > 0){
+  if(consumableItems.length > 0 && (invTab === 'all' || invTab === 'potions')){
     h+='<div class="its"><h3>🧪 Consumables ('+consumableItems.length+')</h3><div class="ig">';
     for(let ci of consumableItems){
       const it = ci.item;
@@ -16433,6 +22555,8 @@ function rInv(){
       if(it.eff==='cure_ailment') h+='<div style="font-size:10px;color:var(--accent-light);">Cures afflictions</div>';
       if(it.eff==='bless') h+='<div style="font-size:10px;color:var(--gold);">+ATK for 4 turns</div>';
       if(it.eff==='xp_boost') h+='<div style="font-size:10px;color:var(--gold);">+'+Math.floor((it.boostPct||0.5)*100)+'% XP \u00b7 '+(it.v||30)+'m</div>';
+      if(it.eff==='stat_boost') h+='<div style="font-size:10px;color:var(--gold);">+'+(it.boostVal||5)+' '+(it.stat||'atk').toUpperCase()+' \u00b7 '+(it.mins||30)+'m</div>';
+      if(it.eff==='perm_stat') h+='<div style="font-size:10px;color:'+((G.p.permStatsUsed&&G.p.permStatsUsed[it.stat])?'var(--disabled)':'var(--accent-light)')+';">'+((G.p.permStatsUsed&&G.p.permStatsUsed[it.stat])?'Already taken \u2014 no further effect':'Permanent +'+(it.v||1)+' '+(it.stat||'?').toUpperCase())+'</div>';
       h+='<div class="iq">x'+it.q+'</div>';
       h+='<div class="ia">';
       h+='<button class="ib ib-u" data-i="'+i+'">Use</button>';
@@ -16441,8 +22565,27 @@ function rInv(){
     h+='</div></div>';
   }
 
+  // Recipe books
+  if(bookItems.length > 0 && (invTab === 'all' || invTab === 'materials')){
+    h+='<div class="its"><h3>📖 Recipe Books ('+bookItems.length+')</h3><div class="ig">';
+    for(let bi of bookItems){
+      const it = bi.item;
+      const i = bi.index;
+      const alreadyKnown = (G.knownRecipes||[]).includes(it.recipe);
+      h+='<div class="ic">';
+      h+='<div class="ii">'+ie(it)+'</div>';
+      h+='<div class="in" style="color:'+rc(it.r)+'">'+it.n+'</div>';
+      h+='<div style="font-size:10px;color:'+(alreadyKnown?'var(--disabled)':'var(--accent-light)')+';">'+(alreadyKnown?'Already known':'Teaches: '+it.recipe)+'</div>';
+      h+='<div class="iq">x'+it.q+'</div>';
+      h+='<div class="ia">';
+      h+='<button class="ib ib-u" data-i="'+i+'">Read</button>';
+      h+='</div></div>';
+    }
+    h+='</div></div>';
+  }
+
   // Materials section
-  if(matItems.length > 0){
+  if(matItems.length > 0 && (invTab === 'all' || invTab === 'materials')){
     h+='<div class="its"><h3>💎 Materials ('+matItems.length+')</h3><div class="ig">';
     for(let mi of matItems){
       const it = mi.item;
@@ -16457,7 +22600,7 @@ function rInv(){
   }
 
   // Other items
-  if(otherItems.length > 0){
+  if(otherItems.length > 0 && (invTab === 'all' || invTab === 'materials')){
     h+='<div class="its"><h3>📦 Other ('+otherItems.length+')</h3><div class="ig">';
     for(let oi of otherItems){
       const it = oi.item;
@@ -16472,6 +22615,16 @@ function rInv(){
   }
 
   if(G.p.inv.length==0) h+='<div class="ei">Your pack is empty.</div>';
+  else {
+    const tabHasItems = {
+      all: true,
+      gear: equipItems.length > 0,
+      potions: consumableItems.length > 0,
+      party: companionGearItems.length > 0,
+      materials: (matItems.length + bookItems.length + otherItems.length) > 0
+    };
+    if (!tabHasItems[invTab]) h += '<div class="ei">Nothing in this category yet.</div>';
+  }
   h+='</div>';
   return h;
 }
@@ -16479,7 +22632,9 @@ function rInv(){
 function rCraft(){
   let h='<div class="craft-view"><h2 class="st">Crafting</h2><div class="rlist">';
   for(let i=0;i<G.recipes.length;i++){
-    const r=G.recipes[i]; let ok=true,ms='';
+    const r=G.recipes[i];
+    if(r.locked && !(G.knownRecipes||[]).includes(r.n)) continue;
+    let ok=true,ms='';
     for(let [mn,mq] of Object.entries(r.m)){
       const iv=G.p.inv.find(x=>x.n==mn);
       const hv=iv?iv.q:0,en=hv>=mq;
@@ -16854,7 +23009,7 @@ function rTemple() {
     const cost = getTempleCost(item.cost);
     h2 += '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);border-radius:10px;padding:10px;margin-bottom:6px;' + (locked ? 'opacity:0.5;' : '') + '">';
     h2 += '<div><div style="font-weight:700;font-size:13px;">' + item.n + '</div><div style="font-size:10px;color:var(--text-dim);">' + item.d + '</div></div>';
-    h2 += '<button onclick="buyTempleConsumable(' + i + ')" class="btn-outline-ghost" style="flex-shrink:0;padding:6px 12px;font-size:11px;"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒' : cost + 'G') + '</button>';
+    h2 += '<button onclick="buyTempleConsumable(' + i + ')" class="btn-outline-ghost" style="flex-shrink:0;width:auto;padding:6px 12px;font-size:11px;"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒' : cost + 'G') + '</button>';
     h2 += '</div>';
   }
   h2 += '</div>';
@@ -17070,6 +23225,7 @@ function rRest() {
 
 document.addEventListener('DOMContentLoaded', function() {
   const hasSave = loadGame();
+  G.sessionRecap.startLevel = G.p.lvl;
   if (!hasSave) {
     lg('Welcome to Legends of Daybreak, San.');
     lg('Tap Adventure to start your journey!');
