@@ -162,6 +162,8 @@ const TAVERN_FOODS = [
   { id:"f58", name:"Peas (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.4, protein:5.0, carbs:11.0, emoji:"🟢" },
   { id:"f59", name:"Corn (100g)", cat:"⚠️ Higher-Carb Veg", fat:1.2, protein:3.3, carbs:19.0, emoji:"🌽" },
   { id:"f60", name:"Potato (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:2.0, carbs:17.0, emoji:"🥔" },
+  { id:"f363", name:"Tapioca / Cassava, boiled (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.3, protein:1.0, carbs:32.0, emoji:"🍠" },
+  { id:"f364", name:"Papaya (100g)", cat:"⚠️ Higher-Carb Veg", fat:0.3, protein:0.5, carbs:11.0, emoji:"🍈" },
   { id:"f61", name:"½ Potato (~75g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.5, carbs:13.0, emoji:"🥔" },
   { id:"f295", name:"Potato (50g)", cat:"⚠️ Higher-Carb Veg", fat:0.1, protein:1.0, carbs:8.5, emoji:"🥔" },
   { id:"f296", name:"Potato, a few bites (~20g)", cat:"⚠️ Higher-Carb Veg", fat:0.0, protein:0.4, carbs:3.4, emoji:"🥔" },
@@ -1717,7 +1719,7 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20, dayResetHour: 8 },
+    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20, dayResetHour: 8, textScale: 1 },
     slackDays: [],
     weightLog: [],
     calendarNotes: {},
@@ -4185,6 +4187,27 @@ function setDayResetHour(value) {
   save(); render();
   showToast(v === 0 ? "Daily reset set to midnight." : `Daily reset set to ${v}am.`);
 }
+function setTextScale(value) {
+  const v = parseFloat(value);
+  if (isNaN(v) || v < 1 || v > 1.5) return;
+  state.settings.textScale = v;
+  save(); render();
+}
+function applyTextScale() {
+  const scale = state.settings.textScale || 1;
+  if (scale === 1) return;
+  const app = document.getElementById("app");
+  if (!app) return;
+  const walker = document.createTreeWalker(app, NodeFilter.SHOW_ELEMENT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const fs = node.style && node.style.fontSize;
+    if (fs) {
+      const match = fs.match(/^([\d.]+)px$/);
+      if (match) node.style.fontSize = (parseFloat(match[1]) * scale).toFixed(1) + "px";
+    }
+  }
+}
 function fmtMMSS(ms) {
   const totalSec = Math.max(0, Math.ceil(ms/1000));
   const m = Math.floor(totalSec/60);
@@ -4423,7 +4446,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode,
   logPrnMed, deletePrnMed, openMedHistory, closeMedHistory,
   startSickEpisode, endSickEpisode, deleteSickEntry, openSickTracker, closeSickTracker,
-  selectTavernLogDate, deleteTavernEntry, openEditTavernEntry, closeEditTavernEntry, saveEditTavernEntry };
+  selectTavernLogDate, deleteTavernEntry, openEditTavernEntry, closeEditTavernEntry, saveEditTavernEntry, setTextScale };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -6903,6 +6926,8 @@ function renderSettingsModal() {
   const resetHourPresets = [0, 4, 6, 8, 10];
   const resetHourLabel = (h) => h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h-12}pm`;
   const resetHourButtons = resetHourPresets.map(v => `<button data-act="setDayResetHour" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.dayResetHour===v?C.mageDeep:C.creamDeep};color:${state.settings.dayResetHour===v?"white":C.ink}">${resetHourLabel(v)}</button>`).join("");
+  const textScalePresets = [{v:1,label:"Normal"},{v:1.15,label:"Large"},{v:1.3,label:"Larger"}];
+  const textScaleButtons = textScalePresets.map(p => `<button data-act="setTextScale" data-arg="${p.v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:${12*p.v}px;font-weight:700;background:${state.settings.textScale===p.v?C.mageDeep:C.creamDeep};color:${state.settings.textScale===p.v?"white":C.ink}">${p.label}</button>`).join("");
   const waterPresets = [6, 8, 10, 12];
   const waterButtons = waterPresets.map(v => `<button data-act="setWaterGoal" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.water.goal===v?C.mage:C.creamDeep};color:${state.water.goal===v?"white":C.ink}">${v} cups</button>`).join("");
   const notifSupported = typeof Notification !== "undefined";
@@ -6938,6 +6963,10 @@ function renderSettingsModal() {
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">🌅 Daily Reset Time</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">When your "day" rolls over — carbs, water, streak, reminders, all of it. Currently ${resetHourLabel(state.settings.dayResetHour)}. Log anything before that time and it still counts toward the previous day.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${resetHourButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">🔠 Text Size</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Scales text across the whole app.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${textScaleButtons}</div>
 
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.mageDeep};margin:0 0 6px">Water Goal</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Currently ${state.water.goal} cups/day.</p>
@@ -7177,6 +7206,7 @@ function render() {
     ${renderNav()}
   `;
   document.getElementById("app").innerHTML = html;
+  applyTextScale();
   ui.fx = null;
 }
 
