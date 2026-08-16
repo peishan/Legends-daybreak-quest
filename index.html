@@ -147,6 +147,9 @@ const TAVERN_FOODS = [
   { id:"f355", name:"Kangkong / Water Spinach (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:2.6, carbs:3.5, emoji:"🥬" },
   { id:"f356", name:"Midin / Pucuk Paku, Fiddlehead Fern (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.4, protein:4.0, carbs:4.5, emoji:"🌿" },
   { id:"f357", name:"Daun Ubi / Cassava Leaves, cooked (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.4, protein:5.0, carbs:5.5, emoji:"🥬" },
+  { id:"f358", name:"Pegaga / Asiatic Pennywort (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.9, protein:1.8, carbs:4.5, emoji:"🌿" },
+  { id:"f359", name:"Ulam Raja / Cosmos caudatus (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.4, protein:2.9, carbs:0.6, emoji:"🌿" },
+  { id:"f360", name:"Sayur Manis / Katuk (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:1.0, protein:6.0, carbs:9.9, emoji:"🥬" },
   { id:"f51", name:"Kailan / Chinese Broccoli (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.3, protein:2.5, carbs:2.0, emoji:"🥬" },
   { id:"f52", name:"Bean Sprouts (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.2, protein:3.0, carbs:3.0, emoji:"🌱" },
   { id:"f53", name:"Capsicum / Bell Pepper (100g)", cat:"🥦 Keto Veg (Low Carb)", fat:0.3, protein:1.0, carbs:4.5, emoji:"🫑" },
@@ -411,6 +414,8 @@ const TAVERN_FOODS = [
   { id:"f271", name:"Wu Gok / Deep-fried Taro Dumpling (1pc)", cat:"🥟 Dimsum", fat:10.0, protein:3.0, carbs:16.0, emoji:"🥟" },
   { id:"f272", name:"Curry Puff, chicken (1pc)", cat:"🥟 Dimsum", fat:8.0, protein:2.0, carbs:14.0, emoji:"🥐" },
   { id:"f273", name:"Satay, chicken or beef, no sauce (3 sticks)", cat:"🍢 Street Food", fat:6.0, protein:15.0, carbs:4.0, emoji:"🍢" },
+  { id:"f361", name:"Cucur Sayur / Vegetable Fritter (1pc)", cat:"🍢 Street Food", fat:9.0, protein:4.0, carbs:28.0, emoji:"🥠" },
+  { id:"f362", name:"Tauhu Sumbat / Stuffed Tofu (1pc)", cat:"🍢 Street Food", fat:15.0, protein:10.0, carbs:20.0, emoji:"🧈" },
   { id:"f274", name:"Satay Peanut Sauce (2 tbsp)", cat:"🍢 Street Food", fat:8.0, protein:3.0, carbs:6.0, emoji:"🥜" },
   { id:"f275", name:"Roti Canai / Prata, plain (1pc)", cat:"🍢 Street Food", fat:8.0, protein:4.0, carbs:30.0, emoji:"🫓" },
   { id:"f276", name:"Nasi Lemak, rice+egg+anchovies+sambal (1 plate)", cat:"🍢 Street Food", fat:15.0, protein:6.0, carbs:45.0, emoji:"🍚" },
@@ -1718,6 +1723,7 @@ function defaultState() {
     calendarNotes: {},
     eliteMode: false,
     medPrn: {},
+    tavernLog: {},
     sickness: { episodes: [] },
     bills: {
       electricity: { dueDay: 15, paidThisMonth: false, monthKey: null, streak: 0 },
@@ -1772,7 +1778,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false, showMedHistory:false, showSickTracker:false };
+const ui = { tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false, showMedHistory:false, showSickTracker:false, tavernLogDate:null, editingTavernEntry:null };
 
 function mergeDefaults(def, saved) {
   const result = { ...def };
@@ -2024,6 +2030,7 @@ function ensureDaily() {
     let streak = state.tavern ? state.tavern.streak : 0;
     let lastGoodDate = state.tavern ? state.tavern.lastGoodDate : null;
     if (prevDate) {
+      state.tavernLog[prevDate] = state.tavern.log;
       const wasGood = prevCarbs <= carbLimitForDate(prevDate);
       if (wasGood) {
         const wasConsecutive = lastGoodDate && (new Date(prevDate) - new Date(lastGoodDate))/86400000 === 1;
@@ -2034,6 +2041,7 @@ function ensureDaily() {
       }
     }
     state.tavern = { date:t, carbsToday:0, fatToday:0, proteinToday:0, log:[], streak, lastGoodDate };
+    state.tavernLog[t] = state.tavern.log;
   }
   if (!state.dailyReminders || state.dailyReminders.date !== t) state.dailyReminders = { date:t, morningWater:false, fedSoel:false, sleptEarly:false };
   if (!state.soelPlay || state.soelPlay.date !== t) state.soelPlay = { date:t, count:0 };
@@ -3625,21 +3633,94 @@ function drinkWater() {
   showToast(`+1 cup logged. (${state.water.count}/${state.water.goal})`);
 }
 
+function backfillLogIds(arr) {
+  arr.forEach((e, i) => { if (!e.logId) e.logId = `legacy_${today()}_${i}_${Math.random().toString(36).slice(2,7)}`; });
+  return arr;
+}
+function tavernLogArray(dateKey) {
+  if (dateKey === today()) { ensureDaily(); backfillLogIds(state.tavern.log); return state.tavern.log; }
+  if (!state.tavernLog[dateKey]) state.tavernLog[dateKey] = [];
+  backfillLogIds(state.tavernLog[dateKey]);
+  return state.tavernLog[dateKey];
+}
+function syncTavernTotals() {
+  const entries = state.tavern.log;
+  state.tavern.carbsToday = Math.round(entries.reduce((s,e) => s+e.carbs, 0) * 10) / 10;
+  state.tavern.fatToday = Math.round(entries.reduce((s,e) => s+e.fat, 0) * 10) / 10;
+  state.tavern.proteinToday = Math.round(entries.reduce((s,e) => s+e.protein, 0) * 10) / 10;
+}
+function tavernMacrosForDate(dateKey) {
+  if (dateKey === today()) { ensureDaily(); return { carbs: state.tavern.carbsToday, fat: state.tavern.fatToday, protein: state.tavern.proteinToday }; }
+  const entries = state.tavernLog[dateKey] || [];
+  return {
+    carbs: Math.round(entries.reduce((s,e) => s+e.carbs, 0) * 10) / 10,
+    fat: Math.round(entries.reduce((s,e) => s+e.fat, 0) * 10) / 10,
+    protein: Math.round(entries.reduce((s,e) => s+e.protein, 0) * 10) / 10,
+  };
+}
+function tavernDateOptions() {
+  const arr = [];
+  for (let i=0;i<7;i++) arr.push(dayKey(new Date(nowShifted().getTime() - i*86400000)));
+  return arr;
+}
+function activeTavernLogDate() { return (ui.tavernLogDate && tavernDateOptions().includes(ui.tavernLogDate)) ? ui.tavernLogDate : today(); }
+function selectTavernLogDate(dateKey) { ui.tavernLogDate = dateKey; render(); }
+function deleteTavernEntry(arg) {
+  const [dateKey, logId] = arg.split("|");
+  const arr = tavernLogArray(dateKey);
+  const idx = arr.findIndex(e => e.logId === logId);
+  if (idx === -1) return;
+  arr.splice(idx, 1);
+  if (dateKey === today()) syncTavernTotals();
+  if (ui.editingTavernEntry && ui.editingTavernEntry.logId === logId) ui.editingTavernEntry = null;
+  save(); render();
+  showToast("Entry removed.");
+}
+function openEditTavernEntry(arg) {
+  const [dateKey, logId] = arg.split("|");
+  ui.editingTavernEntry = { dateKey, logId };
+  render();
+}
+function closeEditTavernEntry() { ui.editingTavernEntry = null; render(); }
+function saveEditTavernEntry() {
+  if (!ui.editingTavernEntry) return;
+  const { dateKey, logId } = ui.editingTavernEntry;
+  const arr = tavernLogArray(dateKey);
+  const entry = arr.find(e => e.logId === logId);
+  if (!entry) return;
+  const nameEl = document.getElementById("editEntryName");
+  const carbsEl = document.getElementById("editEntryCarbs");
+  const fatEl = document.getElementById("editEntryFat");
+  const proteinEl = document.getElementById("editEntryProtein");
+  if (nameEl && nameEl.value.trim()) entry.name = nameEl.value.trim();
+  if (carbsEl) entry.carbs = Math.max(0, parseFloat(carbsEl.value) || 0);
+  if (fatEl) entry.fat = Math.max(0, parseFloat(fatEl.value) || 0);
+  if (proteinEl) entry.protein = Math.max(0, parseFloat(proteinEl.value) || 0);
+  entry.overBudget = tavernMacrosForDate(dateKey).carbs > carbLimitForDate(dateKey);
+  if (dateKey === today()) syncTavernTotals();
+  ui.editingTavernEntry = null;
+  save(); render();
+  showToast("Entry updated.");
+}
+
 function orderTavernItem(itemId) {
   ensureDaily();
   const item = TAVERN_FOODS.find(i => i.id === itemId);
   if (!item) return;
-  const wouldExceed = (state.tavern.carbsToday + item.carbs) > effectiveCarbLimit();
-  state.tavern.carbsToday = Math.round((state.tavern.carbsToday + item.carbs) * 10) / 10;
-  state.tavern.fatToday = Math.round((state.tavern.fatToday + item.fat) * 10) / 10;
-  state.tavern.proteinToday = Math.round((state.tavern.proteinToday + item.protein) * 10) / 10;
-  state.tavern.log.push({ id: item.id, name: item.name, icon: item.emoji, carbs: item.carbs, fat: item.fat, protein: item.protein, overBudget: wouldExceed });
-  state.tavernFavorites = [itemId, ...state.tavernFavorites.filter(id => id !== itemId)].slice(0, 8);
+  const dateKey = activeTavernLogDate();
+  const macros = tavernMacrosForDate(dateKey);
+  const limit = carbLimitForDate(dateKey);
+  const wouldExceed = (macros.carbs + item.carbs) > limit;
+  const arr = tavernLogArray(dateKey);
+  arr.push({ logId: `log_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, id: item.id, name: item.name, icon: item.emoji, carbs: item.carbs, fat: item.fat, protein: item.protein, overBudget: wouldExceed });
+  if (dateKey === today()) { state.tavernFavorites = [itemId, ...state.tavernFavorites.filter(id => id !== itemId)].slice(0, 8); syncTavernTotals(); }
   const leveledUp = grantReward(2, 2);
   save(); render();
+  const dayLabel = dateKey === today() ? "today" : dateKey;
+  const newTotal = tavernMacrosForDate(dateKey).carbs;
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
-  else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${state.tavern.carbsToday}g carbs today.`);
-  else showToast(`${item.emoji} ${item.name} logged. ${state.tavern.carbsToday}/${effectiveCarbLimit()}g carbs today.`);
+  else if (wouldExceed) showToast(`⚠️ ${item.name} pushed you over budget — ${newTotal}g carbs on ${dayLabel}.`);
+  else showToast(`${item.emoji} ${item.name} logged. ${newTotal}/${limit}g carbs on ${dayLabel}.`);
 }
 
 function toggleCustomFoodForm() { ui.showCustomFoodForm = !ui.showCustomFoodForm; render(); }
@@ -3655,18 +3736,22 @@ function orderCustomFood() {
   const fat = parseFloat(fatEl.value) || 0;
   const protein = parseFloat(proteinEl.value) || 0;
   if (carbs < 0 || fat < 0 || protein < 0) return;
-  const wouldExceed = (state.tavern.carbsToday + carbs) > effectiveCarbLimit();
-  state.tavern.carbsToday = Math.round((state.tavern.carbsToday + carbs) * 10) / 10;
-  state.tavern.fatToday = Math.round((state.tavern.fatToday + fat) * 10) / 10;
-  state.tavern.proteinToday = Math.round((state.tavern.proteinToday + protein) * 10) / 10;
-  state.tavern.log.push({ id: `custom_${Date.now()}`, name, icon: "🍽️", carbs, fat, protein, overBudget: wouldExceed, custom: true });
+  const dateKey = activeTavernLogDate();
+  const macros = tavernMacrosForDate(dateKey);
+  const limit = carbLimitForDate(dateKey);
+  const wouldExceed = (macros.carbs + carbs) > limit;
+  const arr = tavernLogArray(dateKey);
+  arr.push({ logId: `log_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, id: `custom_${Date.now()}`, name, icon: "🍽️", carbs, fat, protein, overBudget: wouldExceed, custom: true });
+  if (dateKey === today()) syncTavernTotals();
   nameEl.value = ""; carbsEl.value = ""; fatEl.value = ""; proteinEl.value = "";
   ui.showCustomFoodForm = false;
   const leveledUp = grantReward(2, 2);
   save(); render();
+  const dayLabel = dateKey === today() ? "today" : dateKey;
+  const newTotal = tavernMacrosForDate(dateKey).carbs;
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
-  else if (wouldExceed) showToast(`⚠️ ${name} logged, over budget — ${state.tavern.carbsToday}g carbs today.`);
-  else showToast(`🍽️ ${name} logged. ${state.tavern.carbsToday}/${effectiveCarbLimit()}g carbs today.`);
+  else if (wouldExceed) showToast(`⚠️ ${name} logged, over budget — ${newTotal}g carbs on ${dayLabel}.`);
+  else showToast(`🍽️ ${name} logged. ${newTotal}/${limit}g carbs on ${dayLabel}.`);
 }
 
 function openTavern() { ui.showTavern = true; render(); }
@@ -4337,7 +4422,8 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
   setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode,
   logPrnMed, deletePrnMed, openMedHistory, closeMedHistory,
-  startSickEpisode, endSickEpisode, deleteSickEntry, openSickTracker, closeSickTracker };
+  startSickEpisode, endSickEpisode, deleteSickEntry, openSickTracker, closeSickTracker,
+  selectTavernLogDate, deleteTavernEntry, openEditTavernEntry, closeEditTavernEntry, saveEditTavernEntry };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -4968,12 +5054,14 @@ function renderTavern() {
   const overBudget = carbs > effectiveCarbLimit();
   const pct = Math.min(100, (carbs / effectiveCarbLimit()) * 100);
   const barColor = overBudget ? "#E85B5B" : (pct > 75 ? C.gold : C.sage);
-  const logRows = state.tavern.log.slice().reverse().slice(0, 5).map(entry => `
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
+  const todayEntries = tavernLogArray(today());
+  const logRows = todayEntries.slice().reverse().slice(0, 5).map(entry => `
+    <button data-act="openEditTavernEntry" data-arg="${today()}|${entry.logId}" class="disp" style="display:flex;align-items:center;gap:8px;padding:5px 0;width:100%;text-align:left;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
       <span style="font-size:14px">${entry.icon}</span>
-      <span style="font-size:11px;color:${entry.overBudget ? "#E85B5B" : C.ink};flex:1;font-weight:${entry.overBudget?700:400}">${entry.name}</span>
+      <span style="font-size:11px;color:${entry.overBudget ? "#E85B5B" : C.ink};flex:1;font-weight:${entry.overBudget?700:400}">${escapeHtml(entry.name)}</span>
       <span style="font-size:10px;color:${C.inkSoft}">F${entry.fat} P${entry.protein} C${entry.carbs}</span>
-    </div>`).join("");
+      <span style="font-size:9px;color:${C.inkSoft}">✏️</span>
+    </button>`).join("");
   const ratio = macroRatio(state.tavern.fatToday, state.tavern.proteinToday, carbs);
   return card(`
     <div style="padding:16px">
@@ -5010,12 +5098,38 @@ function renderTavern() {
 
 function renderTavernModal() {
   if (!ui.showTavern) return "";
-  const carbs = state.tavern.carbsToday;
+  const logDate = activeTavernLogDate();
+  const isToday = logDate === today();
+  const dayMacros = tavernMacrosForDate(logDate);
+  const carbs = dayMacros.carbs;
+  const dayLimit = carbLimitForDate(logDate);
+  const dateChips = tavernDateOptions().map((d, i) => {
+    const label = i === 0 ? "Today" : i === 1 ? "Yesterday" : new Date(d + "T00:00:00").toLocaleDateString("default", { weekday: "short" });
+    const active = d === logDate;
+    return `<button data-act="selectTavernLogDate" data-arg="${d}" class="disp" style="flex-shrink:0;padding:7px 12px;border-radius:9999px;font-size:11px;font-weight:700;background:${active?C.mageDeep:C.creamDeep};color:${active?"white":C.ink}">${label}</button>`;
+  }).join("");
+  const dayEntries = tavernLogArray(logDate);
+  const dayOverBudget = carbs > dayLimit;
+  const dayLogRows = dayEntries.slice().reverse().map(entry => `
+    <button data-act="openEditTavernEntry" data-arg="${logDate}|${entry.logId}" class="disp" style="display:flex;align-items:center;gap:8px;padding:6px 8px;width:100%;text-align:left;background:${C.creamDeep};border-radius:10px;margin-bottom:5px">
+      <span style="font-size:14px">${entry.icon}</span>
+      <span style="font-size:11.5px;color:${C.ink};flex:1">${escapeHtml(entry.name)}</span>
+      <span style="font-size:10px;color:${C.inkSoft}">F${entry.fat} P${entry.protein} C${entry.carbs}</span>
+      <span style="font-size:9px;color:${C.inkSoft}">✏️</span>
+    </button>`).join("");
+  const dateLogSection = `
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px">${dateChips}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11.5px;font-weight:700;color:${C.ink}">${isToday ? "Today" : logDate}</span>
+      <span style="font-size:11.5px;font-weight:700;color:${dayOverBudget?"#E85B5B":C.ink}">${carbs}g / ${dayLimit}g carbs</span>
+    </div>
+    ${dayEntries.length ? `<div style="margin-bottom:12px">${dayLogRows}</div>` : `<p style="font-size:11px;color:${C.inkSoft};margin:0 0 12px">Nothing logged for ${isToday?"today":"this day"} yet.</p>`}
+  `;
   const favRow = state.tavernFavorites.length ? (() => {
     const chips = state.tavernFavorites.map(id => {
       const item = TAVERN_FOODS.find(f => f.id === id);
       if (!item) return "";
-      const wouldExceed = (carbs + item.carbs) > effectiveCarbLimit();
+      const wouldExceed = (carbs + item.carbs) > dayLimit;
       return `<button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px;border-radius:12px;background:${wouldExceed?"rgba(232,91,91,0.12)":C.mageSoft};flex-shrink:0;min-width:64px">
         <span style="font-size:16px">${item.emoji}</span>
         <span style="font-size:9px;font-weight:700;color:${C.mageDeep};text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">${escapeHtml(item.name)}</span>
@@ -5027,7 +5141,7 @@ function renderTavernModal() {
   })() : "";
   let currentCat = null;
   const rows = TAVERN_FOODS.map(item => {
-    const wouldExceed = (carbs + item.carbs) > effectiveCarbLimit();
+    const wouldExceed = (carbs + item.carbs) > dayLimit;
     const header = item.cat !== currentCat ? (() => {
       currentCat = item.cat;
       return `<p data-cat-header="${escapeHtml(item.cat)}" class="disp" style="font-weight:700;font-size:12px;color:${C.mageDeep};margin:14px 0 6px">${item.cat}</p>`;
@@ -5070,10 +5184,38 @@ function renderTavernModal() {
         <p class="disp" style="font-weight:700;font-size:15px;margin:0">🍺 The Tavern</p>
         <button data-act="closeTavern"><span style="color:${C.inkSoft}">✖</span></button>
       </div>
+      ${dateLogSection}
       ${favRow}
       <input type="text" placeholder="Search foods…" oninput="filterTavernFoods(this.value)" style="width:100%;padding:10px 14px;border-radius:9999px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink};font-size:13px;margin-bottom:10px" />
       ${customFoodSection}
       ${rows}
+    </div>
+  </div>`;
+}
+
+function renderEditTavernEntryModal() {
+  if (!ui.editingTavernEntry) return "";
+  const { dateKey, logId } = ui.editingTavernEntry;
+  const arr = tavernLogArray(dateKey);
+  const entry = arr.find(e => e.logId === logId);
+  if (!entry) return "";
+  return `<div style="position:fixed;inset:0;z-index:56;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
+    <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <p class="disp" style="font-weight:700;font-size:15px;margin:0">${entry.icon} Edit Entry</p>
+        <button data-act="closeEditTavernEntry"><span style="color:${C.inkSoft}">✖</span></button>
+      </div>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 10px">${dateKey}${dateKey===today()?" (today)":""}</p>
+      <input id="editEntryName" type="text" value="${escapeHtml(entry.name)}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink};margin-bottom:8px" />
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Carbs (g)</p><input id="editEntryCarbs" type="number" step="0.1" inputmode="decimal" value="${entry.carbs}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
+        <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Fat (g)</p><input id="editEntryFat" type="number" step="0.1" inputmode="decimal" value="${entry.fat}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
+        <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Protein (g)</p><input id="editEntryProtein" type="number" step="0.1" inputmode="decimal" value="${entry.protein}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button data-act="deleteTavernEntry" data-arg="${dateKey}|${logId}" class="disp" style="flex:1;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.creamDeep};color:#E85B5B">Delete</button>
+        <button data-act="saveEditTavernEntry" class="disp" style="flex:2;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.mageDeep};color:white">Save Changes</button>
+      </div>
     </div>
   </div>`;
 }
@@ -7019,6 +7161,7 @@ function render() {
     ${renderInsightsModal()}
     ${renderSettingsModal()}
     ${renderTavernModal()}
+    ${renderEditTavernEntryModal()}
     ${renderAchievementsModal()}
     ${renderJournalModal()}
     ${renderJournalReplayModal()}
