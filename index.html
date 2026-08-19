@@ -1719,7 +1719,7 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20, dayResetHour: 8, textScale: 1 },
+    settings: { carbLimit: 30, vegDayCarbLimit: 50, notificationsEnabled: false, slackDayCarbLimit: 80, periodSweetBiteBonus: 20, dayResetHour: 8, textScale: 1, mapView: "path" },
     slackDays: [],
     weightLog: [],
     calendarNotes: {},
@@ -4193,6 +4193,10 @@ function setTextScale(value) {
   state.settings.textScale = v;
   save(); render();
 }
+function toggleMapView() {
+  state.settings.mapView = state.settings.mapView === "list" ? "path" : "list";
+  save(); render();
+}
 function applyTextScale() {
   const scale = state.settings.textScale || 1;
   if (scale === 1) return;
@@ -4446,7 +4450,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode,
   logPrnMed, deletePrnMed, openMedHistory, closeMedHistory,
   startSickEpisode, endSickEpisode, deleteSickEntry, openSickTracker, closeSickTracker,
-  selectTavernLogDate, deleteTavernEntry, openEditTavernEntry, closeEditTavernEntry, saveEditTavernEntry, setTextScale };
+  selectTavernLogDate, deleteTavernEntry, openEditTavernEntry, closeEditTavernEntry, saveEditTavernEntry, setTextScale, toggleMapView };
 
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -5270,13 +5274,34 @@ function renderExplore() {
     return `<div style="display:flex;justify-content:${isLeft ? "flex-start" : "flex-end"};position:relative;z-index:1;margin-bottom:6px">${nodeContent}</div>`;
   }).join("");
 
+  const listRows = LOCATIONS.map(loc => {
+    const unlocked = state.player.level >= (loc.unlockLv||1);
+    const last = state.locations[loc.id] || 0;
+    const remaining = LOCATION_COOLDOWN_MS - (ui.now - last);
+    const ready = unlocked && remaining <= 0;
+    return `<button data-act="openZoneDetail" data-arg="${loc.id}" ${!unlocked ? "disabled" : ""} class="disp" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 14px;border-radius:14px;background:${C.card};border:1px solid ${C.border};margin-bottom:8px;opacity:${unlocked?1:0.6}">
+        <span style="width:42px;height:42px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:20px;background:${unlocked ? (ready ? C.sage : C.sageSoft) : C.creamDeep};border:2px solid ${unlocked ? C.sage : C.border};flex-shrink:0">${unlocked ? loc.icon : "🔒"}</span>
+        <span style="flex:1">
+          <p class="disp" style="font-size:12.5px;font-weight:700;margin:0;color:${unlocked?C.ink:C.inkSoft}">${loc.name}</p>
+          <p style="font-size:10.5px;color:${C.inkSoft};margin:1px 0 0">${unlocked ? (ready ? "Ready to explore" : `Ready in ${fmtMs(remaining)}`) : `Unlocks at Lv.${loc.unlockLv}`}</p>
+        </span>
+      </button>`;
+  }).join("");
+
+  const isListView = state.settings.mapView === "list";
+  const mapToggle = `<button data-act="toggleMapView" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.creamDeep};color:${C.ink};flex-shrink:0">${isListView ? "🗺️ Map View" : "📋 List View"}</button>`;
+
   return `<div style="display:flex;flex-direction:column;gap:12px">
     ${trainingCard}
-    <p style="color:${C.inkSoft};font-size:12px;margin:0 0 -2px">Your path through the Legends map — tap a stop to look around inside.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 -2px">
+      <p style="color:${C.inkSoft};font-size:12px;margin:0">${isListView ? "Your unlocked stops — tap one to look around inside." : "Your path through the Legends map — tap a stop to look around inside."}</p>
+      ${mapToggle}
+    </div>
+    ${isListView ? `<div>${listRows}</div>` : `
     <div style="position:relative;padding:4px 4px 0">
       <div style="position:absolute;left:50%;top:0;bottom:24px;width:3px;background:${C.border};transform:translateX(-50%);z-index:0"></div>
       ${nodes}
-    </div>
+    </div>`}
   </div>`;
 }
 
