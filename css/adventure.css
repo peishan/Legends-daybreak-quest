@@ -1,0 +1,30 @@
+
+/* Adventure 2.0 */
+.ad2-shell{display:flex;flex-direction:column;gap:12px}
+.ad2-hero{position:relative;overflow:hidden;border-radius:22px;padding:18px;color:white;background:linear-gradient(145deg,#6f4f92,#8e6fb0 55%,#b67d9a);box-shadow:0 10px 24px rgba(74,59,50,.16)}
+.ad2-hero:after{content:"✦";position:absolute;right:18px;top:-14px;font-size:120px;opacity:.10;transform:rotate(15deg)}
+.ad2-kicker{font-size:9px;letter-spacing:1.3px;font-weight:800;opacity:.8}
+.ad2-title{font-family:Poppins,Segoe UI,sans-serif;font-size:20px;font-weight:800;margin:3px 0 2px}
+.ad2-sub{font-size:11px;line-height:1.45;opacity:.9;max-width:82%}
+.ad2-route{display:flex;align-items:center;gap:7px;margin-top:13px;overflow:auto;padding-bottom:2px}
+.ad2-node{min-width:54px;text-align:center;font-size:9px;font-weight:800;opacity:.5}
+.ad2-node span{display:flex;width:34px;height:34px;margin:0 auto 3px;border-radius:50%;align-items:center;justify-content:center;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);font-size:16px}
+.ad2-node.active{opacity:1}.ad2-node.done{opacity:.9}.ad2-node.done span{background:rgba(255,255,255,.28)}
+.ad2-line{height:2px;flex:1;min-width:12px;background:rgba(255,255,255,.2);margin-top:-18px}
+.ad2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.ad2-stat{padding:9px 7px;border-radius:15px;background:var(--creamDeep);text-align:center}.ad2-stat b{display:block;font-family:Poppins,Segoe UI,sans-serif;font-size:15px}.ad2-stat span{font-size:9px;color:var(--inkSoft)}
+.ad2-enemy{padding:15px;border-radius:20px;background:linear-gradient(160deg,var(--card),var(--creamDeep));border:1px solid var(--border)}
+.ad2-enemy-top{display:flex;gap:12px;align-items:center}.ad2-enemy-icon{width:62px;height:62px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;background:var(--mageSoft);flex-shrink:0}
+.ad2-hp{height:9px;border-radius:999px;background:var(--border);overflow:hidden;margin-top:9px}.ad2-hp i{display:block;height:100%;background:linear-gradient(90deg,#b85d6d,#e9a8b4);border-radius:999px;transition:width .25s}
+.ad2-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:11px}
+.ad2-action{padding:11px 9px;border-radius:15px;background:var(--creamDeep);color:var(--ink);text-align:left;border:1px solid transparent}.ad2-action:disabled{opacity:.45}.ad2-action b{display:block;font-size:11.5px}.ad2-action span{display:block;font-size:9px;color:var(--inkSoft);margin-top:2px}
+.ad2-choice{display:flex;flex-direction:column;gap:8px}.ad2-choice button{padding:13px;border-radius:16px;background:var(--creamDeep);text-align:left;border:1px solid var(--border);color:var(--ink)}
+.ad2-choice button b{display:block;font-size:12px}.ad2-choice button span{display:block;font-size:10px;color:var(--inkSoft);margin-top:3px}
+.ad2-log{max-height:160px;overflow:auto;padding:10px 12px;border-radius:15px;background:var(--creamDeep);font-size:10px;line-height:1.45}.ad2-log p{margin:0 0 5px}.ad2-log p:last-child{margin-bottom:0}
+.ad2-boss{background:linear-gradient(145deg,var(--card),var(--mageSoft));border:1px solid var(--mage);box-shadow:0 8px 22px rgba(111,79,146,.10)}
+.ad2-reward{display:flex;align-items:center;gap:12px;padding:13px;border-radius:17px;background:linear-gradient(135deg,var(--gold),#e8c56e);color:#4a3b32}.ad2-reward-icon{font-size:34px}.ad2-small{font-size:9.5px;color:var(--inkSoft);line-height:1.45}.ad2-primary{width:100%;padding:12px;border-radius:16px;background:linear-gradient(135deg,var(--mage),var(--mageDeep));color:white;font-weight:800;font-size:12px}.ad2-secondary{width:100%;padding:10px;border-radius:14px;background:var(--creamDeep);color:var(--ink);font-weight:700;font-size:11px}
+@media(max-width:390px){.ad2-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ad2-action{padding:10px 7px}}
+
+.ad2-overlay{position:fixed;inset:0;z-index:80;background:rgba(35,27,24,.62);display:flex;align-items:flex-end;justify-content:center;padding:0}
+.ad2-modal{width:100%;max-width:520px;max-height:92vh;overflow-y:auto;background:var(--card);border-radius:24px 24px 0 0;padding:12px;box-shadow:0 -12px 40px rgba(0,0,0,.18)}
+@media(min-width:600px){.ad2-overlay{align-items:center;padding:18px}.ad2-modal{border-radius:24px;max-height:88vh}}
