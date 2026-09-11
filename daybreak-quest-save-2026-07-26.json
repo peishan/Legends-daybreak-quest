@@ -1,0 +1,704 @@
+{
+  "theme": "dark",
+  "player": {
+    "name": "San",
+    "level": 43,
+    "xp": 283,
+    "gold": 30370,
+    "hp": 520,
+    "maxHp": 396,
+    "mp": 194,
+    "maxMp": 198
+  },
+  "equipment": {
+    "weapon": "archmage_staff",
+    "armor": "aegis_of_the_guild",
+    "trinket": "crown_of_daybreak",
+    "ring1": "ring_focus",
+    "ring2": "ring_fortune",
+    "amulet": "amulet_focus",
+    "cloak": "cloak_guardian"
+  },
+  "materials": {
+    "Starlight Thread": 163,
+    "Ember Shard": 172,
+    "Slime Gel": 213,
+    "Silver Dust": 209,
+    "Moonherb": 196,
+    "Herbal Extract": 0,
+    "Ember Core": 9,
+    "Gel Solvent": 7,
+    "Silver Ingot": 0,
+    "Starlight Weave": 0,
+    "Legend Shard": 1
+  },
+  "potions": {
+    "focus_elixir": 15,
+    "health_draught": 10,
+    "greater_health_draught": 3
+  },
+  "totalCheckIns": 136,
+  "streak": 6,
+  "lastCheckInDate": "2026-07-26",
+  "daysLog": {
+    "2026-07-08": {
+      "count": 6,
+      "encounter": "Guild Day",
+      "bossDone": false
+    },
+    "2026-07-09": {
+      "count": 15,
+      "encounter": "Rest Day",
+      "bossDone": false
+    },
+    "2026-07-10": {
+      "count": 12,
+      "encounter": "Crafting Day",
+      "bossDone": false
+    },
+    "2026-07-11": {
+      "count": 14,
+      "encounter": "Boss Day",
+      "bossDone": true
+    },
+    "2026-07-12": {
+      "count": 16,
+      "encounter": "Guild Day",
+      "bossDone": false
+    },
+    "2026-07-13": {
+      "count": 13,
+      "encounter": "Rest Day",
+      "bossDone": false
+    },
+    "2026-07-14": {
+      "count": 15,
+      "encounter": "Gathering Day",
+      "bossDone": false
+    },
+    "2026-07-15": {
+      "count": 5,
+      "encounter": "Crafting Day",
+      "bossDone": false
+    },
+    "2026-07-16": {
+      "count": 5,
+      "encounter": "Boss Day",
+      "bossDone": true
+    },
+    "2026-07-17": {
+      "count": 2,
+      "encounter": "Guild Day",
+      "bossDone": false
+    },
+    "2026-07-21": {
+      "count": 3,
+      "encounter": "Guild Day",
+      "bossDone": false
+    },
+    "2026-07-22": {
+      "count": 3,
+      "encounter": "Rest Day",
+      "bossDone": false
+    },
+    "2026-07-23": {
+      "count": 8,
+      "encounter": "Gathering Day",
+      "bossDone": false
+    },
+    "2026-07-24": {
+      "count": 11,
+      "encounter": "Crafting Day",
+      "bossDone": false
+    },
+    "2026-07-25": {
+      "count": 5,
+      "encounter": "Boss Day",
+      "bossDone": true
+    },
+    "2026-07-26": {
+      "count": 3,
+      "encounter": "Guild Day",
+      "bossDone": false
+    }
+  },
+  "guildDays": 5,
+  "crafted": [
+    "archmage_staff",
+    "cloak_guardian",
+    "aegis_of_the_guild",
+    "crown_of_daybreak",
+    "amulet_focus",
+    "ring_focus",
+    "ring_vigor",
+    "ring_fortune",
+    "ring_precision"
+  ],
+  "questsClaimed": [
+    "q1",
+    "q_fullmoon",
+    "q_bonded",
+    "q_lv20",
+    "q_calls100",
+    "q_lv35",
+    "q_bosses10"
+  ],
+  "focusBuff": 0,
+  "charges": 0,
+  "chargeAnchor": 1785054297324,
+  "locations": {
+    "forest": 1785068590813,
+    "market": 1785068590813,
+    "fountain": 1785068590813,
+    "lake": 1785068590813,
+    "watchtower": 1785068590813,
+    "ruins": 1785068610837,
+    "peak": 1785068610837,
+    "grove": 1785068610837,
+    "causeway": 1785068610837,
+    "canyon": 1785068610837,
+    "archive": 1785068610837,
+    "stormcorner": 1785068630838,
+    "senedrahideout": 1785068630838,
+    "quietstacks": 1785068630838,
+    "fernlight": 1785068630838,
+    "cliffs": 1785068610837,
+    "glassdesert": 1785068630838,
+    "waypost": 1785068650849,
+    "duskmere": 1785068630838
+  },
+  "landmarkVisits": {
+    "soels_trail": 1785068590813,
+    "moonherb_grove": 1785068590813,
+    "aisyahs_stall": 1785068590813,
+    "coin_well": 1785068590813,
+    "banner_wall": 1785068590813,
+    "mezstorms_perch": 1785068590813,
+    "joels_dock": 1785068590813,
+    "starlit_shallows": 1785068590813,
+    "zakis_ring": 1785068590813,
+    "high_overlook": 1785068590813,
+    "buried_banner": 1785068610837,
+    "rubble_vault": 1785068610837,
+    "elder_tree": 1785068610837,
+    "soels_roots": 1785068610837,
+    "frost_ledge": 1785068610837,
+    "long_view": 1785068610837,
+    "joels_post": 1785068610837,
+    "travelers_glint": 1785068610837,
+    "zakis_racetrack": 1785068610837,
+    "ember_bed": 1785068610837,
+    "mez_writing_nook": 1785068610837,
+    "unfinished_shelf": 1785068610837,
+    "senedras_filing": 1785068630838,
+    "treasure_wall": 1785068630838,
+    "mez_sheet_pile": 1785068630838,
+    "half_verse_nook": 1785068630838,
+    "old_logs_shelf": 1785068630838,
+    "first_entry": 1785068630838,
+    "soels_fern_patch": 1785068630838,
+    "quiet_hollow": 1785068630838,
+    "aisyahs_ledge": 1785068610837,
+    "storm_edge": 1785068610837,
+    "senedras_dig": 1785068630838,
+    "mirror_dunes": 1785068630838,
+    "joels_cache": 1785068650849,
+    "marker_stone": 1785068650849,
+    "elizs_spot": 1785068630838,
+    "in_between": 1785068630838
+  },
+  "affinity": {
+    "aisyah": 67,
+    "joel": 67,
+    "mezstorm": 70,
+    "eliz": 64,
+    "senedra": 60,
+    "zaki": 47,
+    "soel": 52
+  },
+  "craftCount": 101,
+  "refineCount": 130,
+  "bossesDefeated": 11,
+  "dailyLog": {
+    "date": "2026-07-26",
+    "crafted": 2,
+    "refined": 3,
+    "potionsUsed": 0,
+    "materialsGathered": 219,
+    "skirmishToday": 36,
+    "restToday": 2,
+    "enemyKillsToday": {
+      "Scroll Wraith": 2,
+      "Feed Serpent": 1,
+      "Feed Sprite": 7,
+      "Notification Gnat": 7,
+      "Wraithling": 9,
+      "Doubt Wisp": 9,
+      "Idle Slime": 4,
+      "Doubt Specter": 1
+    },
+    "focusSessionsToday": 0
+  },
+  "dailyTasksClaimed": {
+    "date": "2026-07-26",
+    "ids": [
+      "b_skirmish2",
+      "b_calls3",
+      "t_roam2",
+      "t_calls2",
+      "t_make1"
+    ]
+  },
+  "weeklyTaskClaimed": {
+    "week": "2026-W30",
+    "done": true
+  },
+  "lastIdleClaim": 1785068662226,
+  "activeSideQuests": [],
+  "completedSideQuests": [
+    "sq_moonherb",
+    "sq_archive_thread",
+    "sq_ledger",
+    "sq_wraithlings",
+    "sq_regret_cull",
+    "sq_glassy_menace",
+    "sq_storm_supplies",
+    "sq_ember_pests",
+    "sq_quiet_hours"
+  ],
+  "sideQuestKillProgress": {},
+  "huntingKills": {
+    "Feed Serpent": 11,
+    "Doubt Specter": 7,
+    "Doubt Wisp": 45,
+    "Wraithling": 46,
+    "Notification Gnat": 57,
+    "Feed Sprite": 47,
+    "Idle Slime": 34,
+    "Notification Imp": 8,
+    "Scroll Wraith": 4
+  },
+  "bondCooldowns": {
+    "joel": 1785055263425,
+    "aisyah": 1785055283426,
+    "mezstorm": 1785055283426,
+    "eliz": 1785055283426,
+    "senedra": 1785055283426,
+    "zaki": 1785055283426,
+    "soel": 1785055283426
+  },
+  "settings": {
+    "carbLimit": 30,
+    "notificationsEnabled": true
+  },
+  "wellnessLog": {
+    "2026-07-23": {
+      "waterCount": 4,
+      "waterGoal": 8,
+      "waterHit": false,
+      "carbs": 19.1,
+      "fat": 79.7,
+      "protein": 94.1,
+      "carbsOk": true,
+      "sleptEarly": false,
+      "morningWater": true,
+      "fedSoel": false,
+      "focusSessions": 4
+    },
+    "2026-07-24": {
+      "waterCount": 8,
+      "waterGoal": 8,
+      "waterHit": true,
+      "carbs": 23.7,
+      "fat": 118.8,
+      "protein": 121.3,
+      "carbsOk": true,
+      "sleptEarly": true,
+      "morningWater": true,
+      "fedSoel": true,
+      "focusSessions": 0
+    },
+    "2026-07-25": {
+      "waterCount": 6,
+      "waterGoal": 8,
+      "waterHit": false,
+      "carbs": 19.9,
+      "fat": 94.3,
+      "protein": 83.5,
+      "carbsOk": true,
+      "sleptEarly": false,
+      "morningWater": true,
+      "fedSoel": true,
+      "focusSessions": 3
+    }
+  },
+  "achievementsClaimed": [
+    "ach_level10",
+    "ach_century"
+  ],
+  "bossesKilled": {
+    "inbox_devourer": 2,
+    "procrastination_titan": 2
+  },
+  "raidsCompleted": 3,
+  "dungeonsCompleted": 1,
+  "expeditionsCompleted": 3,
+  "focusSessionsCompleted": 0,
+  "waterGoalHits": 1,
+  "weeklyGuildClaimed": {
+    "week": "2026-W30",
+    "claimed": true
+  },
+  "weeklyRecapSeen": {
+    "week": "2026-W30"
+  },
+  "tavernFavorites": [
+    "f108",
+    "f1",
+    "f93",
+    "f6",
+    "f3",
+    "f176",
+    "f251",
+    "f113"
+  ],
+  "soelPlay": {
+    "date": "2026-07-26",
+    "count": 5
+  },
+  "graceTokens": 0,
+  "graceMilestoneReached": 0,
+  "giftCooldowns": {
+    "aisyah": 1785055383428,
+    "mezstorm": 1785055283426,
+    "eliz": 1785055283426,
+    "senedra": 1785055283426,
+    "soel": 1785055283426,
+    "joel": 1785055263425,
+    "zaki": 1785055423425
+  },
+  "questChainProgress": {
+    "chain_light": 3,
+    "chain_market": 3,
+    "chain_guild": 3
+  },
+  "water": {
+    "date": "2026-07-26",
+    "count": 5,
+    "goal": 8
+  },
+  "tavern": {
+    "date": "2026-07-26",
+    "carbsToday": 21.2,
+    "fatToday": 79.8,
+    "proteinToday": 51.9,
+    "log": [
+      {
+        "id": "f37",
+        "name": "Tofu / Tau Kwa (100g)",
+        "icon": "⬜",
+        "carbs": 1.5,
+        "fat": 5,
+        "protein": 10,
+        "overBudget": false
+      },
+      {
+        "id": "f54",
+        "name": "Mixed Veg (100g)",
+        "icon": "🥗",
+        "carbs": 5,
+        "fat": 0.3,
+        "protein": 2,
+        "overBudget": false
+      },
+      {
+        "id": "f113",
+        "name": "Sambal Belacan (1 tsp)",
+        "icon": "🌶️",
+        "carbs": 1,
+        "fat": 0.5,
+        "protein": 0.3,
+        "overBudget": false
+      },
+      {
+        "id": "f251",
+        "name": "Breaded Prawns (light, Chinese-style, 6pc)",
+        "icon": "🍤",
+        "carbs": 8,
+        "fat": 8,
+        "protein": 20,
+        "overBudget": false
+      },
+      {
+        "id": "f176",
+        "name": "Nescafé (plain)",
+        "icon": "☕",
+        "carbs": 1,
+        "fat": 0,
+        "protein": 0.5,
+        "overBudget": false
+      },
+      {
+        "id": "f3",
+        "name": "Butter (30ml)",
+        "icon": "🧈",
+        "carbs": 0,
+        "fat": 25,
+        "protein": 0,
+        "overBudget": false
+      },
+      {
+        "id": "f6",
+        "name": "Tatua Cream (dash ~15ml)",
+        "icon": "🫙",
+        "carbs": 0.5,
+        "fat": 6,
+        "protein": 0.4,
+        "overBudget": false
+      },
+      {
+        "id": "f6",
+        "name": "Tatua Cream (dash ~15ml)",
+        "icon": "🫙",
+        "carbs": 0.5,
+        "fat": 6,
+        "protein": 0.4,
+        "overBudget": false
+      },
+      {
+        "id": "f93",
+        "name": "Coconut Oil, Virgin (1 tbsp)",
+        "icon": "🥥",
+        "carbs": 0,
+        "fat": 14,
+        "protein": 0,
+        "overBudget": false
+      },
+      {
+        "id": "f1",
+        "name": "3 Eggs",
+        "icon": "🥚",
+        "carbs": 1.2,
+        "fat": 15,
+        "protein": 18,
+        "overBudget": false
+      },
+      {
+        "id": "f108",
+        "name": "Onion (¼ medium)",
+        "icon": "🧅",
+        "carbs": 2.5,
+        "fat": 0,
+        "protein": 0.3,
+        "overBudget": false
+      }
+    ],
+    "streak": 4,
+    "lastGoodDate": "2026-07-25"
+  },
+  "dailyReminders": {
+    "date": "2026-07-26",
+    "morningWater": true,
+    "fedSoel": true,
+    "sleptEarly": false
+  },
+  "focusSession": null,
+  "vigilTier": 13,
+  "questFlags": {
+    "chestFound": true,
+    "chestChoice": "aisyah",
+    "aisyahBonus": true
+  },
+  "lastRest": 1785055264695,
+  "skirmishCount": 392,
+  "dayQuest": {
+    "date": "2026-07-26",
+    "claimed": true,
+    "choiceMade": "0"
+  },
+  "storyProgress": {
+    "read": [
+      "ch1",
+      "ch2",
+      "ch3",
+      "ch4",
+      "ch5",
+      "ch6",
+      "ch7",
+      "ch8",
+      "ch9",
+      "ch10",
+      "ch21",
+      "ch11",
+      "ch22",
+      "ch23",
+      "ch24",
+      "ch12",
+      "ch13",
+      "ch25",
+      "ch14"
+    ],
+    "flags": {
+      "ch5": "0",
+      "ch12": "1"
+    }
+  },
+  "strongholdProgress": {
+    "read": [
+      "sh1",
+      "sh2",
+      "sh3",
+      "sh4"
+    ],
+    "flags": {
+      "sh2": "0"
+    }
+  },
+  "companionQuestProgress": {
+    "read": [
+      "cq_aisyah_1",
+      "cq_eliz_1",
+      "cq_joel_1",
+      "cq_joel_2",
+      "cq_aisyah_2",
+      "cq_joel_3",
+      "cq_aisyah_3",
+      "cq_mez_1",
+      "cq_mez_2",
+      "cq_eliz_2",
+      "cq_eliz_3",
+      "cq_sen_1",
+      "cq_sen_2",
+      "cq_sen_3",
+      "cq_zaki_1",
+      "cq_zaki_2",
+      "cq_mez_3",
+      "cq_zaki_3"
+    ]
+  },
+  "hitListClaimed": {
+    "date": "2026-07-26",
+    "claimed": false
+  },
+  "hitListCompletions": 6,
+  "activeParty": [
+    "joel",
+    "aisyah",
+    "eliz",
+    "zaki",
+    "senedra"
+  ],
+  "companionGearOwned": {
+    "comp_blade": 0,
+    "comp_gauntlets": 4,
+    "comp_charm": 1,
+    "comp_trinket_luck": 0,
+    "comp_ring_might": 0,
+    "comp_ring_swift": 0,
+    "comp_cloak_shadow": 0,
+    "comp_amulet_vigor": 1,
+    "comp_greatblade": 0,
+    "comp_sigil": 0
+  },
+  "companionGear": {},
+  "companionEquipment": {
+    "joel": {
+      "weapon": "comp_greatblade",
+      "armor": "comp_sigil",
+      "trinket": "comp_trinket_luck",
+      "cloak": "comp_cloak_shadow",
+      "ring1": "comp_ring_swift",
+      "ring2": "comp_ring_might",
+      "amulet": "comp_amulet_vigor"
+    },
+    "aisyah": {
+      "ring1": "comp_ring_swift",
+      "ring2": "comp_ring_might",
+      "weapon": "comp_blade",
+      "trinket": "comp_trinket_luck",
+      "amulet": "comp_amulet_vigor",
+      "armor": "comp_charm",
+      "cloak": "comp_cloak_shadow"
+    },
+    "mezstorm": {
+      "cloak": "comp_cloak_shadow",
+      "ring1": "comp_ring_might",
+      "ring2": "comp_ring_swift",
+      "trinket": "comp_trinket_luck",
+      "armor": "comp_charm",
+      "weapon": "comp_blade",
+      "amulet": "comp_amulet_vigor"
+    },
+    "eliz": {
+      "weapon": "comp_gauntlets",
+      "cloak": "comp_cloak_shadow",
+      "amulet": "comp_amulet_vigor",
+      "armor": "comp_charm",
+      "trinket": "comp_trinket_luck",
+      "ring1": "comp_ring_might",
+      "ring2": "comp_ring_swift"
+    },
+    "senedra": {
+      "weapon": "comp_blade",
+      "armor": "comp_charm",
+      "ring1": "comp_ring_might",
+      "ring2": "comp_ring_swift",
+      "amulet": "comp_amulet_vigor",
+      "trinket": "comp_trinket_luck",
+      "cloak": "comp_cloak_shadow"
+    },
+    "zaki": {
+      "amulet": "comp_amulet_vigor",
+      "weapon": "comp_blade",
+      "ring1": "comp_ring_might",
+      "ring2": "comp_ring_swift",
+      "cloak": "comp_cloak_shadow",
+      "trinket": "comp_trinket_luck",
+      "armor": "comp_charm"
+    }
+  },
+  "companionProgress": {
+    "joel": {
+      "level": 6,
+      "xp": 58
+    },
+    "aisyah": {
+      "level": 6,
+      "xp": 52
+    },
+    "soel": {
+      "level": 2,
+      "xp": 34
+    },
+    "eliz": {
+      "level": 5,
+      "xp": 62
+    },
+    "senedra": {
+      "level": 5,
+      "xp": 22
+    },
+    "zaki": {
+      "level": 5,
+      "xp": 38
+    }
+  },
+  "familiarOut": true,
+  "familiarTrinket": "soel_collar",
+  "familiarTrinketOwned": {
+    "soel_bell": 1,
+    "soel_collar": 0
+  },
+  "specialization": "evoker",
+  "reputation": 156,
+  "repBonusClaimed": true,
+  "ascensionRank": 0,
+  "diet": {
+    "date": "2026-07-23",
+    "checked": false,
+    "streak": 1,
+    "lastDate": "2026-07-22"
+  },
+  "questProgress": {},
+  "trainingHits": 2852
+}
