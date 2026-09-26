@@ -421,8 +421,44 @@ const TAVERN_FOODS = [
   { id:"f423", name:"Mee Hoon / Rice Vermicelli, cooked (100g)", cat:"🍜 Rice & Noodles", fat:0.2, protein:1.8, carbs:23.9, satFat:0.0, unsatFat:0.2, fiber:1.0, kcal:107, emoji:"🍜" },
   { id:"f424", name:"Penang Char Kway Teow (1 plate, estimate)", cat:"🍜 Rice & Noodles", fat:32.0, protein:26.0, carbs:88.0, satFat:8.0, unsatFat:24.0, fiber:2.0, kcal:745, emoji:"🍜" },
   { id:"f425", name:"Sambal Kway Teow (1 plate, estimate)", cat:"🍜 Rice & Noodles", fat:28.0, protein:20.0, carbs:80.0, satFat:7.0, unsatFat:21.0, fiber:2.0, kcal:680, emoji:"🌶️" },
+  { id:"f426", name:"Plain Kway Teow / Flat Rice Noodles (100g cooked)", cat:"🍜 Rice & Noodles", fat:0.3, protein:1.8, carbs:24.0, satFat:0.0, unsatFat:0.3, fiber:0.5, kcal:110, emoji:"🍜" },
+  { id:"f427", name:"Lao Shu Fen / Silver Needle Noodles (100g cooked)", cat:"🍜 Rice & Noodles", fat:0.3, protein:1.8, carbs:25.0, satFat:0.0, unsatFat:0.3, fiber:0.5, kcal:112, emoji:"🍜" },
+  { id:"f428", name:"Kway Chap Noodles (1 portion, plain)", cat:"🍜 Rice & Noodles", fat:0.5, protein:2.0, carbs:30.0, satFat:0.1, unsatFat:0.4, fiber:0.6, kcal:135, emoji:"🍜" },
+  { id:"f429", name:"Yellow Mee / Yellow Noodles (100g cooked)", cat:"🍜 Rice & Noodles", fat:1.0, protein:4.0, carbs:25.0, satFat:0.2, unsatFat:0.8, fiber:1.0, kcal:125, emoji:"🍜" },
+  { id:"f430", name:"Mee Sua / Wheat Vermicelli (100g cooked)", cat:"🍜 Rice & Noodles", fat:0.4, protein:3.0, carbs:27.0, satFat:0.1, unsatFat:0.3, fiber:1.0, kcal:130, emoji:"🍜" },
+  { id:"f431", name:"White Bread (1 slice)", cat:"🍞 Bread", fat:1.0, protein:3.0, carbs:13.0, fiber:0.6, kcal:70, emoji:"🍞" },
+  { id:"f432", name:"White Bread (2 slices)", cat:"🍞 Bread", fat:2.0, protein:6.0, carbs:26.0, fiber:1.2, kcal:140, emoji:"🍞" },
+  { id:"f433", name:"Wholemeal Bread (1 slice)", cat:"🍞 Bread", fat:1.2, protein:4.0, carbs:12.0, fiber:2.2, kcal:75, emoji:"🍞" },
+  { id:"f434", name:"Wholemeal Bread (2 slices)", cat:"🍞 Bread", fat:2.4, protein:8.0, carbs:24.0, fiber:4.4, kcal:150, emoji:"🍞" },
+  { id:"f435", name:"Low GI Bread (1 slice)", cat:"🍞 Bread", fat:1.2, protein:4.0, carbs:11.0, fiber:2.5, kcal:70, emoji:"🍞" },
+  { id:"f436", name:"Low GI Bread (2 slices)", cat:"🍞 Bread", fat:2.4, protein:8.0, carbs:22.0, fiber:5.0, kcal:140, emoji:"🍞" },
+  { id:"f437", name:"Burger / Sandwich Cheese Slice (1 slice)", cat:"🥚 Egg & Dairy", fat:4.0, protein:2.5, carbs:1.0, satFat:2.5, unsatFat:1.2, kcal:50, emoji:"🧀" },
 
 ];
+
+// Convenience options: keep one familiar base entry and add a clearly labelled ½-portion choice.
+// Nutrition fields are scaled from the base entry; non-numeric metadata is preserved.
+function addHalfPortionOptions(items) {
+  const numericFields = ["fat","protein","carbs","satFat","unsatFat","fiber","kcal"];
+  const existingIds = new Set(items.map(x => x.id));
+  const additions = [];
+  const eligible = items.filter(x =>
+    x.cat === "🍱 Common Meals" ||
+    /noodle|mee hoon|kway teow|lao shu fen|kway chap|rice noodle/i.test(x.name) && !/no noodles/i.test(x.name) ||
+    (x.cat === "🍢 Street Food" && /laksa|pad thai|mee goreng/i.test(x.name))
+  );
+  for (const base of eligible) {
+    const id = base.id + "_05";
+    if (existingIds.has(id)) continue;
+    const item = { ...base, id, name: base.name.replace(/\s*\(½ portion\)|\s*\(0\.5 portion\)$/i, "") + " (½ portion)" };
+    for (const key of numericFields) {
+      if (typeof base[key] === "number") item[key] = Math.round(base[key] * 0.5 * 10) / 10;
+    }
+    additions.push(item);
+  }
+  items.push(...additions);
+}
+addHalfPortionOptions(TAVERN_FOODS);
 
 const HUNTING_MONSTERS = [
   { id:"h_wraithling", name:"Wraithling", icon:"👻", hpMod:0.7, tier:"Common", intro:"A Wraithling flickers at the edge of the clearing, small but persistent." },
@@ -1767,7 +1803,7 @@ function defaultState() {
     ascensionRank: 0,
     adventure2: { version: 2, date: null, routeId: null, started: false, completed: false, node: 0, enemyHp: 0, enemyMaxHp: 0, enemyId: null, guard: false, phase: 1, log: [], loot: [], wins: 0, lastReward: null },
     sleepTracker: { version: 1, activeStart: null, sessions: [] },
-    soelCare: { lastDewormDate: "2026-08-06", dewormIntervalMonths: 2, lastSpotOnDate: "2026-07-04", spotOnIntervalMonths: 3 },
+    soelCare: { lastDewormDate: "2026-08-06", dewormIntervalMonths: 2, lastSpotOnDate: "2026-07-04", spotOnIntervalMonths: 2 },
   };
 }
 
@@ -1834,7 +1870,7 @@ function migrateSave(parsed) {
   if (migrated.soelCare.lastDewormDate == null) migrated.soelCare.lastDewormDate = "2026-08-06";
   if (migrated.soelCare.dewormIntervalMonths == null) migrated.soelCare.dewormIntervalMonths = 2;
   if (migrated.soelCare.lastSpotOnDate == null) migrated.soelCare.lastSpotOnDate = "2026-07-04";
-  if (migrated.soelCare.spotOnIntervalMonths == null) migrated.soelCare.spotOnIntervalMonths = 3;
+  migrated.soelCare.spotOnIntervalMonths = 2;
   migrated.saveSchemaVersion = 5;
   return migrated;
   if (!isPlainObject(migrated.workouts)) migrated.workouts={version:1,sessions:[]};
@@ -3906,6 +3942,11 @@ function reminderAppliesToday(key) {
   if (info.periodOnly && !isDateInPeriod(today())) return false;
   if (info.sickOnly && !isDateSick(today())) return false;
   if (info.onlyDate && today().slice(5) !== info.onlyDate) return false;
+  if (key === "sleptEarly") {
+    const d = nowShifted().getDay();
+    if (d === 6) return false; // Saturday night — no early-sleep reminder.
+    if (BRUNEI_HOLIDAYS_2026[today()]) return false; // Public-holiday night — no early-sleep reminder.
+  }
   return true;
 }
 function wellnessLedgerForDate(dateKey){
@@ -4181,7 +4222,7 @@ function ensureSoelCare(){
   if(!state.soelCare.lastDewormDate) state.soelCare.lastDewormDate="2026-08-06";
   if(!state.soelCare.dewormIntervalMonths) state.soelCare.dewormIntervalMonths=2;
   if(!state.soelCare.lastSpotOnDate) state.soelCare.lastSpotOnDate="2026-07-04";
-  if(!state.soelCare.spotOnIntervalMonths) state.soelCare.spotOnIntervalMonths=3;
+  state.soelCare.spotOnIntervalMonths=2;
   return state.soelCare;
 }
 function soelDueDate(dateStr, months){ return addMonthsToDate(dateStr, Number(months)||1); }
