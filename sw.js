@@ -1,10 +1,10 @@
-const CACHE="daybreak-20260911-tavern-v14";
+const CACHE="daybreak-quest-v14fix";
 const CORE=[
   "./",
   "./index.html",
-  "./css/daybreak.css?v=20260911-9",
-  "./css/adventure.css?v=20260911-9",
-  "./js/app.js?v=20260911-9",
+  "./css/daybreak.css?v=20260926-14fix",
+  "./css/adventure.css?v=20260926-14fix",
+  "./js/app.js?v=20260926-14fix",
   "./manifest.json"
 ];
 
