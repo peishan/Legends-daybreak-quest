@@ -1741,7 +1741,10 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { dietMode: "Mediterranean", carbLimit: 200, vegDayCarbLimit: 225, notificationsEnabled: false, slackDayCarbLimit: 250, periodSweetBiteBonus: 20, dayResetHour: 8, textScale: 1, mapView: "path" },
+    settings: { dietMode: "Mediterranean", carbLimit: 200, vegDayCarbLimit: 225, notificationsEnabled: false, slackDayCarbLimit: 250, periodSweetBiteBonus: 20, calorieGoal: 1800, dayResetHour: 8, textScale: 1, mapView: "path" },
+    visit: { last:null },
+    comeback: null,
+    comebackBoostUntil: null,
     slackDays: [],
     weightLog: [],
     calendarNotes: {},
@@ -1809,7 +1812,7 @@ function defaultState() {
 
 /* ================= state ================= */
 let state = null;
-const ui = { showSleepBackfill:false, tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false, showMedHistory:false, showSickTracker:false, tavernLogDate:null, editingTavernEntry:null, adventure2:false };
+const ui = { editingPeriod:null, showAddPeriod:false, showSleepBackfill:false, tab:"home", encounter:null, toast:null, toastTimer:null, monthCursor:new Date(), now:Date.now(), showBackup:false, importMsg:"", showChest:false, skirmish:null, showStory:false, storyPage:0, expedition:null, dungeon:null, showSpecPicker:false, showRepBonus:false, repBonusPage:0, showStronghold:false, strongholdPage:0, showCompanionQuest:null, companionQuestPage:0, fx:null, showZoneDetail:null, showHuntingGrounds:false, showBestiary:false, showAchievements:false, showTavern:false, showInsights:false, showSettings:false, showJournal:false, journalTab:"story", journalReplay:null, showDragonHunt:false, gistBusy:false, gistMsg:"", showBirthday:false, birthdayPage:0, showNotebook:false, showCycles:false, showDay:null, showWeightHistory:false, showCustomFoodForm:false, showMedHistory:false, showSickTracker:false, tavernLogDate:null, editingTavernEntry:null, adventure2:false };
 
 function isPlainObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date);
@@ -2097,6 +2100,8 @@ function toggleSlackDay(dateKey) {
 function isVegDayToday() { return LUNAR_VEG_DAYS_2026.includes(today()); }
 function ensureDaily() {
   const t = today();
+  autoEndPeriods();
+  checkComeback(t);
   const mk = monthKey(nowShifted());
   ["electricity","electricTopup","phone","wifi"].forEach(billId => {
     const bill = state.bills[billId];
@@ -2117,6 +2122,7 @@ function ensureDaily() {
       carbs: state.tavern ? state.tavern.carbsToday : 0,
       fat: state.tavern ? state.tavern.fatToday : 0,
       protein: state.tavern ? state.tavern.proteinToday : 0,
+      kcal: state.tavern ? tavernKcalForEntries(state.tavern.log) : 0,
       carbsOk: state.tavern ? state.tavern.carbsToday <= carbLimitForDate(prevDate) : null,
       sleptEarly: state.dailyReminders ? !!state.dailyReminders.sleptEarly : false,
       morningWater: state.dailyReminders ? !!state.dailyReminders.morningWater : false,
@@ -2156,6 +2162,7 @@ function ensureDaily() {
   if (state.dailyLog.focusSessionsToday === undefined) state.dailyLog.focusSessionsToday = 0;
 }
 function grantReward(gold, xp) {
+  if (comebackBoostActive()) xp = Math.round(xp * 1.5);
   state.player.gold += gold;
   let newXp = state.player.xp + xp, leveledUp = false;
   while (newXp >= xpToNext(state.player.level)) {
@@ -2281,6 +2288,75 @@ function claimWeeklyGuildReward() {
   save(); render();
   if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
   else showToast(`Weekly Guild Reward claimed! +${gold}g +${xp}xp`);
+}
+
+/* ================= returning-player rewards ================= */
+const COMEBACK_TIERS = [
+  { minDays:30, title:"The Long Road Home", icon:"🌅", gold:300, xp:200, materials:15, potions:{ health_draught:3, focus_elixir:2 }, grace:2, boostDays:5 },
+  { minDays:14, title:"A Hero Returns", icon:"🏰", gold:160, xp:110, materials:10, potions:{ health_draught:2, focus_elixir:1 }, grace:1, boostDays:4 },
+  { minDays:7,  title:"Welcome Back, Adventurer", icon:"🎒", gold:90, xp:60, materials:6, potions:{ health_draught:2 }, grace:1, boostDays:3 },
+  { minDays:4,  title:"Good to See You Again", icon:"☕", gold:50, xp:35, materials:4, potions:{ health_draught:1 }, grace:0, boostDays:3 },
+  { minDays:2,  title:"You Came Back!", icon:"🌤️", gold:25, xp:18, materials:2, potions:{}, grace:0, boostDays:2 },
+];
+function daysBetweenKeys(a, b) { return Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000); }
+function checkComeback(t) {
+  if (!state.visit || typeof state.visit !== "object") state.visit = { last:null };
+  const last = state.visit.last || state.lastCheckInDate;
+  if (state.visit.last === t) return;
+  state.visit.last = t;
+  if (!last) return;
+  const gap = daysBetweenKeys(last, t);
+  if (gap < 2) return;
+  if (state.comeback && !state.comeback.claimed) {
+    if (gap > state.comeback.gapDays) state.comeback.gapDays = gap;
+  } else {
+    state.comeback = { gapDays: gap, since: last, claimed: false };
+  }
+  save();
+}
+function comebackTier(gapDays) { return COMEBACK_TIERS.find(tier => gapDays >= tier.minDays) || null; }
+function comebackRewardAvailable() { return !!(state.comeback && !state.comeback.claimed && comebackTier(state.comeback.gapDays)); }
+function comebackBoostActive() { return !!(state && state.comebackBoostUntil && state.comebackBoostUntil >= today()); }
+function claimComebackReward() {
+  if (!comebackRewardAvailable()) return;
+  const tier = comebackTier(state.comeback.gapDays);
+  const scale = rewardScale(state.player.level);
+  const gold = Math.round(tier.gold * scale), xp = Math.round(tier.xp * scale);
+  const drops = {};
+  for (let i=0;i<tier.materials;i++) { const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m] = (drops[m]||0) + 1; }
+  Object.entries(drops).forEach(([m,q]) => { state.materials[m] = (state.materials[m]||0) + q; });
+  Object.entries(tier.potions).forEach(([id,q]) => { state.potions[id] = (state.potions[id]||0) + q; });
+  if (tier.grace) state.graceTokens = Math.min(3, (state.graceTokens||0) + tier.grace);
+  state.comebackBoostUntil = addDaysKey(today(), tier.boostDays - 1);
+  state.comeback.claimed = true;
+  state.comebackClaims = (state.comebackClaims||0) + 1;
+  const leveledUp = grantReward(gold, xp);
+  save(); render();
+  if (leveledUp) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${tier.icon} Welcome back! +${gold}g +${xp}xp · 1.5× XP for ${tier.boostDays} days`);
+}
+function comebackCardHtml() {
+  if (comebackRewardAvailable()) {
+    const gap = state.comeback.gapDays, tier = comebackTier(gap), scale = rewardScale(state.player.level);
+    const perks = [`+${Math.round(tier.gold*scale)}g`, `+${Math.round(tier.xp*scale)}xp`, `${tier.materials} materials`]
+      .concat(Object.entries(tier.potions).map(([id,q]) => `${q}× ${id.replace(/_/g," ")}`))
+      .concat(tier.grace ? [`${tier.grace} streak shield${tier.grace>1?"s":""}`] : [])
+      .concat([`1.5× XP for ${tier.boostDays} days`]);
+    return card(`
+      <div style="padding:16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg, ${C.pink}33, ${C.gold}22, ${C.cream})">
+        <div style="width:46px;height:46px;border-radius:14px;background:${C.pink}44;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:24px">${tier.icon}</span></div>
+        <div style="flex:1">
+          <p class="disp" style="font-weight:700;font-size:13.5px;margin:0">${tier.title}</p>
+          <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">The guild kept your seat warm for ${gap} days. No guilt — here's a gift.</p>
+          <p style="font-size:10.5px;color:${C.mageDeep};margin:4px 0 0;font-weight:600">${perks.join(" · ")}</p>
+        </div>
+        <button data-act="claimComebackReward" class="disp" style="padding:8px 16px;border-radius:9999px;font-size:11.5px;font-weight:700;flex-shrink:0;background:${C.pink};color:white">Claim</button>
+      </div>`);
+  }
+  if (comebackBoostActive()) {
+    return card(`<div style="padding:10px 16px;display:flex;align-items:center;gap:10px;background:${C.pink}22"><span style="font-size:18px">✨</span><p style="font-size:11.5px;margin:0;color:${C.ink}"><b>Comeback Blessing</b> — 1.5× XP until ${state.comebackBoostUntil}</p></div>`);
+  }
+  return "";
 }
 
 function weeklyRecapAvailable() {
@@ -2819,7 +2895,7 @@ function resolveVictory() {
   const goldBonus = (passiveActive("aisyah") ? (state.questFlags.aisyahBonus ? 1.35 : 1.2) : 1) * (1 + abilityMod(abilityScores().cha)*0.05);
   const xpBonus = passiveActive("mezstorm") ? 1.15 : 1;
   const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult);
-  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult);
+  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult * (comebackBoostActive() ? 1.5 : 1));
   const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0) + (enc.isRaid ? 2 : 0) + Math.max(0, enemyCount-1) + (state.eliteMode ? 1 : 0);
   const drops = {};
   for (let i=0;i<dropCount;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
@@ -3746,6 +3822,19 @@ function tavernLogArray(dateKey) {
   backfillLogIds(state.tavernLog[dateKey]);
   return state.tavernLog[dateKey];
 }
+function entryKcal(e) {
+  if (e && e.kcal != null && !isNaN(Number(e.kcal))) return Number(e.kcal);
+  return Math.round(((e.fat||0)*9 + (e.protein||0)*4 + (e.carbs||0)*4));
+}
+function tavernKcalForEntries(entries) { return Math.round((entries||[]).reduce((s,e) => s + entryKcal(e), 0)); }
+function tavernKcalForDate(dateKey) { return tavernKcalForEntries(tavernLogArray(dateKey)); }
+function calorieGoal() { return Number(state.settings.calorieGoal) || 1800; }
+function setCalorieGoal(value) {
+  const v = parseInt(value, 10);
+  if (!v || v < 800 || v > 5000) return;
+  state.settings.calorieGoal = v;
+  save(); render();
+}
 function syncTavernTotals() {
   const entries = state.tavern.log;
   state.tavern.carbsToday = Math.round(entries.reduce((s,e) => s+e.carbs, 0) * 10) / 10;
@@ -3795,10 +3884,16 @@ function saveEditTavernEntry() {
   const carbsEl = document.getElementById("editEntryCarbs");
   const fatEl = document.getElementById("editEntryFat");
   const proteinEl = document.getElementById("editEntryProtein");
+  const before = entryKcal(entry), macrosBefore = `${entry.carbs}|${entry.fat}|${entry.protein}`;
   if (nameEl && nameEl.value.trim()) entry.name = nameEl.value.trim();
   if (carbsEl) entry.carbs = Math.max(0, parseFloat(carbsEl.value) || 0);
   if (fatEl) entry.fat = Math.max(0, parseFloat(fatEl.value) || 0);
   if (proteinEl) entry.protein = Math.max(0, parseFloat(proteinEl.value) || 0);
+  const kcalEl = document.getElementById("editEntryKcal");
+  const kcalTyped = kcalEl ? parseFloat(kcalEl.value) : NaN;
+  if (!isNaN(kcalTyped) && kcalTyped >= 0 && Math.round(kcalTyped) !== before) entry.kcal = Math.round(kcalTyped);
+  else if (macrosBefore !== `${entry.carbs}|${entry.fat}|${entry.protein}`) entry.kcal = Math.round(entry.fat*9 + entry.protein*4 + entry.carbs*4);
+  else entry.kcal = before;
   entry.overBudget = tavernMacrosForDate(dateKey).carbs > carbLimitForDate(dateKey);
   if (dateKey === today()) syncTavernTotals();
   ui.editingTavernEntry = null;
@@ -3815,7 +3910,7 @@ function orderTavernItem(itemId) {
   const limit = carbLimitForDate(dateKey);
   const wouldExceed = (macros.carbs + item.carbs) > limit;
   const arr = tavernLogArray(dateKey);
-  arr.push({ logId: `log_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, id: item.id, name: item.name, icon: item.emoji, carbs: item.carbs, fat: item.fat, protein: item.protein, satFat: item.satFat, unsatFat: item.unsatFat, fiber: item.fiber, overBudget: wouldExceed });
+  arr.push({ logId: `log_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, id: item.id, name: item.name, icon: item.emoji, carbs: item.carbs, fat: item.fat, protein: item.protein, satFat: item.satFat, unsatFat: item.unsatFat, fiber: item.fiber, kcal: item.kcal != null ? item.kcal : entryKcal(item), overBudget: wouldExceed });
   if (dateKey === today()) { state.tavernFavorites = [itemId, ...state.tavernFavorites.filter(id => id !== itemId)].slice(0, 8); syncTavernTotals(); }
   wellnessLedgerForDate(dateKey).foodLogs.push(arr[arr.length-1].logId);
   const leveledUp = grantReward(2, 2);
@@ -3839,15 +3934,18 @@ function orderCustomFood() {
   const carbs = parseFloat(carbsEl.value) || 0;
   const fat = parseFloat(fatEl.value) || 0;
   const protein = parseFloat(proteinEl.value) || 0;
+  const kcalEl = document.getElementById("customFoodKcal");
+  const kcalRaw = kcalEl ? parseFloat(kcalEl.value) : NaN;
+  const kcal = !isNaN(kcalRaw) && kcalRaw >= 0 ? Math.round(kcalRaw) : Math.round(fat*9 + protein*4 + carbs*4);
   if (carbs < 0 || fat < 0 || protein < 0) return;
   const dateKey = activeTavernLogDate();
   const macros = tavernMacrosForDate(dateKey);
   const limit = carbLimitForDate(dateKey);
   const wouldExceed = (macros.carbs + carbs) > limit;
   const arr = tavernLogArray(dateKey);
-  arr.push({ logId: `log_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, id: `custom_${Date.now()}`, name, icon: "🍽️", carbs, fat, protein, overBudget: wouldExceed, custom: true });
+  arr.push({ logId: `log_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, id: `custom_${Date.now()}`, name, icon: "🍽️", carbs, fat, protein, kcal, overBudget: wouldExceed, custom: true });
   if (dateKey === today()) syncTavernTotals();
-  nameEl.value = ""; carbsEl.value = ""; fatEl.value = ""; proteinEl.value = "";
+  nameEl.value = ""; carbsEl.value = ""; fatEl.value = ""; proteinEl.value = ""; if (kcalEl) kcalEl.value = "";
   ui.showCustomFoodForm = false;
   wellnessLedgerForDate(dateKey).foodLogs.push(arr[arr.length-1].logId);
   const leveledUp = grantReward(2, 2);
@@ -4052,6 +4150,19 @@ function cycleActivePeriod() {
   const last = periods[periods.length-1];
   return last.end ? null : last;
 }
+const PERIOD_AUTO_END_DAYS = 5;
+const addDaysKey = (key, n) => dayKey(new Date(new Date(key + "T00:00:00").getTime() + n*86400000));
+function autoEndPeriods() {
+  if (!state || !state.cycles || !Array.isArray(state.cycles.periods)) return;
+  const t = today();
+  let changed = false;
+  state.cycles.periods.forEach(p => {
+    if (p.end) return;
+    const lastDay = addDaysKey(p.start, PERIOD_AUTO_END_DAYS - 1);
+    if (t > lastDay) { p.end = lastDay; p.autoEnded = true; changed = true; }
+  });
+  if (changed) save();
+}
 function startPeriod() {
   if (cycleActivePeriod()) return;
   state.cycles.periods.push({ start: today(), end: null });
@@ -4066,6 +4177,52 @@ function endPeriod() {
   active.end = today();
   save(); render();
   showToast("Logged — thanks for keeping track.");
+}
+function periodsOverlap(a, b) {
+  const aEnd = a.end || addDaysKey(a.start, PERIOD_AUTO_END_DAYS - 1);
+  const bEnd = b.end || addDaysKey(b.start, PERIOD_AUTO_END_DAYS - 1);
+  return a.start <= bEnd && b.start <= aEnd;
+}
+function openAddPastPeriod() { ui.showAddPeriod = true; ui.editingPeriod = null; render(); }
+function closeAddPastPeriod() { ui.showAddPeriod = false; render(); }
+function openEditPeriod(indexStr) { ui.editingPeriod = parseInt(indexStr, 10); ui.showAddPeriod = false; render(); }
+function closeEditPeriod() { ui.editingPeriod = null; render(); }
+function readPeriodForm(prefix) {
+  const startEl = document.getElementById(prefix + "Start"), endEl = document.getElementById(prefix + "End");
+  const start = startEl ? startEl.value : "", end = endEl ? endEl.value : "";
+  if (!start) { showToast("Pick a start date."); return null; }
+  if (start > today()) { showToast("Start date can't be in the future."); return null; }
+  if (end && end < start) { showToast("End date can't be before the start date."); return null; }
+  if (end && end > today()) { showToast("End date can't be in the future."); return null; }
+  return { start, end: end || null };
+}
+function savePeriodEdit() {
+  const idx = ui.editingPeriod;
+  const periods = state.cycles.periods;
+  if (idx == null || !periods[idx]) return;
+  const vals = readPeriodForm("editPeriod");
+  if (!vals) return;
+  const updated = { ...periods[idx], start: vals.start, end: vals.end };
+  delete updated.autoEnded;
+  if (periods.some((p, i) => i !== idx && periodsOverlap(updated, p))) { showToast("That overlaps another logged period."); return; }
+  periods[idx] = updated;
+  periods.sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
+  ui.editingPeriod = null;
+  autoEndPeriods();
+  save(); render();
+  showToast("Period updated.");
+}
+function saveAddPastPeriod() {
+  const vals = readPeriodForm("addPeriod");
+  if (!vals) return;
+  const periods = state.cycles.periods;
+  if (periods.some(p => periodsOverlap(vals, p))) { showToast("That overlaps another logged period."); return; }
+  periods.push(vals);
+  periods.sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
+  ui.showAddPeriod = false;
+  autoEndPeriods();
+  save(); render();
+  showToast("Past period added.");
 }
 function deleteCycleEntry(indexStr) {
   const index = parseInt(indexStr, 10);
@@ -4104,7 +4261,7 @@ function isDatePredictedPeriod(dateKey) {
   return dateKey >= predStart && dateKey <= predEnd;
 }
 function openCycles() { ui.showCycles = true; render(); }
-function closeCycles() { ui.showCycles = false; render(); }
+function closeCycles() { ui.showCycles = false; ui.editingPeriod = null; ui.showAddPeriod = false; render(); }
 
 /* ================= calendar day notes / reminders ================= */
 function openDay(dateKey) { ui.showDay = dateKey; render(); }
@@ -4923,7 +5080,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -4936,14 +5093,14 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openJournal, closeJournal, setJournalTab, openJournalEntry, closeJournalReplay, journalReplayNext,
   hireMercenary, dismissMercenary, openDragonHunt, closeDragonHunt, beginDragonHunt,
   markBillPaid, setBillDueDay, markMonthlyUpkeepDone, addNotebookEntry, deleteNotebookEntry, openNotebook, closeNotebook,
-  startPeriod, endPeriod, deleteCycleEntry, openCycles, closeCycles,
+  startPeriod, endPeriod, deleteCycleEntry, openAddPastPeriod, closeAddPastPeriod, openEditPeriod, closeEditPeriod, savePeriodEdit, saveAddPastPeriod, openCycles, closeCycles,
   saveGistCredsFromForm, clearGistCreds, pushToGist, pullFromGist,
   openBirthdayMoment, closeBirthdayMoment, birthdayMomentNext,
   bondWithCompanion,
   openBestiary, closeBestiary, openAchievements, closeAchievements, claimAchievement,
   openDay, closeDay, addDayNote, deleteDayNote, toggleDayNoteDone, toggleSlackDay,
   logWeight, deleteWeightEntry, openWeightHistory, closeWeightHistory,
-  setSlackDayCarbLimit, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode,
+  setSlackDayCarbLimit, setCalorieGoal, setPeriodSweetBiteBonus, toggleCustomFoodForm, orderCustomFood, setDayResetHour, toggleEliteMode,
   logPrnMed, deletePrnMed, openMedHistory, closeMedHistory,
   startSickEpisode, endSickEpisode, deleteSickEntry, openSickTracker, closeSickTracker,
   selectTavernLogDate, deleteTavernEntry, openEditTavernEntry, closeEditTavernEntry, saveEditTavernEntry, setTextScale, toggleMapView, openAdventure2, ad2Close, ad2StartAfterIntro, ad2Choice, ad2IntroChoice, ad2BossStart, ad2BossAttack, ad2Finish, ad2Attack };
@@ -5499,7 +5656,7 @@ function renderHome() {
     </div>
   `) : "";
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${remindersCard}${sleepCard}${workoutCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${sickCard}${weighInCard}${soelCareCard}${wellnessCard}${prnCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${comebackCardHtml()}${remindersCard}${sleepCard}${workoutCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${sickCard}${weighInCard}${soelCareCard}${wellnessCard}${prnCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderBillsCard() {
@@ -5568,9 +5725,11 @@ function renderTavern() {
     <button data-act="openEditTavernEntry" data-arg="${today()}|${entry.logId}" class="disp" style="display:flex;align-items:center;gap:8px;padding:5px 0;width:100%;text-align:left;${entry.overBudget ? "animation:tavernGlitter 1.6s ease-in-out infinite" : ""}">
       <span style="font-size:14px">${entry.icon}</span>
       <span style="font-size:11px;color:${entry.overBudget ? "#E85B5B" : C.ink};flex:1;font-weight:${entry.overBudget?700:400}">${escapeHtml(entry.name)}</span>
-      <span style="font-size:10px;color:${C.inkSoft}">F${entry.fat} P${entry.protein} C${entry.carbs}</span>
+      <span style="font-size:10px;color:${C.inkSoft}">${entryKcal(entry)} kcal · F${entry.fat} P${entry.protein} C${entry.carbs}</span>
       <span style="font-size:9px;color:${C.inkSoft}">✏️</span>
     </button>`).join("");
+  const kcalToday = tavernKcalForEntries(state.tavern.log), kcalGoal = calorieGoal();
+  const kcalOver = kcalToday > kcalGoal, kcalPct = Math.min(100, kcalToday / kcalGoal * 100);
   const ratio = macroRatio(state.tavern.fatToday, state.tavern.proteinToday, carbs);
   return card(`
     <div style="padding:16px">
@@ -5583,6 +5742,13 @@ function renderTavern() {
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Fat</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:#D9A441">${state.tavern.fatToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Protein</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${C.sage}">${state.tavern.proteinToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Carbs</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${overBudget?"#E85B5B":C.ink}">${carbs}g</p></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:11px;color:${C.inkSoft}">🔥 Calories</span>
+        <span style="font-size:11px;font-weight:700;color:${kcalOver ? "#E85B5B" : C.ink}">${kcalToday} / ${kcalGoal} kcal${kcalOver ? "" : ` · ${kcalGoal - kcalToday} left`}</span>
+      </div>
+      <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:10px">
+        <div style="height:8px;width:${kcalPct}%;background:${kcalOver ? "#E85B5B" : (kcalPct > 85 ? C.gold : C.pink)}"></div>
       </div>
       ${(state.tavern.fatToday+state.tavern.proteinToday+carbs) > 0 ? `
       <div style="margin-bottom:10px">
@@ -5623,15 +5789,17 @@ function renderTavernModal() {
     <button data-act="openEditTavernEntry" data-arg="${logDate}|${entry.logId}" class="disp" style="display:flex;align-items:center;gap:8px;padding:6px 8px;width:100%;text-align:left;background:${C.creamDeep};border-radius:10px;margin-bottom:5px">
       <span style="font-size:14px">${entry.icon}</span>
       <span style="font-size:11.5px;color:${C.ink};flex:1">${escapeHtml(entry.name)}</span>
-      <span style="font-size:10px;color:${C.inkSoft}">F${entry.fat} P${entry.protein} C${entry.carbs}</span>
+      <span style="font-size:10px;color:${C.inkSoft}">${entryKcal(entry)} kcal · F${entry.fat} P${entry.protein} C${entry.carbs}</span>
       <span style="font-size:9px;color:${C.inkSoft}">✏️</span>
     </button>`).join("");
+  const dayKcal = tavernKcalForEntries(dayEntries);
   const dateLogSection = `
     <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px">${dateChips}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <span style="font-size:11.5px;font-weight:700;color:${C.ink}">${isToday ? "Today" : logDate}</span>
       <span style="font-size:11.5px;font-weight:700;color:${dayOverBudget?"#E85B5B":C.ink}">${carbs}g / ${dayLimit}g carbs</span>
     </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><span style="font-size:11.5px;font-weight:700;color:${dayKcal>calorieGoal()?"#E85B5B":C.ink}">🔥 ${dayKcal} / ${calorieGoal()} kcal</span></div>
     ${dayEntries.length ? `<div style="margin-bottom:12px">${dayLogRows}</div>` : `<p style="font-size:11px;color:${C.inkSoft};margin:0 0 12px">Nothing logged for ${isToday?"today":"this day"} yet.</p>`}
   `;
   const favRow = state.tavernFavorites.length ? (() => {
@@ -5660,7 +5828,7 @@ function renderTavernModal() {
         <span style="font-size:18px">${item.emoji}</span>
         <div style="flex:1">
           <p style="font-size:12px;font-weight:600;margin:0;color:${C.ink}">${escapeHtml(item.name)}</p>
-          <p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">F ${item.fat}g · P ${item.protein}g · <span style="color:${wouldExceed?"#E85B5B":C.inkSoft};font-weight:${wouldExceed?700:400}">C ${item.carbs}g</span>${item.fiber!==undefined?` · Fiber ${item.fiber}g`:""}</p>${item.satFat!==undefined?`<p style="font-size:9px;color:${C.inkSoft};margin:1px 0 0">Sat ${item.satFat}g · Unsat ${item.unsatFat}g</p>`:""}
+          <p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${entryKcal(item)} kcal · F ${item.fat}g · P ${item.protein}g · <span style="color:${wouldExceed?"#E85B5B":C.inkSoft};font-weight:${wouldExceed?700:400}">C ${item.carbs}g</span>${item.fiber!==undefined?` · Fiber ${item.fiber}g`:""}</p>${item.satFat!==undefined?`<p style="font-size:9px;color:${C.inkSoft};margin:1px 0 0">Sat ${item.satFat}g · Unsat ${item.unsatFat}g</p>`:""}
         </div>
         <button data-act="orderTavernItem" data-arg="${item.id}" class="disp" style="padding:5px 12px;border-radius:9999px;font-size:10.5px;font-weight:700;flex-shrink:0;background:${C.mageDeep};color:white">Log</button>
       </div>`;
@@ -5682,9 +5850,13 @@ function renderTavernModal() {
           <p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Protein (g)</p>
           <input id="customFoodProtein" type="number" step="0.1" inputmode="decimal" placeholder="0" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink}" />
         </div>
+        <div style="flex:1">
+          <p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Calories</p>
+          <input id="customFoodKcal" type="number" step="1" inputmode="numeric" placeholder="auto" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink}" />
+        </div>
       </div>
       <button data-act="orderCustomFood" class="disp" style="width:100%;padding:9px;border-radius:12px;font-weight:700;font-size:12px;background:${C.mageDeep};color:white">Log It</button>
-      <p style="font-size:9.5px;color:${C.inkSoft};margin:6px 0 0">A one-off — this won't be added to your regular menu.</p>
+      <p style="font-size:9.5px;color:${C.inkSoft};margin:6px 0 0">A one-off — this won't be added to your regular menu. Leave calories blank to estimate them from the macros.</p>
     </div>`
     : `<button data-act="toggleCustomFoodForm" class="disp" style="width:100%;padding:9px;border-radius:12px;font-weight:700;font-size:11.5px;background:${C.mageSoft};color:${C.mageDeep};margin-bottom:12px">🍽️ Log Something Off-Menu (one-off)</button>`;
   return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
@@ -5720,6 +5892,7 @@ function renderEditTavernEntryModal() {
         <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Carbs (g)</p><input id="editEntryCarbs" type="number" step="0.1" inputmode="decimal" value="${entry.carbs}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
         <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Fat (g)</p><input id="editEntryFat" type="number" step="0.1" inputmode="decimal" value="${entry.fat}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
         <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Protein (g)</p><input id="editEntryProtein" type="number" step="0.1" inputmode="decimal" value="${entry.protein}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
+        <div style="flex:1"><p style="font-size:9px;color:${C.inkSoft};margin:0 0 3px">Calories</p><input id="editEntryKcal" type="number" step="1" inputmode="numeric" value="${entryKcal(entry)}" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.creamDeep};font-size:12px;color:${C.ink}" /></div>
       </div>
       <div style="display:flex;gap:8px">
         <button data-act="deleteTavernEntry" data-arg="${dateKey}|${logId}" class="disp" style="flex:1;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.creamDeep};color:#E85B5B">Delete</button>
@@ -6966,6 +7139,20 @@ function renderJournalReplayModal() {
   </div>`;
 }
 
+function periodForm(prefix, start, end, saveAct, cancelAct, saveLabel) {
+  const inputStyle = `width:100%;padding:8px 10px;border-radius:10px;border:1px solid ${C.border};background:${C.card};font-size:12px;color:${C.ink}`;
+  return `<div style="padding:12px;border-radius:14px;background:${C.mageSoft};margin:-2px 0 10px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1"><p style="font-size:9.5px;color:${C.inkSoft};margin:0 0 3px">Started</p><input id="${prefix}Start" type="date" max="${today()}" value="${start}" style="${inputStyle}" /></div>
+      <div style="flex:1"><p style="font-size:9.5px;color:${C.inkSoft};margin:0 0 3px">Ended (blank = auto, ${PERIOD_AUTO_END_DAYS} days)</p><input id="${prefix}End" type="date" max="${today()}" value="${end}" style="${inputStyle}" /></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button data-act="${cancelAct}" class="disp" style="flex:1;padding:9px;border-radius:12px;font-weight:700;font-size:12px;background:${C.creamDeep};color:${C.ink}">Cancel</button>
+      <button data-act="${saveAct}" class="disp" style="flex:2;padding:9px;border-radius:12px;font-weight:700;font-size:12px;background:${C.mageDeep};color:white">${saveLabel}</button>
+    </div>
+  </div>`;
+}
+
 function renderCyclesModal() {
   if (!ui.showCycles) return "";
   const active = cycleActivePeriod();
@@ -6988,11 +7175,16 @@ function renderCyclesModal() {
         <span style="font-size:14px">🩸</span>
         <div style="flex:1">
           <p style="font-size:11.5px;color:${C.ink};margin:0">${p.start} ${p.end ? `→ ${p.end}` : "(ongoing)"}</p>
-          ${len ? `<p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${len} day${len===1?"":"s"}</p>` : ""}
+          ${len ? `<p style="font-size:10px;color:${C.inkSoft};margin:1px 0 0">${len} day${len===1?"":"s"}${p.autoEnded ? " · auto-ended — tap ✏️ to set the real end date" : ""}</p>` : ""}
         </div>
+        <button data-act="openEditPeriod" data-arg="${idx}" title="Edit dates"><span style="color:${C.inkSoft};font-size:11px">✏️</span></button>
         <button data-act="deleteCycleEntry" data-arg="${idx}"><span style="color:${C.inkSoft};font-size:11px">✖</span></button>
-      </div>`;
+      </div>
+      ${ui.editingPeriod === idx ? periodForm("editPeriod", p.start, p.end || "", "savePeriodEdit", "closeEditPeriod", "Save Dates") : ""}`;
   }).join("");
+  const addForm = ui.showAddPeriod
+    ? periodForm("addPeriod", "", "", "saveAddPastPeriod", "closeAddPastPeriod", "Add Period")
+    : `<button data-act="openAddPastPeriod" class="disp" style="width:100%;padding:10px;border-radius:14px;font-weight:600;font-size:12px;background:${C.creamDeep};color:${C.ink};margin-bottom:16px">➕ Add / Backtrack a Past Period</button>`;
   return `<div style="position:fixed;inset:0;z-index:53;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)">
     <div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px;max-height:85vh;overflow-y:auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -7001,6 +7193,7 @@ function renderCyclesModal() {
       </div>
       ${statRows}
       ${actionButton}
+      ${addForm}
       ${history || `<p style="font-size:12px;color:${C.inkSoft}">Nothing logged yet.</p>`}
     </div>
   </div>`;
@@ -7431,6 +7624,8 @@ function renderSettingsModal() {
   const vegCarbButtons = vegCarbPresets.map(v => `<button data-act="setVegDayCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.vegDayCarbLimit===v?C.sage:C.creamDeep};color:${state.settings.vegDayCarbLimit===v?"white":C.ink}">${v}g</button>`).join("");
   const slackCarbPresets = [150, 180, 200, 225, 250];
   const slackCarbButtons = slackCarbPresets.map(v => `<button data-act="setSlackDayCarbLimit" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.slackDayCarbLimit===v?C.gold:C.creamDeep};color:${state.settings.slackDayCarbLimit===v?"white":C.ink}">${v}g</button>`).join("");
+  const kcalPresets = [1400, 1600, 1800, 2000, 2200];
+  const kcalButtons = kcalPresets.map(v => `<button data-act="setCalorieGoal" data-arg="${v}" class="disp" style="flex:1;padding:8px 2px;border-radius:12px;font-size:11.5px;font-weight:700;background:${calorieGoal()===v?C.pink:C.creamDeep};color:${calorieGoal()===v?"white":C.ink}">${v}</button>`).join("");
   const periodBonusPresets = [0, 10, 20, 30];
   const periodBonusButtons = periodBonusPresets.map(v => `<button data-act="setPeriodSweetBiteBonus" data-arg="${v}" class="disp" style="flex:1;padding:8px 4px;border-radius:12px;font-size:12px;font-weight:700;background:${state.settings.periodSweetBiteBonus===v?C.pink:C.creamDeep};color:${state.settings.periodSweetBiteBonus===v?"white":C.ink}">+${v}g</button>`).join("");
   const resetHourPresets = [0, 4, 6, 8, 10];
@@ -7465,6 +7660,10 @@ function renderSettingsModal() {
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.gold};margin:0 0 6px">🍰 Slack Day Carb Limit</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">The limit for any day you mark as a Slack Day from the Calendar — currently ${state.settings.slackDayCarbLimit}g. Use it deliberately, not automatically.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${slackCarbButtons}</div>
+
+      <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🔥 Daily Calorie Goal</p>
+      <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Shown beside your carb budget in the Tavern — currently ${calorieGoal()} kcal/day. A guide, not a rule.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">${kcalButtons}</div>
 
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🍬 Period Sweet-Bite Bonus</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Extra carbs allowed on day 1–2 of your period (on top of your normal limit) — currently +${state.settings.periodSweetBiteBonus}g.</p>
@@ -7742,7 +7941,7 @@ try {
     try {
       ui.now = Date.now();
       const sleeping = !!activeSleep();
-      if (!ui.showBackup && (sleeping || ui.now - lastTimedRender >= 20000)) { lastTimedRender = ui.now; render(); }
+      if (!ui.showBackup && ui.editingPeriod == null && !ui.showAddPeriod && (sleeping || ui.now - lastTimedRender >= 20000)) { lastTimedRender = ui.now; render(); }
     } catch (err) { if (window.__daybreakShowError) window.__daybreakShowError(err); }
   }, 1000);
 } catch (err) {
