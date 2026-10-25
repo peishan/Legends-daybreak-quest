@@ -138,3 +138,12 @@ button.disp:disabled { filter:grayscale(.6) opacity(.65); }
 .spark { position:absolute; font-size:18px; animation:rise 1.6s ease-out forwards; }
 
 @media (prefers-reduced-motion: reduce) { .bob,.flame,.tailwag,.star,.cloud,.drop,.fly,.banner .inner,.msgwin { animation:none !important; } }
+
+/* ----- battle animations ----- */
+@keyframes lunge { 0%{ transform:translateX(0) } 35%{ transform:translateX(150px) } 100%{ transform:translateX(0) } }
+@keyframes ehit { 0%{ transform:translateX(0) } 20%{ transform:translateX(7px) } 40%{ transform:translateX(-6px) } 60%{ transform:translateX(4px) } 100%{ transform:translateX(0) } }
+@keyframes burstA { 0%{ opacity:.9; transform:scale(.3) } 100%{ opacity:0; transform:scale(1.5) } }
+.enemyhit { animation:ehit .4s ease-out; filter:brightness(1.6); }
+.burst { transform-box:fill-box; transform-origin:center; animation:burstA .45s ease-out forwards; }
+:root[data-theme="dark"] .rpg-card { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .4  0 0 0 0 .3  0 0 0 .07 0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>") !important; }
+@media (prefers-reduced-motion: reduce) { .enemyhit,.burst { animation:none !important; } }

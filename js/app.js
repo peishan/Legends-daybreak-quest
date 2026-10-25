@@ -5196,7 +5196,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, toggleMusic, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -6255,7 +6255,7 @@ function renderBond() {
     return card(`
       <div style="padding:14px">
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:42px;height:42px;border-radius:9999px;background:${m.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">${m.icon}</div>
+          ${portraitHtml(m, 48)}
           <div style="flex:1">
             <p class="disp" style="font-weight:700;font-size:13px;margin:0">${m.name}</p>
             <p style="font-size:11px;color:${C.inkSoft};margin:2px 0 0">${activity.icon} ${activity.label}${ready ? "" : ` · ${fmtMs(remaining)}`}</p>
@@ -6376,9 +6376,7 @@ function renderParty() {
     return card(`
       <div style="padding:14px;opacity:${unlocked ? 1 : 0.55}">
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:46px;height:46px;border-radius:9999px;background:${m.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <span style="font-size:${unlocked ? 22 : 18}px">${unlocked ? m.icon : "🔒"}</span>
-          </div>
+          ${portraitHtml(m, 52, unlocked)}
           <div style="flex:1">
             <p class="disp" style="font-weight:700;font-size:14px;margin:0">${m.name} <span style="font-weight:500;color:${C.inkSoft};font-size:12px">· ${m.title}</span></p>
             <p style="font-size:12px;color:${C.inkSoft};margin:2px 0 0">${unlocked ? m.bio : `Unlocks at Level ${m.unlockLv}`}</p>
@@ -6971,13 +6969,10 @@ function renderEncounterModal() {
           <div style="height:8px;border-radius:9999px;overflow:hidden;background:${C.card}">
             <div style="height:8px;width:${ePct}%;background:${C.pink};transition:width .3s"></div>
           </div>
-          ${isTarget ? renderFxOverlay("enemy") : ""}
+          
         </button>`;
       }).join("")
-    : `<div class="${enemyFxClass}" style="position:relative;height:10px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
-        <div style="height:10px;width:${(enc.enemyHp/enc.enemyMaxHp)*100}%;background:${C.pink};transition:width .3s"></div>
-        ${renderFxOverlay("enemy")}
-      </div>`;
+    : "";
   const bossAddBar = (enc.isBoss && enc.bossAdd && enc.bossAdd.hp > 0) ? `
     <div style="padding:8px 10px;border-radius:12px;margin-bottom:12px;background:${C.creamDeep};border:1px solid ${C.border}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
@@ -6999,6 +6994,7 @@ function renderEncounterModal() {
         <p class="disp" style="font-weight:700;font-size:15px;margin:0">${titleText}</p>
         ${!enc.resolved ? `<button data-act="closeEncounter"><span style="color:${C.inkSoft}">✖</span></button>` : ""}
       </div>
+      ${battleStageHtml(enc)}
       ${enemyBars}
       ${bossAddBar}
       ${debuffNote}
@@ -7027,6 +7023,7 @@ function renderExpeditionModal() {
         ${!exp.resolved ? `<button data-act="closeExpedition"><span style="color:${C.inkSoft}">✖</span></button>` : ""}
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">${waveDots}</div>
+      ${battleStageHtml({ enemyName: exp.enemyName, enemyHp: exp.enemyHp, enemyMaxHp: exp.enemyMaxHp, isBoss: exp.wave === EXPEDITION_WAVES })}
       <p class="disp" style="font-weight:700;font-size:13px;margin:0 0 8px">${exp.enemyName}</p>
       <div class="${enemyFxClass}" style="position:relative;height:10px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
         <div style="height:10px;width:${pct}%;background:${C.pink};transition:width .3s"></div>
@@ -7789,6 +7786,7 @@ function renderSettingsModal() {
       <div style="display:flex;gap:6px;margin-bottom:16px">${slackCarbButtons}</div>
 
       ${rpgSettingsHtml()}
+      ${rpg2SettingsHtml()}
       ${titleSettingsHtml()}
       ${reminderSettingsHtml()}
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🔥 Daily Calorie Goal</p>
@@ -8005,12 +8003,13 @@ function renderNavLegacy() {
 
 function renderContent() {
   if (ui.tab === "home") return renderHome();
-  if (ui.tab === "explore") return renderExplore();
-  if (ui.tab === "party") return renderParty();
-  if (ui.tab === "bond") return renderBond();
-  if (ui.tab === "quests") return renderQuests();
-  if (ui.tab === "craft") return renderCraft();
-  if (ui.tab === "calendar") return renderCalendar();
+  const banner = tabBannerHtml(ui.tab);
+  if (ui.tab === "explore") return banner + renderExplore();
+  if (ui.tab === "party") return banner + renderParty();
+  if (ui.tab === "bond") return banner + renderBond();
+  if (ui.tab === "quests") return banner + renderQuests();
+  if (ui.tab === "craft") return banner + renderCraft();
+  if (ui.tab === "calendar") return banner + renderCalendar();
   return "";
 }
 

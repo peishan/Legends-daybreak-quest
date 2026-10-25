@@ -102,7 +102,7 @@ function renderHeader() {
     <div class="hud-row">
       <div class="hud-portrait">${heroFaceSvg()}<span class="hud-lv">${state.player.level}</span></div>
       <div style="flex:1;min-width:0">
-        <p class="hud-name disp" style="padding-right:118px">${escapeHtml(state.player.name)} ${escapeHtml(activeTitle())}</p>
+        <p class="hud-name disp" style="padding-right:140px">${escapeHtml(state.player.name)} ${escapeHtml(activeTitle())}</p>
         <p class="hud-sub">${tLog.encounter} · Legends: Daybreak Quest</p>
         ${rpgBar("hp", state.player.hp, maxHp())}
         ${rpgBar("mp", state.player.mp, state.player.maxMp)}
@@ -116,6 +116,7 @@ function renderHeader() {
       <span class="chip" title="Focus${msToNext ? " · next in " + fmtMs(msToNext) : ""}">${orbs}</span>
     </div>
     <div class="hud-tools">
+      <button class="hud-btn" data-act="toggleMusic" aria-label="Music" style="${state.settings.music ? "" : "opacity:.55"}">🎵</button>
       <button class="hud-btn" data-act="toggleSound" aria-label="Sound">${rpgSoundOn() ? "🔊" : "🔇"}</button>
       <button class="hud-btn" data-act="toggleTheme" aria-label="Theme">${state.theme === "dark" ? "☀️" : "🌙"}</button>
       <button class="hud-btn" data-act="openSettings" aria-label="Settings">🎛️</button>
