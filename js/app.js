@@ -631,6 +631,16 @@ const LOCATIONS = [
     "The whole party's oddly quiet on this climb, like they know what's coming and don't want to rush it.",
     "You look back at how far the map stretches behind you. Then you keep climbing.",
   ]},
+  { id:"dawnless", landmarks:[{id:"quiet_bell",name:"The Quiet Bell",icon:"🔔"}, {id:"unfinished_road",name:"The Unfinished Road",icon:"🛤️"}], name:"The Dawnless Reach", icon:"🌑", unlockLv:100, flavor:[
+    "The sky here hasn't decided what colour to be. You find, to your surprise, that you don't mind waiting.",
+    "Joel stops to tie his boot and says nothing, which is how you know he feels it too: the strange, enormous calm.",
+    "Soel walks ahead without hurry. If the Reach had a rule, it would be: you're allowed to be unfinished.",
+  ]},
+  { id:"horizon", landmarks:[{id:"first_light_stone",name:"The First Light Stone",icon:"🪨"}, {id:"long_table",name:"The Long Table",icon:"🍽️"}], name:"Horizon's Edge", icon:"🌅", unlockLv:110, flavor:[
+    "Everyone you've met on this road is somehow already here, setting a very long table at the edge of the world.",
+    "The sun doesn't rise so much as arrive, quietly, like someone who's been rooting for you the whole time.",
+    "You sit. You eat. For once the map has nothing left to demand, and you realise that was always allowed.",
+  ]},
 ];
 
 const ENCOUNTER_CYCLE = ["Gathering Day", "Crafting Day", "Boss Day", "Guild Day", "Rest Day"];
@@ -922,6 +932,14 @@ const BOSSES = [
     intro:"The Hollow Victory wears the shape of everything you've already won, insisting none of it was ever quite enough.",
     hpMult:9.0, phaseLines:["It flickers — for a second it can't decide what 'enough' was even supposed to mean.", "Barely a shape left. Winning was never going to feel like this one described it."],
     ability:{ type:"summon", name:"Unmet Bar", icon:"📏", hpFrac:0.16, line:"It raises the bar again, just out of reach, just to keep the win from ever landing." } },
+  { id:"burnout_colossus", name:"The Burnout Colossus", icon:"🗿", minLv:100, hpMult:5.2,
+    intro:"The Burnout Colossus stands where the road ends, built from every 'one more push' you ever mistook for strength.",
+    phaseLines:["A crack runs through its chest, and out of it spills something that looks suspiciously like rest.", "It sags. Whatever it was holding up, it no longer has to."],
+    ability:{ type:"heal", frac:0.08, line:"It drags a deadline out of thin air and drinks the urgency, mending itself." } },
+  { id:"all_or_nothing", name:"The All-or-Nothing Titan", icon:"⚖️", minLv:110, hpMult:5.8,
+    intro:"The All-or-Nothing Titan holds a scale with only two pans: perfect, and ruined. Nothing in between has ever fit.",
+    phaseLines:["The scale wobbles. A third pan, small and ordinary, has appeared. It says 'good enough'.", "The Titan lowers its scale. It looks almost relieved to be put down."],
+    ability:{ type:"debuff", stat:"hit", amount:4, rounds:2, line:"It tells you one missed day ruins everything. Your next strike wavers, believing it for half a breath." } },
 ];
 function pickBossForLevel(level) {
   const bucket = level < 10 ? 1 : Math.floor(level/10) * 10;
@@ -1457,7 +1475,7 @@ const ACHIEVEMENTS = [
   { id:"ach_raidvet", title:"Raid Veteran", icon:"🛡️", desc:"Complete 10 Raids", check: () => (state.raidsCompleted||0) >= 10, reward:{gold:70,xp:60} },
   { id:"ach_forge", title:"Forge-Touched", icon:"⚒️", desc:"Craft a Forge-tier item", check: () => RECIPES.some(r => r.forgeTier && state.crafted.includes(r.id)), reward:{gold:80,xp:60} },
   { id:"ach_ascendant", title:"Ascendant", icon:"🌌", desc:"Craft an Ascendant-tier item", check: () => RECIPES.some(r => r.ascendantTier && state.crafted.includes(r.id)), reward:{gold:150,xp:100} },
-  { id:"ach_traveler", title:"World Traveler", icon:"🗺️", desc:"Visit all 26 zones", check: () => LOCATIONS.every(l => !!state.locations[l.id]), reward:{gold:100,xp:80} },
+  { id:"ach_traveler", title:"World Traveler", icon:"🗺️", desc:"Visit every zone", check: () => LOCATIONS.every(l => !!state.locations[l.id]), reward:{gold:100,xp:80} },
   { id:"ach_corners", title:"Every Corner", icon:"🔍", desc:"Discover all landmarks", check: () => LOCATIONS.every(l => (l.landmarks||[]).every(lm => !!state.landmarkVisits[lm.id])), reward:{gold:120,xp:100} },
   { id:"ach_family", title:"Found Family", icon:"💞", desc:"Max bond with all 6 companions", check: () => PARTY.filter(p=>p.id!=="soel").every(p => { const tiers = SNIPPETS[p.id]||[]; return tiers.length && (state.affinity[p.id]||0) >= tiers[tiers.length-1].at; }), reward:{gold:100,xp:80} },
   { id:"ach_stories", title:"Every Story Told", icon:"📖", desc:"Complete every companion questline", check: () => Object.values(COMPANION_QUESTS).flat().every(q => state.companionQuestProgress.read.includes(q.id)), reward:{gold:150,xp:120} },
@@ -1466,6 +1484,8 @@ const ACHIEVEMENTS = [
   { id:"ach_hunter", title:"The Hunt Never Ends", icon:"🏹", desc:"Defeat every huntable monster type", check: () => MONSTER_CODEX.every(m => (state.huntingKills[m.name]||0) > 0), reward:{gold:60,xp:50} },
   { id:"ach_ketostreak", title:"Carb Target Streak", icon:"🎯", desc:"Hit a 7-day Tavern streak", check: () => (state.tavern.streak||0) >= 7, reward:{gold:50,xp:40} },
 ];
+
+ACHIEVEMENTS.push(...EXPANSION_ACHIEVEMENTS);
 
 const SNIPPETS = {
   joel: [
@@ -1521,6 +1541,18 @@ const COMPANION_QUESTS = {
       "\"Turns out you did the same for me. Took me a while to notice, because you never made it look like effort.\"",
       "Neither of you says the bigger word out loud. You don't need to. It's already been true for a long time.",
     ], reward:{gold:80,xp:70} },
+    { id:"cq_joel_4", title:"The Door He Holds Open", icon:"🛡️", affReq:28, pages:[
+      "Joel has started leaving a second mug out in the mornings. He pretends it's habit.",
+      "\"You were up late again,\" he says, not a question. \"I'm not going to lecture you. I just want the morning to be easy.\"",
+      "You realise this is what he does instead of speeches: he shrinks the day down until it's small enough to carry.",
+      "You drink the tea. It's exactly the temperature you like, which is a small miracle, and also not a coincidence at all.",
+    ], reward:{gold:110,xp:90} },
+    { id:"cq_joel_5", title:"Both Hands Free", icon:"🛡️", affReq:36, pages:[
+      "On the Last Rise, Joel stops and hands you the heavy pack. Just for a minute, he says. Then he sits down on a rock and breathes.",
+      "He's quiet for a long time. \"I used to think steady meant never needing anything,\" he says.",
+      "\"Turns out it means letting someone see you need it, and staying anyway.\"",
+      "You carry the pack the rest of the climb. Neither of you mentions it. Both of you remember it.",
+    ], reward:{gold:160,xp:130} },
   ],
   aisyah: [
     { id:"cq_aisyah_1", title:"The Ledger", icon:"⚔️", affReq:5, pages:[
@@ -1541,6 +1573,18 @@ const COMPANION_QUESTS = {
       "It's the most sincere she's been in front of you, maybe ever, and she immediately looks like she regrets it.",
       "\"Anyway,\" she says, already walking off. \"Don't make it weird.\" You don't. But you don't forget it either.",
     ], reward:{gold:90,xp:75} },
+    { id:"cq_aisyah_4", title:"Her Own Stall", icon:"⚔️", affReq:28, pages:[
+      "Aisyah drags you to the far corner of Market Row, where a tiny empty stall sits under a faded awning. \"Don't say anything yet,\" she warns.",
+      "She's measured it twice. She's drawn the shelves. She has a name picked out and then crossed out and then picked out again.",
+      "\"If it flops, I'll be embarrassed,\" she admits. \"But I'd rather be embarrassed than wonder.\"",
+      "You tell her you'll be her first customer, and her loudest critic. She laughs, and for once it isn't a defence.",
+    ], reward:{gold:110,xp:90} },
+    { id:"cq_aisyah_5", title:"Opening Day", icon:"⚔️", affReq:36, pages:[
+      "The awning is new, the shelves are crooked, and Aisyah is pacing like a general before a siege.",
+      "The first customer is Soel, who sits in the middle of the stall and refuses to leave. Business, somehow, picks up.",
+      "By evening the ledger has more in it than she expected, and she shows you the page like it's a medal.",
+      "\"Don't make it weird,\" she says, eyes shining. You don't. You just buy something you don't need and call it support.",
+    ], reward:{gold:160,xp:130} },
   ],
   mezstorm: [
     { id:"cq_mez_1", title:"The Unfinished Verse", icon:"✨", affReq:5, pages:[
@@ -1561,6 +1605,18 @@ const COMPANION_QUESTS = {
       "\"Working title's still 'San Logs Off,'\" she admits, almost shy. \"Never found anything better to call it.\"",
       "You tell her not to change it. Some things are exactly right the way they started.",
     ], reward:{gold:90,xp:75} },
+    { id:"cq_mezstorm_4", title:"The Song Without Words", icon:"✨", affReq:28, pages:[
+      "Mezstorm hums something at the fire that you've never heard before. When you ask, she says it isn't finished.",
+      "\"It doesn't have words yet,\" she says. \"Words make it a promise. I'm not sure I'm ready to promise it.\"",
+      "You tell her songs are allowed to be drafts. She looks at you like that's news.",
+      "She hums it again, slower. By the end you're humming along, and neither of you pretends otherwise.",
+    ], reward:{gold:110,xp:90} },
+    { id:"cq_mezstorm_5", title:"Chaos, Arranged", icon:"✨", affReq:36, pages:[
+      "The Guild hall is a storm of half-built decorations, and Mezstorm is conducting it like an orchestra.",
+      "\"It looks like a mess,\" she says. \"It's a mess with a plan. Those are different.\"",
+      "You realise this has always been her gift: she doesn't tidy the chaos, she gives it a rhythm.",
+      "When the last lantern is hung, the whole room hums. She bows, ridiculous and glowing, and you applaud anyway.",
+    ], reward:{gold:160,xp:130} },
   ],
   eliz: [
     { id:"cq_eliz_1", title:"Counted Right", icon:"❤️", affReq:4, pages:[
@@ -1581,6 +1637,18 @@ const COMPANION_QUESTS = {
       "You don't correct her. Some inaccuracies are worth letting stand.",
       "It occurs to you that this is what she'll remember, eventually — not the details, just the shape of someone who kept showing up.",
     ], reward:{gold:60,xp:55} },
+    { id:"cq_eliz_4", title:"Everything She Noticed", icon:"❤️", affReq:28, pages:[
+      "Eliz hands you a folded paper. Inside is a list: every time you looked tired this month, and what helped.",
+      "\"Water helped on Tuesday,\" she reads, solemn. \"Sleeping helped most. Aunty snacks also helped, but only a bit.\"",
+      "It's the most thorough care report you've ever received, and you're a little undone by it.",
+      "\"I'm not telling you what to do,\" she adds. \"I just want you to know somebody's paying attention.\"",
+    ], reward:{gold:110,xp:90} },
+    { id:"cq_eliz_5", title:"The Little Healer's Rounds", icon:"❤️", affReq:36, pages:[
+      "Eliz has made rounds of the Guild with a tiny satchel: a plaster for Joel, a sweet for Senedra, a pat for Soel.",
+      "\"Everyone needs one thing,\" she explains. \"You just have to ask what it is, and then actually do it.\"",
+      "She saves you for last. Her satchel is nearly empty, but she finds a ribbon at the bottom and ties it round your wrist.",
+      "\"For luck,\" she says. It's the best-made luck you've ever owned.",
+    ], reward:{gold:160,xp:130} },
   ],
   senedra: [
     { id:"cq_sen_1", title:"Fast Hands", icon:"⭐", affReq:4, pages:[
@@ -1601,6 +1669,18 @@ const COMPANION_QUESTS = {
       "You don't mess it up. She relaxes, slightly, in a way you're not sure she notices herself doing.",
       "It's not a big moment. But for someone who's spent this long being the one everyone else leans on, it might be.",
     ], reward:{gold:60,xp:55} },
+    { id:"cq_senedra_4", title:"Faster Isn't Always Better", icon:"⭐", affReq:28, pages:[
+      "Senedra reaches the ridge first, as usual, then waits there for you instead of racing ahead.",
+      "\"I realised I keep winning and not seeing anything,\" she says, a bit sheepish. \"Look at the valley.\"",
+      "You look. The mist is lifting off the river in long gold ribbons, and you would have missed it at full speed.",
+      "She grins. \"New rule. First to the top waits for everyone else.\" It might be the best rule anyone has made.",
+    ], reward:{gold:110,xp:90} },
+    { id:"cq_senedra_5", title:"The Long Way Round", icon:"⭐", affReq:36, pages:[
+      "Senedra picks the slowest path home on purpose, the one that winds through the old orchard.",
+      "She tells you about the shortcuts she used to take and the things she skipped on the way.",
+      "\"Turns out the scenic route is also a route,\" she says. \"It just takes longer to be proud of.\"",
+      "You walk it together, no hurry, and arrive at dusk feeling like you've actually gone somewhere.",
+    ], reward:{gold:160,xp:130} },
   ],
   zaki: [
     { id:"cq_zaki_1", title:"The Pitch", icon:"🔨", affReq:4, pages:[
@@ -1621,6 +1701,18 @@ const COMPANION_QUESTS = {
       "That's the part people miss about him, you think — under the hustle and the charm, he's genuinely generous with credit. He wants people around him to win too.",
       "You tell him that. He waves it off, embarrassed for exactly one second, then pivots straight back into pitching you on the next idea.",
     ], reward:{gold:60,xp:55} },
+    { id:"cq_zaki_4", title:"The Idea Notebook", icon:"🔨", affReq:28, pages:[
+      "Zaki shows you a battered notebook full of ideas: a collapsible kettle, a lantern that tells time, a cart that pulls itself.",
+      "\"Most of them won't work,\" he says cheerfully. \"The trick is to be wrong quickly and cheaply.\"",
+      "You think about how many of your own ideas died waiting to be perfect first.",
+      "He tears out a blank page and hands it to you. \"Draft one. Wrong is allowed.\" You write your first line before you can argue.",
+    ], reward:{gold:110,xp:90} },
+    { id:"cq_zaki_5", title:"Built to Last", icon:"🔨", affReq:36, pages:[
+      "Zaki's lantern-that-tells-time finally works, mostly, if you hold it at an angle and don't ask questions.",
+      "He lights it in the Guild courtyard and everyone gathers around, because some things you simply have to witness.",
+      "\"It's not perfect,\" he says. \"But it's ours, and it'll still work when the fancy ones break.\"",
+      "You think that's maybe the best description of the whole Guild, and tell him so. He pretends not to hear, grinning.",
+    ], reward:{gold:160,xp:130} },
   ],
   soel: [
     { id:"cq_soel_1", title:"His Own Terms", icon:"🐱", affReq:5, pages:[
@@ -1641,6 +1733,18 @@ const COMPANION_QUESTS = {
       "\"Don't let it go to your head,\" you imagine Joel would say, except Joel isn't here, and there's no one to perform indifference for.",
       "You blink back, slow and deliberate, the way you've learned to. He seems satisfied. That's rare, and you know it.",
     ], reward:{gold:60,xp:55} },
+    { id:"cq_soel_4", title:"Night Rounds", icon:"🐱", affReq:28, pages:[
+      "You wake at some hour that doesn't deserve a name to find Soel sitting at the foot of the bed, facing the door.",
+      "He doesn't look at you. He doesn't need to. The whole room has the particular calm of a place being guarded.",
+      "You say thank you quietly. His ear flicks once. That's as much as he'll ever acknowledge it.",
+      "You fall asleep to the sound of nothing happening, which is exactly what he's been working so hard to protect.",
+    ], reward:{gold:90,xp:70} },
+    { id:"cq_soel_5", title:"The Sunbeam Treaty", icon:"🐱", affReq:36, pages:[
+      "There's a patch of sun on the Guild floor that Soel considers his. Somehow you've been added to the arrangement.",
+      "You sit in the corner of it. He permits this, then slowly rearranges himself so one paw rests against your shoe.",
+      "Nothing is said. Nothing needs to be. The treaty is clearly signed.",
+      "Later, Joel finds you both asleep in the light and quietly closes the door.",
+    ], reward:{gold:140,xp:110} },
   ],
 };
 
@@ -1685,7 +1789,7 @@ function toggleEliteMode() {
   showToast(state.eliteMode ? "⚔️ Elite Mode ON — enemies hit harder, everything's worth more." : "Elite Mode off — back to standard difficulty.");
 }
 
-function effectiveChargeCap() { return CHARGE_CAP + (state.ascensionRank||0); }
+function effectiveChargeCap() { return CHARGE_CAP + (state.ascensionRank||0) + (state ? habitFocusBonus() : 0); }
 
 function nextAscensionLevel() { return 50 + (state.ascensionRank||0) * 20; }
 function canAscend() { return state.player.level >= nextAscensionLevel(); }
@@ -1741,8 +1845,10 @@ function defaultState() {
     dragonSigns: 0,
     hiredMercenary: null,
     bondCooldowns: {},
-    settings: { dietMode: "Mediterranean", carbLimit: 200, vegDayCarbLimit: 225, notificationsEnabled: false, slackDayCarbLimit: 250, periodSweetBiteBonus: 20, calorieGoal: 1800, dayResetHour: 8, textScale: 1, mapView: "path" },
+    settings: { dietMode: "Mediterranean", carbLimit: 200, vegDayCarbLimit: 225, notificationsEnabled: false, slackDayCarbLimit: 250, periodSweetBiteBonus: 20, calorieGoal: 1800, reminderHour: 20, dayResetHour: 8, textScale: 1, mapView: "path" },
     visit: { last:null },
+    habitHistory: {}, habitBoss: null, habitBossWins: 0, treasure: null, gentle: null, balancedPlate: null,
+    tavernRankClaimed: 0, eventsClaimed: [], keepsakes: [], unlockedTitles: [], activeTitle: null,
     comeback: null,
     comebackBoostUntil: null,
     slackDays: [],
@@ -2162,7 +2268,8 @@ function ensureDaily() {
   if (state.dailyLog.focusSessionsToday === undefined) state.dailyLog.focusSessionsToday = 0;
 }
 function grantReward(gold, xp) {
-  if (comebackBoostActive()) xp = Math.round(xp * 1.5);
+  xp = Math.round(xp * habitXpMult());
+  gold = Math.round(gold * habitGoldMult());
   state.player.gold += gold;
   let newXp = state.player.xp + xp, leveledUp = false;
   while (newXp >= xpToNext(state.player.level)) {
@@ -2894,11 +3001,12 @@ function resolveVictory() {
   const mult = (isBoss ? 3 : 1) * (enc.isRaid ? 2.2 : 1) * (enc.enemies ? (0.7 + enemyCount*0.4) : 1) * rewardScale(state.player.level) * (state.eliteMode ? 1.75 : 1);
   const goldBonus = (passiveActive("aisyah") ? (state.questFlags.aisyahBonus ? 1.35 : 1.2) : 1) * (1 + abilityMod(abilityScores().cha)*0.05);
   const xpBonus = passiveActive("mezstorm") ? 1.15 : 1;
-  const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult);
-  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult * (comebackBoostActive() ? 1.5 : 1));
+  const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult * habitGoldMult());
+  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult * habitXpMult());
   const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0) + (enc.isRaid ? 2 : 0) + Math.max(0, enemyCount-1) + (state.eliteMode ? 1 : 0);
   const drops = {};
-  for (let i=0;i<dropCount;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
+  const dropCountFinal = dropCount + (habitBuffs().sleep && Math.random() < 0.5 ? 1 : 0);
+  for (let i=0;i<dropCountFinal;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
   if (isBoss) {
     drops["Legend Shard"] = (drops["Legend Shard"]||0) + (state.player.level >= 40 ? 2 : 1) + (enc.isRaid ? 2 : 0);
     if (enc.bossId === "relapse_tide" || enc.bossId === "comparison_specter") {
@@ -3914,6 +4022,7 @@ function orderTavernItem(itemId) {
   if (dateKey === today()) { state.tavernFavorites = [itemId, ...state.tavernFavorites.filter(id => id !== itemId)].slice(0, 8); syncTavernTotals(); }
   wellnessLedgerForDate(dateKey).foodLogs.push(arr[arr.length-1].logId);
   const leveledUp = grantReward(2, 2);
+  afterMealLogged(dateKey);
   save(); render();
   const dayLabel = dateKey === today() ? "today" : dateKey;
   const newTotal = tavernMacrosForDate(dateKey).carbs;
@@ -3949,6 +4058,7 @@ function orderCustomFood() {
   ui.showCustomFoodForm = false;
   wellnessLedgerForDate(dateKey).foodLogs.push(arr[arr.length-1].logId);
   const leveledUp = grantReward(2, 2);
+  afterMealLogged(dateKey);
   save(); render();
   const dayLabel = dateKey === today() ? "today" : dateKey;
   const newTotal = tavernMacrosForDate(dateKey).carbs;
@@ -4642,6 +4752,7 @@ function requestNotificationPermission() {
     state.settings.notificationsEnabled = perm === "granted";
     save(); render();
     scheduleFocusNotification();
+    scheduleHabitReminder();
     showToast(perm === "granted" ? "Notifications enabled — your Focus timer will ping you when it's done." : "Notifications weren't allowed. You can change this in your browser's site settings.");
   }).catch(() => showToast("Couldn't request notification permission here."));
 }
@@ -5080,7 +5191,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimComebackReward, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -5187,7 +5298,7 @@ function renderHeader() {
         <span style="position:absolute;font-size:26px">🪄</span>
       </div>
       <div style="flex:1">
-        <p class="disp" style="font-weight:700;font-size:16px;margin:0">${escapeHtml(state.player.name)} the Mage · Lv.${state.player.level}</p>
+        <p class="disp" style="font-weight:700;font-size:16px;margin:0">${escapeHtml(state.player.name)} ${escapeHtml(activeTitle())} · Lv.${state.player.level}</p>
         <div style="display:flex;gap:12px;margin-top:4px">
           <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">❤️</span><span style="font-size:13px">${state.player.hp}/${maxHp()}</span></div>
           <div style="display:flex;align-items:center;gap:4px"><span style="font-size:14px">✨</span><span style="font-size:13px">${state.player.mp}/${state.player.maxMp}</span></div>
@@ -5374,6 +5485,7 @@ function renderHome() {
           <span style="font-size:10.5px;padding:4px 10px;border-radius:9999px;background:${C.card}">🌙 ${s.sleptEarlyDays}/${s.daysLogged} sleep</span>
           <span style="font-size:10.5px;padding:4px 10px;border-radius:9999px;background:${C.card}">⏳ ${s.totalFocusSessions} focus</span>
         </div>
+        ${weeklyWinsHtml()}
         <button data-act="dismissWeeklyRecap" class="disp" style="width:100%;padding:8px;border-radius:16px;font-size:11.5px;font-weight:700;background:${C.sage};color:white">Nice, thanks</button>
       </div>
     `);
@@ -5656,7 +5768,7 @@ function renderHome() {
     </div>
   `) : "";
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${comebackCardHtml()}${remindersCard}${sleepCard}${workoutCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${sickCard}${weighInCard}${soelCareCard}${wellnessCard}${prnCard}${tavernCard}${satchelCard}</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:16px">${comebackCardHtml()}${quickStripHtml()}${eventCardHtml()}${heroStatsCardHtml()}${gentleCardHtml()}${treasureCardHtml()}${nudgeCardHtml()}${remindersCard}${sleepCard}${workoutCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${sickCard}${weighInCard}${soelCareCard}${wellnessCard}${prnCard}${tavernCard}${satchelCard}</div>`;
 }
 
 function renderBillsCard() {
@@ -5738,6 +5850,7 @@ function renderTavern() {
         <button data-act="openTavern" class="disp" style="padding:6px 14px;border-radius:9999px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">Log a Meal</button>
       </div>
       <p style="font-size:11px;color:${C.inkSoft};margin:0 0 10px">Keeping carbs under ${effectiveCarbLimit()}g today.${isSlackDayToday()?" 🍰 Slack Day — limit raised.":isVegDayToday()?" 🌱 Vegetarian Day — limit relaxed.":(periodDayNumber(today())&&periodDayNumber(today())<=2)?" 🩸 Period sweet-bite bonus applied.":""} ${state.tavern.streak > 0 ? `🔥 ${state.tavern.streak} day streak` : ""}</p>
+      <p style="font-size:10px;color:${C.mageDeep};margin:-4px 0 10px;font-weight:600">🏅 ${tavernRankLine()}</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Fat</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:#D9A441">${state.tavern.fatToday}g</p></div>
         <div style="text-align:center;padding:8px;border-radius:12px;background:${C.creamDeep}"><p style="font-size:9.5px;color:${C.inkSoft};margin:0">Protein</p><p class="disp" style="font-size:15px;font-weight:700;margin:2px 0 0;color:${C.sage}">${state.tavern.proteinToday}g</p></div>
@@ -7661,6 +7774,8 @@ function renderSettingsModal() {
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">The limit for any day you mark as a Slack Day from the Calendar — currently ${state.settings.slackDayCarbLimit}g. Use it deliberately, not automatically.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${slackCarbButtons}</div>
 
+      ${titleSettingsHtml()}
+      ${reminderSettingsHtml()}
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🔥 Daily Calorie Goal</p>
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">Shown beside your carb budget in the Tavern — currently ${calorieGoal()} kcal/day. A guide, not a rule.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${kcalButtons}</div>
@@ -7739,6 +7854,8 @@ function renderInsightsModal() {
         <p class="disp" style="font-weight:700;font-size:13px;color:${C.mageDeep};margin:0 0 6px">🌙 Sleep Tracking <span style="font-weight:400;color:${C.inkSoft};font-size:11px">(last 30 days)</span></p>
         ${sleep30.count ? `${statRow("Sessions", sleep30.count)}${statRow("Average sleep", sleepDurationLabel(sleep30.avgMin*60000))}` : `<p style="font-size:11px;color:${C.inkSoft};margin:0">No completed sleep sessions yet. Start the tracker before bed and stop it when you wake.</p>`}
       </div>
+      ${calorieChartHtml()}
+      ${habitHeatmapHtml()}
       ${section("Last 7 Days", w7)}
       ${section("Last 30 Days", w30)}
     </div>
@@ -7829,7 +7946,7 @@ function renderAchievementsModal() {
         <span style="font-size:24px">${claimed ? "🏆" : ach.icon}</span>
         <div style="flex:1">
           <p class="disp" style="font-weight:700;font-size:12.5px;margin:0">${ach.title}</p>
-          <p style="font-size:10.5px;color:${C.inkSoft};margin:2px 0 0">${ach.desc}</p>
+          <p style="font-size:10.5px;color:${C.inkSoft};margin:2px 0 0">${ach.desc}${ach.progress && !claimed ? ` · <b>${ach.progress()[0]}/${ach.progress()[1]}</b>` : ""}</p>
         </div>
         ${claimed
           ? `<span style="font-size:10.5px;font-weight:700;color:${C.sage};flex-shrink:0">✔️ Done</span>`
@@ -7884,6 +8001,7 @@ function renderContent() {
 
 function render() {
   ensureDaily();
+  recordHabitDay();
   const html = `
     ${renderHeader()}
     ${renderToast()}
@@ -7931,6 +8049,7 @@ try {
   load();
   render();
   scheduleFocusNotification();
+  scheduleHabitReminder();
   if (lastLoadRecovery === "backup") {
     setTimeout(() => showToast("Recovered your save from a backup — everything should be here except your very last session."), 500);
   } else if (lastLoadRecovery === "default") {

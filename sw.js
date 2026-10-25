@@ -4,6 +4,7 @@ const CORE=[
   "./index.html",
   "./css/daybreak.css?v=20261025-15.0",
   "./css/adventure.css?v=20261025-15.0",
+  "./js/expansion.js?v=20261025-15.0",
   "./js/app.js?v=20261025-15.0",
   "./manifest.json"
 ];
@@ -28,7 +29,7 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   const isAppAsset = url.origin === self.location.origin &&
-    (url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("app.js") || url.pathname.endsWith("daybreak.css") || url.pathname.endsWith("adventure.css"));
+    (url.pathname.endsWith("/") || url.pathname.endsWith("index.html") || url.pathname.endsWith("app.js") || url.pathname.endsWith("expansion.js") || url.pathname.endsWith("daybreak.css") || url.pathname.endsWith("adventure.css"));
 
   if (isAppAsset) {
     event.respondWith(
