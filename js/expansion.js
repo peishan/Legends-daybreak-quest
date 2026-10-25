@@ -269,6 +269,7 @@ function quickStripHtml() {
   const favBtns = favs.map(f => `<button data-act="orderTavernItem" data-arg="${f.id}" class="disp" title="${escapeHtml(f.name)}" style="flex-shrink:0;padding:8px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${C.mageSoft};color:${C.mageDeep};max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.emoji} ${escapeHtml(f.name.split("(")[0].trim())}</button>`).join("");
   return `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
     <button data-act="drinkWater" ${done ? "disabled" : ""} class="disp" style="flex-shrink:0;padding:8px 12px;border-radius:12px;font-size:11px;font-weight:700;background:${done ? C.sageSoft : C.mage};color:${done ? C.sage : "white"}">💧 ${done ? "Water done" : `+1 cup (${state.water.count}/${state.water.goal})`}</button>
+    <button data-act="wildsWander" ${ui.encounter ? "disabled" : ""} class="disp" style="flex-shrink:0;padding:8px 12px;border-radius:12px;font-size:11px;font-weight:700;background:${C.sage};color:white">🌿 Wander</button>
     <button data-act="openTavern" class="disp" style="flex-shrink:0;padding:8px 12px;border-radius:12px;font-size:11px;font-weight:700;background:${C.mageDeep};color:white">🍽️ Log meal</button>
     ${favBtns}
   </div>`;
@@ -539,5 +540,156 @@ const EXPANSION_ACHIEVEMENTS = [
   xa("ach_grand4", "Month of Wonders", "🎆", "Earn 4 weekly Grand Prizes", () => (state.treasure && state.treasure.grandTotal) || 0, 4, { gold:240, xp:180 }),
   xa("ach_event1", "Festival Goer", "🎃", "Complete a seasonal event", () => (state.eventsClaimed || []).length, 1, { gold:100, xp:80 }),
   xa("ach_event3", "Calendar Keeper", "📅", "Complete 3 seasonal events", () => (state.eventsClaimed || []).length, 3, { gold:260, xp:190 }),
+  xa("ach_wilds100", "Trailblazer", "🌿", "Take 100 steps in the Wilds", () => (state.wilds && state.wilds.total) || 0, 100, { gold:80, xp:60 }),
+  xa("ach_wilds500", "Never Lost", "🧭", "Take 500 steps in the Wilds", () => (state.wilds && state.wilds.total) || 0, 500, { gold:220, xp:160 }),
+  xa("ach_wildfights", "Wild Hunter", "⚔️", "Win 100 fights in the Wilds", () => (state.wilds && state.wilds.fightsTotal) || 0, 100, { gold:150, xp:110 }),
   xa("ach_rank3", "Hearth Master", "🍳", "Reach Tavern rank Hearth Master", tavernRankIndex, 3, { gold:120, xp:90 }),
 ];
+
+/* =====================================================================
+   The Wilds — explore & fight any time. No Focus, no cooldowns.
+   Rewards are lighter than a Call and taper after heavy use so it never
+   replaces the daily loop, but there is never a timer to wait on.
+   ===================================================================== */
+const WILDS_FULL_ACTIONS = 30, WILDS_HALF_ACTIONS = 80;
+function wildsEnsure() {
+  if (!state.wilds || typeof state.wilds !== "object") state.wilds = {};
+  const w = state.wilds, t = today();
+  if (w.date !== t) { w.date = t; w.actions = 0; w.fights = 0; w.rare = false; }
+  if (!Array.isArray(w.log)) w.log = [];
+  if (w.total == null) w.total = 0;
+  if (w.fightsTotal == null) w.fightsTotal = 0;
+  return w;
+}
+function wildsRewardMult() {
+  const n = wildsEnsure().actions;
+  return n < WILDS_FULL_ACTIONS ? 1 : n < WILDS_HALF_ACTIONS ? 0.5 : 0.2;
+}
+function wildsZone() {
+  const open = LOCATIONS.filter(l => state.player.level >= (l.unlockLv || 1));
+  const w = wildsEnsure();
+  return open.find(l => l.id === w.zone) || open[open.length > 1 ? 1 : 0] || LOCATIONS[0];
+}
+function wildsSetZone(id) {
+  const loc = LOCATIONS.find(l => l.id === id);
+  if (!loc || state.player.level < (loc.unlockLv || 1)) return;
+  wildsEnsure().zone = id; save(); render();
+}
+function wildsLog(line) { const w = wildsEnsure(); w.log.unshift(line); w.log = w.log.slice(0, 6); }
+function wildsAddXpGold(gold, xp) {
+  state.player.gold += gold;
+  let leveled = false, newXp = state.player.xp + xp;
+  while (newXp >= xpToNext(state.player.level)) {
+    newXp -= xpToNext(state.player.level);
+    state.player.level += 1; state.player.maxHp += 8; state.player.maxMp += 4; leveled = true;
+  }
+  state.player.xp = newXp;
+  return leveled;
+}
+function wildsPickMonster() {
+  const weight = { Common:4, Uncommon:3, Rare:1.5, Elite:0.6 };
+  const pool = HUNTING_MONSTERS.map(m => ({ m, w: weight[m.tier] || 1 }));
+  let r = Math.random() * pool.reduce((n, p) => n + p.w, 0);
+  for (const p of pool) { r -= p.w; if (r <= 0) return p.m; }
+  return pool[0].m;
+}
+function wildsFight() {
+  if (ui.encounter) return;
+  ensureDaily();
+  const w = wildsEnsure(), loc = wildsZone(), monster = wildsPickMonster();
+  w.actions++; w.fights++; w.fightsTotal++; w.total++;
+  const hp = Math.round((20 + state.player.level * 5.5) * monster.hpMod * challengeScale(state.player.level) * (state.eliteMode ? 1.5 : 1));
+  ui.encounter = { isBoss:false, isFree:true, cost:0, enemies:[{ name:monster.name, hp, maxHp:hp }], targetIndex:0, log:[`${loc.icon} ${loc.name}: ${monster.intro}`], resolved:false };
+  save(); render();
+}
+function wildsScaleRewards(enc, reward) {
+  const m = 0.45 * wildsRewardMult();
+  reward.gold = Math.max(1, Math.round(reward.gold * m));
+  reward.xp = Math.max(1, Math.round(reward.xp * m));
+  const drops = {};
+  if (Math.random() < 0.55 * Math.min(1, wildsRewardMult() + 0.3)) { const k = MATERIALS[Math.floor(Math.random() * MATERIALS.length)]; drops[k] = 1; }
+  reward.drops = drops;
+  return reward;
+}
+function claimFreeFight() {
+  const enc = ui.encounter;
+  if (!enc || !enc.resolved || !enc.isFree) return;
+  ensureDaily();
+  const { gold, xp, drops } = enc.reward;
+  Object.entries(drops).forEach(([m, q]) => { state.materials[m] = (state.materials[m] || 0) + q; state.dailyLog.materialsGathered += q; });
+  enc.enemies.forEach(e => trackKill(e.name));
+  state.dailyLog.skirmishToday = (state.dailyLog.skirmishToday || 0) + 1;
+  state.player.hp = Math.min(maxHp(), state.player.hp + 6);
+  const leveled = wildsAddXpGold(gold, xp);
+  const dropStr = Object.keys(drops).length ? `, +1 ${Object.keys(drops)[0]}` : "";
+  wildsLog(`⚔️ ${enc.enemies[0].name} defeated · +${gold}g +${xp}xp${dropStr}`);
+  ui.encounter = null;
+  save(); render();
+  if (leveled) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+  else showToast(`${enc.enemies[0].name} defeated! +${gold}g +${xp}xp${dropStr}`);
+}
+function wildsWander() {
+  if (ui.encounter) return;
+  ensureDaily();
+  const w = wildsEnsure(), loc = wildsZone(), m = wildsRewardMult(), scale = rewardScale(state.player.level);
+  const roll = Math.random();
+  if (roll < 0.42) { wildsFight(); return; }
+  w.actions++; w.total++;
+  let line, leveled = false;
+  const flavor = loc.flavor[Math.floor(Math.random() * loc.flavor.length)];
+  if (roll < 0.62) {
+    const n = Math.max(1, Math.round((1 + Math.floor(Math.random() * 3)) * (m >= 1 ? 1 : 0.6)));
+    const got = {};
+    for (let i = 0; i < n; i++) { const k = MATERIALS[Math.floor(Math.random() * MATERIALS.length)]; got[k] = (got[k] || 0) + 1; }
+    Object.entries(got).forEach(([k, q]) => { state.materials[k] = (state.materials[k] || 0) + q; state.dailyLog.materialsGathered += q; });
+    line = `🌿 You gather ${Object.entries(got).map(([k, q]) => `${q}× ${k}`).join(", ")}. ${flavor}`;
+  } else if (roll < 0.77) {
+    const g = Math.max(1, Math.round((6 + Math.random() * 12) * scale * m));
+    leveled = wildsAddXpGold(g, 0);
+    line = `🪙 You find a few coins: +${g}g. ${flavor}`;
+  } else if (roll < 0.87) {
+    const x = Math.max(1, Math.round((5 + Math.random() * 6) * scale * m)), g = Math.max(1, Math.round(4 * m));
+    leveled = wildsAddXpGold(g, x);
+    line = `📜 ${flavor} (+${x}xp)`;
+  } else if (roll < 0.93) {
+    const lm = (loc.landmarks && loc.landmarks.length) ? loc.landmarks[Math.floor(Math.random() * loc.landmarks.length)] : null;
+    const x = Math.max(1, Math.round(7 * scale * m));
+    leveled = wildsAddXpGold(3, x);
+    line = lm ? `${lm.icon} You pass ${lm.name} and linger a moment. (+${x}xp)` : `✨ You take in the view. (+${x}xp)`;
+  } else if (roll < 0.98) {
+    state.player.hp = Math.min(maxHp(), state.player.hp + Math.round(maxHp() * 0.25));
+    state.player.mp = Math.min(state.player.maxMp, state.player.mp + Math.round(state.player.maxMp * 0.25));
+    line = "💧 A quiet spring. You rest a moment — HP and MP restored a little.";
+  } else if (!w.rare) {
+    w.rare = true;
+    state.potions.health_draught = (state.potions.health_draught || 0) + 1;
+    line = "🎁 Half-buried in the roots: a Health Draught!";
+  } else {
+    line = `🍃 ${flavor}`;
+  }
+  wildsLog(line);
+  save(); render();
+  if (leveled) setTimeout(() => showToast(`Level up! You are now Level ${state.player.level}.`), 300);
+}
+function wildsCardHtml() {
+  const w = wildsEnsure(), loc = wildsZone(), m = wildsRewardMult();
+  const open = LOCATIONS.filter(l => state.player.level >= (l.unlockLv || 1));
+  const chips = open.map(l => `<button data-act="wildsSetZone" data-arg="${l.id}" class="disp" style="flex-shrink:0;padding:6px 10px;border-radius:9999px;font-size:10.5px;font-weight:700;background:${l.id === loc.id ? C.sage : C.creamDeep};color:${l.id === loc.id ? "white" : C.ink};white-space:nowrap">${l.icon} ${l.name}</button>`).join("");
+  const rateLabel = m >= 1 ? `Full rewards · ${Math.max(0, WILDS_FULL_ACTIONS - w.actions)} left today` : m >= 0.5 ? "Half rewards (heavy day)" : "Light rewards — go touch grass 🌱";
+  const log = w.log.map(l => `<p style="font-size:11px;color:${C.inkSoft};margin:3px 0;line-height:1.35">${escapeHtml(l)}</p>`).join("");
+  const busy = ui.encounter ? "disabled" : "";
+  return card(`
+    <div style="padding:16px;background:linear-gradient(135deg, ${C.sageSoft}, ${C.cream})">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${C.sage}33;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:22px">🌿</span></div>
+        <div style="flex:1"><p class="disp" style="font-weight:700;font-size:13px;margin:0">The Wilds</p><p style="font-size:10.5px;color:${C.inkSoft};margin:2px 0 0">Explore and fight any time — no Focus, no cooldowns · ${rateLabel}</p></div>
+      </div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px">${chips}</div>
+      <div style="display:flex;gap:8px;margin-bottom:${log ? 8 : 0}px">
+        <button data-act="wildsWander" ${busy} class="disp" style="flex:2;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.sage};color:white">🧭 Wander onward</button>
+        <button data-act="wildsFight" ${busy} class="disp" style="flex:1;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.mageDeep};color:white">⚔️ Fight</button>
+      </div>
+      ${log}
+      <p style="font-size:9.5px;color:${C.inkSoft};margin:6px 0 0">Today: ${w.actions} steps · ${w.fights} fights · ${w.total} all-time</p>
+    </div>`);
+}

@@ -1847,6 +1847,7 @@ function defaultState() {
     bondCooldowns: {},
     settings: { dietMode: "Mediterranean", carbLimit: 200, vegDayCarbLimit: 225, notificationsEnabled: false, slackDayCarbLimit: 250, periodSweetBiteBonus: 20, calorieGoal: 1800, reminderHour: 20, dayResetHour: 8, textScale: 1, mapView: "path" },
     visit: { last:null },
+    wilds: null,
     habitHistory: {}, habitBoss: null, habitBossWins: 0, treasure: null, gentle: null, balancedPlate: null,
     tavernRankClaimed: 0, eventsClaimed: [], keepsakes: [], unlockedTitles: [], activeTitle: null,
     comeback: null,
@@ -3001,10 +3002,10 @@ function resolveVictory() {
   const mult = (isBoss ? 3 : 1) * (enc.isRaid ? 2.2 : 1) * (enc.enemies ? (0.7 + enemyCount*0.4) : 1) * rewardScale(state.player.level) * (state.eliteMode ? 1.75 : 1);
   const goldBonus = (passiveActive("aisyah") ? (state.questFlags.aisyahBonus ? 1.35 : 1.2) : 1) * (1 + abilityMod(abilityScores().cha)*0.05);
   const xpBonus = passiveActive("mezstorm") ? 1.15 : 1;
-  const baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult * habitGoldMult());
-  const baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult * habitXpMult());
+  let baseGold = Math.round((6 + Math.random()*8) * goldBonus * mult * habitGoldMult());
+  let baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult * habitXpMult());
   const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0) + (enc.isRaid ? 2 : 0) + Math.max(0, enemyCount-1) + (state.eliteMode ? 1 : 0);
-  const drops = {};
+  let drops = {};
   const dropCountFinal = dropCount + (habitBuffs().sleep && Math.random() < 0.5 ? 1 : 0);
   for (let i=0;i<dropCountFinal;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
   if (isBoss) {
@@ -3019,6 +3020,7 @@ function resolveVictory() {
       drops["Dragon Scale"] = (drops["Dragon Scale"]||0) + 2 + Math.floor(Math.random()*2);
     }
   }
+  if (enc.isFree) { const fr = wildsScaleRewards(enc, { gold: baseGold, xp: baseXp }); baseGold = fr.gold; baseXp = fr.xp; drops = fr.drops; }
   enc.resolved = true;
   const victoryLine = isBoss ? `${enc.enemyName} shatters into scattered light.`
     : enc.enemies ? (enemyCount > 1 ? "The last of them dissolves into motes of light." : `${enc.enemies[0].name} dissolves into motes of light.`)
@@ -3030,6 +3032,7 @@ function resolveVictory() {
 function claimCall() {
   const enc = ui.encounter;
   if (!enc || !enc.resolved) return;
+  if (enc.isFree) return claimFreeFight();
   const { gold, xp, drops } = enc.reward;
   const cost = enc.cost || 1;
   const wasBoss = enc.isBoss;
@@ -5191,7 +5194,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimComebackReward, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -6062,6 +6065,7 @@ function renderExplore() {
 
   return `<div style="display:flex;flex-direction:column;gap:12px">
     ${adventureCard}
+    ${wildsCardHtml()}
     ${trainingCard}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 -2px">
       <p style="color:${C.inkSoft};font-size:12px;margin:0">${isListView ? "Your unlocked stops — tap one to look around inside." : "Your path through the Legends map — tap a stop to look around inside."}</p>
