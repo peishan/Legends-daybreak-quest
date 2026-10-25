@@ -1485,7 +1485,7 @@ const ACHIEVEMENTS = [
   { id:"ach_ketostreak", title:"Carb Target Streak", icon:"🎯", desc:"Hit a 7-day Tavern streak", check: () => (state.tavern.streak||0) >= 7, reward:{gold:50,xp:40} },
 ];
 
-ACHIEVEMENTS.push(...EXPANSION_ACHIEVEMENTS, ...FISHING_ACHIEVEMENTS);
+ACHIEVEMENTS.push(...EXPANSION_ACHIEVEMENTS, ...FISHING_ACHIEVEMENTS, ...KITCHEN_ACHIEVEMENTS);
 
 const SNIPPETS = {
   joel: [
@@ -1849,6 +1849,7 @@ function defaultState() {
     visit: { last:null },
     wilds: null,
     fishing: null,
+    mealBuff: null, cookbook: {}, cooked: 0, soelPet: null,
     habitHistory: {}, habitBoss: null, habitBossWins: 0, treasure: null, gentle: null, balancedPlate: null,
     tavernRankClaimed: 0, eventsClaimed: [], keepsakes: [], unlockedTitles: [], activeTitle: null,
     comeback: null,
@@ -3009,7 +3010,7 @@ function resolveVictory() {
   let baseXp = Math.round((10 + Math.random()*8 + state.streak) * xpBonus * mult * habitXpMult());
   const dropCount = (Math.random() < (passiveActive("senedra")?0.65:0.4) ? 2 : 1) + (isBoss ? 2 : 0) + (enc.isRaid ? 2 : 0) + Math.max(0, enemyCount-1) + (state.eliteMode ? 1 : 0);
   let drops = {};
-  const dropCountFinal = dropCount + (habitBuffs().sleep && Math.random() < 0.5 ? 1 : 0);
+  const dropCountFinal = dropCount + (habitBuffs().sleep && Math.random() < 0.5 ? 1 : 0) + mealDrops();
   for (let i=0;i<dropCountFinal;i++){ const m = MATERIALS[Math.floor(Math.random()*MATERIALS.length)]; drops[m]=(drops[m]||0)+1; }
   if (isBoss) {
     drops["Legend Shard"] = (drops["Legend Shard"]||0) + (state.player.level >= 40 ? 2 : 1) + (enc.isRaid ? 2 : 0);
@@ -5197,7 +5198,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, toggleMusic, openPond, closePond, pondTab, pondCast, pondReel, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, toggleMusic, openPond, closePond, pondTab, pondCast, pondReel, openKitchen, closeKitchen, cookDish, openSoelCorner, closeSoelCorner, soelFeed, soelPet, soelPlay, soelSwat, soelGift, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -8054,6 +8055,8 @@ function render() {
     ${ui.showSleepBackfill ? `<div style="position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)"><div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><p class="disp" style="font-weight:700;font-size:15px;margin:0">📝 Backfill Sleep</p><button data-act="closeSleepBackfill"><span style="color:${C.inkSoft}">✖</span></button></div><p style="font-size:11px;color:${C.inkSoft};margin:0 0 12px">If you forgot to start the tracker, enter when you actually fell asleep and when you woke. This is added to your sleep history without changing your live tracker.</p><label style="font-size:10px;color:${C.inkSoft}">Sleep started</label><input id="sleepBackfillStart" type="datetime-local" style="width:100%;margin:4px 0 10px;padding:9px;border-radius:12px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink}"><label style="font-size:10px;color:${C.inkSoft}">Wake time</label><input id="sleepBackfillEnd" type="datetime-local" style="width:100%;margin:4px 0 12px;padding:9px;border-radius:12px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink}"><button data-act="saveSleepBackfill" class="disp" style="width:100%;padding:11px;border-radius:16px;font-weight:700;background:${C.mageDeep};color:white">Save Sleep Session</button></div></div>` : ""}
     ${renderAdventure2Modal()}
     ${renderPondModal()}
+    ${renderKitchenModal()}
+    ${renderSoelModal()}
     ${renderNav()}
   `;
   document.getElementById("app").innerHTML = html;

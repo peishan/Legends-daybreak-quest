@@ -15,7 +15,9 @@ const CHAR_DEFS = {
 };
 function charBody(id) {
   const d = CHAR_DEFS[id] || CHAR_DEFS.hero;
-  const { skin, outfit, trim, hair, style, hat, prop, dress } = d;
+  let { skin, outfit, trim, hair, style, hat, prop, dress } = d;
+  const look = (id === "hero" && typeof heroLook === "function") ? heroLook() : null;
+  if (look) outfit = look.outfit;
   const dk = "rgba(0,0,0,.28)";
   // hair behind head
   let back = "";
@@ -37,14 +39,14 @@ function charBody(id) {
   else if (style === "long") front = `<path d="M-10 -34 Q-10.5 -47.5 0 -47 Q10.5 -47.5 10 -34 Q5 -40 0 -39 Q-5 -40 -10 -34Z" fill="${hair}"/>`;
   else if (style === "spiky") front = `<path d="M-9.6 -36 L-8 -48 L-4 -42 L0 -50 L4 -42 L8 -48 L9.6 -36 Q4 -40 0 -39.5 Q-4 -40 -9.6 -36Z" fill="${hair}"/><rect x="-8" y="-43" width="16" height="3.2" rx="1.2" fill="#9a8a60"/><circle cx="-4.5" cy="-41.4" r="2.1" fill="#bfe6f2" stroke="#6b4a33" stroke-width=".8"/><circle cx="4.5" cy="-41.4" r="2.1" fill="#bfe6f2" stroke="#6b4a33" stroke-width=".8"/>`;
   let pr = "";
-  if (prop === "staff") pr = `<line x1="16" y1="2" x2="16" y2="-52" stroke="#7a5a3a" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="-56" r="4.5" fill="#f2c14e"/><circle cx="16" cy="-56" r="9" fill="#f2c14e" opacity=".25"/>`;
+  if (prop === "staff") pr = look ? heroStaffSvg(look) : `<line x1="16" y1="2" x2="16" y2="-52" stroke="#7a5a3a" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="-56" r="4.5" fill="#f2c14e"/><circle cx="16" cy="-56" r="9" fill="#f2c14e" opacity=".25"/>`;
   if (prop === "shield") pr = `<path d="M-23 -26 L-12 -26 L-12 -14 Q-17.5 -8 -23 -14Z" fill="${trim}" stroke="#7a8190" stroke-width="1"/><path d="M-17.5 -25 V-11" stroke="${outfit}" stroke-width="2"/>`;
   if (prop === "sword") pr = `<line x1="16" y1="-12" x2="16" y2="-42" stroke="#dfe5ee" stroke-width="2.6" stroke-linecap="round"/><rect x="12" y="-14" width="8" height="2.4" fill="#d9a441"/>`;
   if (prop === "hammer") pr = `<line x1="15" y1="-10" x2="15" y2="-34" stroke="#7a5a3a" stroke-width="2.4" stroke-linecap="round"/><rect x="9.5" y="-40" width="11" height="7" rx="1.5" fill="#8a8a96"/>`;
   if (prop === "note") pr = `<text x="15" y="-30" font-size="12" fill="${trim}" font-family="serif">♪</text>`;
   if (prop === "heart") pr = `<text x="11" y="-25" font-size="10" fill="#ff5c7a">♥</text>`;
   if (prop === "star") pr = `<text x="11" y="-25" font-size="10" fill="#ffcf40">★</text>`;
-  return `<ellipse cx="0" cy="1" rx="13" ry="3.4" fill="${dk}"/>${back}${legs}${bodyPath}${arms}${head}${front}${pr}`;
+  return `<ellipse cx="0" cy="1" rx="13" ry="3.4" fill="${dk}"/>${look ? heroGearBack(look) : ""}${back}${legs}${bodyPath}${arms}${head}${front}${look ? heroGearFront(look) : ""}${pr}`;
 }
 function chibi(x, y, o) {
   const id = (o && o.id) || "hero";

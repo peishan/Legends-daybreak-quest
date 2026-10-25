@@ -53,9 +53,9 @@ function habitBuffs() {
   const h = habitDayCompute(today());
   return { water:!!h.w, food:!!h.f, sleep:!!h.s, move:!!h.m, supps:!!h.u, aura:!!(h.w && h.f && h.s && h.m) };
 }
-function habitGoldMult() { const b = habitBuffs(); return (b.water ? 1.1 : 1) * (b.aura ? 1.1 : 1); }
-function habitXpMult() { const b = habitBuffs(); return (b.food ? 1.1 : 1) * (b.aura ? 1.1 : 1) * (comebackBoostActive() ? 1.5 : 1); }
-function habitFocusBonus() { return habitBuffs().move ? 1 : 0; }
+function habitGoldMult() { const b = habitBuffs(); return (b.water ? 1.1 : 1) * (b.aura ? 1.1 : 1) * mealMult("gold"); }
+function habitXpMult() { const b = habitBuffs(); return (b.food ? 1.1 : 1) * (b.aura ? 1.1 : 1) * (comebackBoostActive() ? 1.5 : 1) * mealMult("xp"); }
+function habitFocusBonus() { return (habitBuffs().move ? 1 : 0) + mealFocus(); }
 // Persist today's flags so history survives log pruning. Only saves when something changed.
 function recordHabitDay() {
   if (!state.habitHistory || typeof state.habitHistory !== "object") state.habitHistory = {};

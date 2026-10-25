@@ -255,7 +255,7 @@ function renderCampScene() {
     ${campDecorSvg(night)}
     <!-- Pond -->
     <g class="hot" data-act="openPond" transform="translate(376 228)"><ellipse cx="0" cy="0" rx="30" ry="8" fill="${night ? "#1f3a5a" : "#5fb3d9"}" stroke="#2f5a7a" stroke-width="1.5"/><ellipse cx="-6" cy="-1" rx="8" ry="2" fill="#fff" opacity=".35"/><g transform="translate(8 -2)"><circle r="2.6" fill="#fff"/><path d="M-2.6 0 A2.6 2.6 0 0 0 2.6 0Z" fill="#d9232d"/></g><rect class="hl" x="-34" y="-12" width="68" height="24" fill="none" stroke="#fff3d6" stroke-width="2" rx="6"/><text class="hotlabel" x="0" y="-12" text-anchor="middle">Pond</text></g>
-    ${campFireSvg(215, 226)}
+    <g class="hot" data-act="openKitchen">${campFireSvg(215, 226)}<rect class="hl" x="192" y="196" width="48" height="40" fill="none" stroke="#fff3d6" stroke-width="2" rx="6"/><text class="hotlabel" x="215" y="245" text-anchor="middle">Kitchen</text></g>
     ${heroAuraSvg(174, 224)}${hero}${crew.join("")}${soelSprite(236, 232)}
     ${wx}
     <rect width="420" height="250" fill="${dim}" pointer-events="none"/>
@@ -263,6 +263,7 @@ function renderCampScene() {
   <div class="dialog" data-act="sceneTalk" data-arg="${ui.sceneSpeaker || ""}">
     <span class="plate disp">${escapeHtml(spk.name)}</span>
     <p>${escapeHtml(spk.text)}</p>
+    ${ui.sceneSpeaker === "soel" ? `<button data-act="openSoelCorner" class="disp" style="position:absolute;right:10px;top:-14px;padding:5px 12px;border-radius:9px;font-size:11px;font-weight:800;background:var(--brass);color:#2b1c08">🐾 Soel's Corner</button>` : ""}
     <span class="next">tap a friend ▸</span>
   </div></div>`;
 }

@@ -119,6 +119,7 @@ function pondReel() {
   ensureDaily();
   const f = fishEnsure(), fish = fishRollOne(), first = !f.caught[fish.id];
   f.caught[fish.id] = (f.caught[fish.id] || 0) + 1; f.total++; f.today++;
+  if (!fish.mat) { const st = fishStock(); st[fish.id] = (st[fish.id] || 0) + 1; }
   const taper = f.today <= 25 ? 1 : 0.4, scale = rewardScale(state.player.level);
   const gold = Math.max(1, Math.round(fish.gold * scale * taper * (first ? 2 : 1))), xp = Math.max(1, Math.round(fish.xp * scale * taper));
   let leveled = wildsAddXpGold(gold, xp);
