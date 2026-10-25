@@ -2059,6 +2059,7 @@ function load() {
 function applyTheme() {
   C = state.theme === "dark" ? DARK_THEME : LIGHT_THEME;
   const root = document.documentElement;
+  root.setAttribute("data-theme", state.theme === "dark" ? "dark" : "light");
   Object.entries(C).forEach(([k,v]) => root.style.setProperty(`--${k}`, v));
 }
 function toggleTheme() {
@@ -2578,6 +2579,7 @@ function weeklyCallsCount() {
 
 /* ================= actions ================= */
 function showToast(text) {
+  try { rpgOnToast(text); } catch (e) {}
   ui.toast = text;
   clearTimeout(ui.toastTimer);
   ui.toastTimer = setTimeout(() => { ui.toast = null; render(); }, 2600);
@@ -5194,7 +5196,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimComebackReward, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -5235,7 +5237,7 @@ document.getElementById("app").addEventListener("change", (e) => {
 
 /* ================= render ================= */
 function card(inner, extraStyle) {
-  return `<div style="background:${C.card};border:1px solid ${C.border};border-radius:20px;${extraStyle||""}">${inner}</div>`;
+  return `<div class="rpg-card" style="background:${C.card};border:1px solid ${C.border};border-radius:20px;${extraStyle||""}">${inner}</div>`;
 }
 
 function pushFx(target, text, kind) { ui.fx = ui.fx || {}; ui.fx[target] = { text, kind }; }
@@ -5269,7 +5271,7 @@ function renderFxOverlay(target) {
   return `<div style="position:absolute;left:50%;top:38%;pointer-events:none;z-index:5;animation:${s.anim} .95s ease-out forwards;font-family:'Poppins','Segoe UI',sans-serif;font-weight:${s.weight};font-size:${s.size}px;color:${s.color};text-shadow:0 2px 6px rgba(0,0,0,.15);white-space:nowrap">${fx.text}</div>`;
 }
 
-function renderHeader() {
+function renderHeaderLegacy() {
   const tLog = todayLog();
   const { charges } = getCharges(state, ui.now);
   return `
@@ -5312,7 +5314,7 @@ function renderHeader() {
   </div>`;
 }
 
-function renderToast() {
+function renderToastLegacy() {
   if (!ui.toast) return "";
   return `<div style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:60;padding:8px 16px;border-radius:9999px;box-shadow:0 10px 25px rgba(74,59,50,.15);background:${C.mageDeep};color:white;font-size:13px;font-weight:600">${escapeHtml(ui.toast)}</div>`;
 }
@@ -5771,7 +5773,15 @@ function renderHome() {
     </div>
   `) : "";
 
-  return `<div style="display:flex;flex-direction:column;gap:16px">${comebackCardHtml()}${quickStripHtml()}${eventCardHtml()}${heroStatsCardHtml()}${gentleCardHtml()}${treasureCardHtml()}${nudgeCardHtml()}${remindersCard}${sleepCard}${workoutCard}${callCard}${birthdayCard}${focusModeCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${specCard}${ascensionCard}${eliteModeCard}${repBonusCard}${expeditionCard}${raidCard}${dungeonCard}${chronicleCard}${strongholdCard}${restCard}${roamCard}${huntingCard}${dragonCard}${codexCard}${billsCard}${notebookCard}${cyclesCard}${sickCard}${weighInCard}${soelCareCard}${wellnessCard}${prnCard}${tavernCard}${satchelCard}</div>`;
+  const grp = (...parts) => parts.join("");
+  return `<div style="display:flex;flex-direction:column;gap:16px">
+    ${renderCampScene()}
+    ${comebackCardHtml()}${quickStripHtml()}${callCard}${birthdayCard}${idleCard}${weeklyGuildCard}${weeklyRecapCard}${eventCardHtml()}${heroStatsCardHtml()}${gentleCardHtml()}${treasureCardHtml()}${nudgeCardHtml()}${focusModeCard}
+    ${rpgAccordion("adv", "⚔️", "Guild & Adventures", "Specializations, raids, dungeons, hunts", grp(specCard, ascensionCard, eliteModeCard, repBonusCard, expeditionCard, raidCard, dungeonCard, chronicleCard, strongholdCard, restCard, roamCard, huntingCard, dragonCard, codexCard), true)}
+    ${rpgAccordion("well", "🍺", "Tavern & Wellness", "Meals, water, sleep, workouts, supplements", grp(tavernCard, wellnessCard, remindersCard, sleepCard, workoutCard), true)}
+    ${rpgAccordion("home", "🏠", "Homestead Ledger", "Bills, notes, cycle, health, Soel's care", grp(billsCard, notebookCard, cyclesCard, sickCard, weighInCard, soelCareCard, prnCard), false)}
+    ${rpgAccordion("sat", "🎒", "Satchel", "Materials & potions", satchelCard, false)}
+  </div>`;
 }
 
 function renderBillsCard() {
@@ -7778,6 +7788,7 @@ function renderSettingsModal() {
       <p style="font-size:10.5px;color:${C.inkSoft};margin:0 0 8px">The limit for any day you mark as a Slack Day from the Calendar — currently ${state.settings.slackDayCarbLimit}g. Use it deliberately, not automatically.</p>
       <div style="display:flex;gap:6px;margin-bottom:16px">${slackCarbButtons}</div>
 
+      ${rpgSettingsHtml()}
       ${titleSettingsHtml()}
       ${reminderSettingsHtml()}
       <p class="disp" style="font-weight:700;font-size:12.5px;color:${C.pink};margin:0 0 6px">🔥 Daily Calorie Goal</p>
@@ -7982,7 +7993,7 @@ function renderChestModal() {
   </div>`;
 }
 
-function renderNav() {
+function renderNavLegacy() {
   const tabs = [["home","🪄","Home"], ["explore","🧭","Explore"], ["party","👥","Party"], ["bond","💞","Bond"], ["quests","📜","Quests"], ["craft","🔨","Craft"], ["calendar","📦","Calendar"]];
   const items = tabs.map(([id,icon,label]) => `
     <button data-act="setTab" data-arg="${id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;flex:1;color:${ui.tab===id ? C.mageDeep : C.inkSoft}">
