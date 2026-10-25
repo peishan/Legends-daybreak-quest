@@ -196,7 +196,7 @@ function campFireSvg(x, y) {
 function renderCampScene() {
   const sky = rpgSky(), night = sky.kind === "night" || sky.kind === "evening";
   const party = (state.activeParty || []).map(id => PARTY.find(p => p.id === id)).filter(Boolean).slice(0, 3);
-  const spots = [124, 262, 330];
+  const spots = [124, 250, 306];
   const crew = party.map((m, i) => chibi(spots[i], 218, { id: m.id, cloak: m.color, hair: ["#3b2a30", "#7a3b2a", "#2c2c44"][i % 3], emblem: m.icon, flip: false }));
   const stars = night ? Array.from({ length: 26 }).map((_, i) => { const r = (n) => ((hashDay(`s${i}${n}`) % 1000) / 1000); return `<circle class="star" cx="${(r(1) * 420).toFixed(0)}" cy="${(r(2) * 120).toFixed(0)}" r="${(0.6 + r(3) * 1.1).toFixed(1)}" fill="#fff" style="animation-delay:${(r(4) * 3).toFixed(1)}s"/>`; }).join("") : "";
   const arcX = 40 + ((sky.h - 6) / 14) * 340;
@@ -252,8 +252,11 @@ function renderCampScene() {
       <rect class="hl" x="-42" y="-68" width="86" height="76" fill="none" stroke="#fff3d6" stroke-width="2" rx="4"/>
       <text class="hotlabel" x="0" y="59" text-anchor="middle">Quest Board</text></g>
 
+    ${campDecorSvg(night)}
+    <!-- Pond -->
+    <g class="hot" data-act="openPond" transform="translate(376 228)"><ellipse cx="0" cy="0" rx="30" ry="8" fill="${night ? "#1f3a5a" : "#5fb3d9"}" stroke="#2f5a7a" stroke-width="1.5"/><ellipse cx="-6" cy="-1" rx="8" ry="2" fill="#fff" opacity=".35"/><g transform="translate(8 -2)"><circle r="2.6" fill="#fff"/><path d="M-2.6 0 A2.6 2.6 0 0 0 2.6 0Z" fill="#d9232d"/></g><rect class="hl" x="-34" y="-12" width="68" height="24" fill="none" stroke="#fff3d6" stroke-width="2" rx="6"/><text class="hotlabel" x="0" y="-12" text-anchor="middle">Pond</text></g>
     ${campFireSvg(215, 226)}
-    ${hero}${crew.join("")}${soelSprite(236, 232)}
+    ${heroAuraSvg(174, 224)}${hero}${crew.join("")}${soelSprite(236, 232)}
     ${wx}
     <rect width="420" height="250" fill="${dim}" pointer-events="none"/>
   </svg></div>

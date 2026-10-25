@@ -1485,7 +1485,7 @@ const ACHIEVEMENTS = [
   { id:"ach_ketostreak", title:"Carb Target Streak", icon:"🎯", desc:"Hit a 7-day Tavern streak", check: () => (state.tavern.streak||0) >= 7, reward:{gold:50,xp:40} },
 ];
 
-ACHIEVEMENTS.push(...EXPANSION_ACHIEVEMENTS);
+ACHIEVEMENTS.push(...EXPANSION_ACHIEVEMENTS, ...FISHING_ACHIEVEMENTS);
 
 const SNIPPETS = {
   joel: [
@@ -1848,6 +1848,7 @@ function defaultState() {
     settings: { dietMode: "Mediterranean", carbLimit: 200, vegDayCarbLimit: 225, notificationsEnabled: false, slackDayCarbLimit: 250, periodSweetBiteBonus: 20, calorieGoal: 1800, reminderHour: 20, dayResetHour: 8, textScale: 1, mapView: "path" },
     visit: { last:null },
     wilds: null,
+    fishing: null,
     habitHistory: {}, habitBoss: null, habitBossWins: 0, treasure: null, gentle: null, balancedPlate: null,
     tavernRankClaimed: 0, eventsClaimed: [], keepsakes: [], unlockedTitles: [], activeTitle: null,
     comeback: null,
@@ -5196,7 +5197,7 @@ const ACTIONS = { beginCall, castSpell, claimCall, visitLocation, craft, equip, 
   openBackup, closeBackup, copyBackup, restoreBackup, closeEncounter, toggleTheme, buyFromMimi, buyFromAisy,
   openCompanionQuest, closeCompanionQuest, companionQuestNext, ascend,
   visitLandmark, openZoneDetail, closeZoneDetail,
-  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, toggleMusic, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
+  claimIdleReward, claimComebackReward, sceneTalk, toggleSection, toggleSound, toggleHaptics, toggleMusic, openPond, closePond, pondTab, pondCast, pondReel, wildsWander, wildsFight, wildsSetZone, claimHabitBoss, claimGentleReward, claimDailyTreasure, claimSeasonalEvent, setActiveTitle, setReminderHour, claimWeeklyGuildReward, dismissWeeklyRecap,
   pickupSideQuest, turninSideQuest,
   toggleReminder, startFocusMode, cancelFocusMode, claimFocusReward,
   exportSaveFile, triggerImportFile,
@@ -7102,6 +7103,7 @@ function renderDungeonModal() {
       </div>` : "";
     const debuffNote = (room.hitPenaltyRounds > 0) ? `<p style="font-size:10.5px;color:${C.pink};margin:0 0 8px">⚠️ -${room.hitPenalty} to-hit for ${room.hitPenaltyRounds} more round${room.hitPenaltyRounds>1?"s":""}</p>` : "";
     body = `
+      ${battleStageHtml({ enemyName: room.enemyName, enemyHp: room.enemyHp, enemyMaxHp: room.enemyMaxHp, isBoss: room.type === "boss" })}
       <p class="disp" style="font-weight:700;font-size:13px;margin:0 0 8px">${room.type === "boss" ? "👹 " : ""}${room.enemyName}${room.type === "boss" ? " · Boss Room" : ""}</p>
       <div class="${enemyFxClass}" style="position:relative;height:10px;border-radius:9999px;overflow:hidden;background:${C.creamDeep};margin-bottom:12px">
         <div style="height:10px;width:${pct}%;background:${C.pink};transition:width .3s"></div>
@@ -8051,6 +8053,7 @@ function render() {
     ${renderBackupModal()}
     ${ui.showSleepBackfill ? `<div style="position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(74,59,50,.5)"><div style="background:${C.card};border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><p class="disp" style="font-weight:700;font-size:15px;margin:0">📝 Backfill Sleep</p><button data-act="closeSleepBackfill"><span style="color:${C.inkSoft}">✖</span></button></div><p style="font-size:11px;color:${C.inkSoft};margin:0 0 12px">If you forgot to start the tracker, enter when you actually fell asleep and when you woke. This is added to your sleep history without changing your live tracker.</p><label style="font-size:10px;color:${C.inkSoft}">Sleep started</label><input id="sleepBackfillStart" type="datetime-local" style="width:100%;margin:4px 0 10px;padding:9px;border-radius:12px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink}"><label style="font-size:10px;color:${C.inkSoft}">Wake time</label><input id="sleepBackfillEnd" type="datetime-local" style="width:100%;margin:4px 0 12px;padding:9px;border-radius:12px;border:1px solid ${C.border};background:${C.creamDeep};color:${C.ink}"><button data-act="saveSleepBackfill" class="disp" style="width:100%;padding:11px;border-radius:16px;font-weight:700;background:${C.mageDeep};color:white">Save Sleep Session</button></div></div>` : ""}
     ${renderAdventure2Modal()}
+    ${renderPondModal()}
     ${renderNav()}
   `;
   document.getElementById("app").innerHTML = html;

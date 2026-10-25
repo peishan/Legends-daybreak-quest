@@ -87,7 +87,7 @@ function battleStageHtml(enc) {
     const pct = Math.max(0, e.hp / e.maxHp * 100), w = big ? 90 : 52, cls = (lunge && e.target) ? "enemyhit" : "";
     return `<g transform="translate(${xs[i]} ${big ? 138 : 134})" opacity="${alive ? 1 : .18}">
       <ellipse cx="0" cy="2" rx="${big ? 40 : 20}" ry="${big ? 8 : 5}" fill="rgba(0,0,0,.35)"/>
-      <g class="${cls}"><g class="bob"><text x="0" y="${big ? -30 : -12}" font-size="${Math.round(30 * sc)}" text-anchor="middle" style="filter:drop-shadow(0 0 6px rgba(255,255,255,.35))">${enemyIcon(e.name, big)}</text></g></g>
+      <g class="${cls}"><g class="bob"><g transform="scale(${(big ? 1.9 : list.length > 1 ? 1.0 : 1.3)})">${enemyBody(e.name, big)}</g></g></g>
       ${alive ? `<rect x="${-w / 2}" y="${big ? -92 : -62}" width="${w}" height="6" rx="3" fill="#1c130c" stroke="#000" stroke-width=".6"/><rect x="${-w / 2 + .6}" y="${big ? -91.4 : -61.4}" width="${Math.max(0, (w - 1.2) * pct / 100)}" height="4.8" rx="2.4" fill="#e5484d"/>` : ""}
       ${alive && list.length > 1 && e.target ? `<text x="0" y="${big ? -98 : -68}" font-size="11" text-anchor="middle" fill="#ffe27a">▼</text>` : ""}
       ${lunge && e.target ? `<circle class="burst" cx="0" cy="${big ? -30 : -14}" r="${big ? 34 : 20}" fill="${hitKind === "crit" ? "#ffd34d" : "#ffffff"}"/>` : ""}

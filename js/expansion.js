@@ -688,6 +688,7 @@ function wildsCardHtml() {
       <div style="display:flex;gap:8px;margin-bottom:${log ? 8 : 0}px">
         <button data-act="wildsWander" ${busy} class="disp" style="flex:2;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.sage};color:white">🧭 Wander onward</button>
         <button data-act="wildsFight" ${busy} class="disp" style="flex:1;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:${C.mageDeep};color:white">⚔️ Fight</button>
+        <button data-act="openPond" class="disp" style="flex:1;padding:11px;border-radius:14px;font-weight:700;font-size:12.5px;background:#2f7fa8;color:white">🎣 Fish</button>
       </div>
       ${log}
       <p style="font-size:9.5px;color:${C.inkSoft};margin:6px 0 0">Today: ${w.actions} steps · ${w.fights} fights · ${w.total} all-time</p>
