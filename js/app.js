@@ -432,6 +432,8 @@ const TAVERN_FOODS = [
   { id:"f434", name:"Wholemeal Bread (2 slices)", cat:"🍞 Bread", fat:2.4, protein:8.0, carbs:24.0, fiber:4.4, kcal:150, emoji:"🍞" },
   { id:"f435", name:"Low GI Bread (1 slice)", cat:"🍞 Bread", fat:1.2, protein:4.0, carbs:11.0, fiber:2.5, kcal:70, emoji:"🍞" },
   { id:"f436", name:"Low GI Bread (2 slices)", cat:"🍞 Bread", fat:2.4, protein:8.0, carbs:22.0, fiber:5.0, kcal:140, emoji:"🍞" },
+  { id:"f438", name:"Red Bean Bread — backup (1 serving, 70g)", cat:"🍞 Bread", fat:6.9, protein:6.4, carbs:39.1, kcal:245, emoji:"🍞" },
+  { id:"f439", name:"Sweet Milk Bread, yellow pack — backup (1 serving, 70g)", cat:"🍞 Bread", fat:6.2, protein:1.7, carbs:47.2, kcal:250, emoji:"🍞" },
   { id:"f437", name:"Burger / Sandwich Cheese Slice (1 slice)", cat:"🥚 Egg & Dairy", fat:4.0, protein:2.5, carbs:1.0, satFat:2.5, unsatFat:1.2, kcal:50, emoji:"🧀" },
 
 ];
